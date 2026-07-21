@@ -1,0 +1,28 @@
+/**
+ * App-level utility styles
+ *
+ * Minimal overrides — all design system tokens live in index.css.
+ */
+
+/* Fade-in animation for toast notifications */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Mobile sidebar overlay backdrop */
+.sidebar-backdrop {
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
