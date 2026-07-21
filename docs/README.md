@@ -1,4 +1,4 @@
-# Finder - AI-powered Job Application Assistant
+# Finder
 
 Finder is an intelligent tool designed to automate and assist with job applications.
 
