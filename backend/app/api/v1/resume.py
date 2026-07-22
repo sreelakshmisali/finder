@@ -108,6 +108,7 @@ async def parse_resume(resume_id: uuid.UUID, db: AsyncSession = Depends(get_db))
     """
     Parse resume endpoint.
     """
+    print("db---------------------", db)
     parser_service = ResumeParserService(db)
     try:
         parsed_resume = await parser_service.parse_resume(resume_id)

@@ -55,9 +55,11 @@ class ResumeParserService:
 
         # 1. Extract text from PDF file
         raw_text = self.extract_text_from_pdf(db_resume.file_path)
+        print("raw_text---------------------", raw_text)
 
         # 2. Parse structured fields using AI provider
         parsed_model = await self.ai.parse_resume(raw_text)
+        print("parsed_model---------------------", parsed_model)
         parsed_dict = parsed_model.model_dump()
 
         # 3. Save to database
