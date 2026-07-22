@@ -96,3 +96,35 @@ class ResumeRepository:
             await self.db.refresh(resume)
             return resume
         return None
+
+    async def get_count(self) -> int:
+        """
+        Count total number of resume records.
+        """
+        resumes = await self.get_all()
+        return len(resumes)
+
+    async def delete(self, resume_id: uuid.UUID) -> Optional[Resume]:
+        """
+        Permanently deletes a resume database record.
+        If the deleted resume was active, promotes the next most recent resume to active.
+        """
+        resume = await self.get_by_id(resume_id)
+        if not resume:
+            return None
+
+        was_active = resume.is_active
+
+        await self.db.delete(resume)
+        await self.db.commit()
+
+        if was_active:
+            # Promote most recent remaining resume to active
+            remaining = await self.get_all()
+            if remaining:
+                next_active = remaining[0]
+                next_active.is_active = True
+                await self.db.commit()
+
+        return resume
+

@@ -103,3 +103,35 @@ class ResumeService:
                 detail=f"Resume with ID '{resume_id}' not found."
             )
         return ResumeResponse.model_validate(resume)
+
+    async def delete_resume(self, resume_id: uuid.UUID) -> dict:
+        """
+        Permanently deletes a PDF file from disk and database record.
+        Enforces rule: cannot delete the only remaining resume.
+        Promotes next most recent remaining resume if active resume is deleted.
+        """
+        resume = await self.repo.get_by_id(resume_id)
+        if not resume:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Resume with ID '{resume_id}' not found."
+            )
+
+        total_count = await self.repo.get_count()
+        if total_count <= 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot delete the only remaining resume. You must keep at least one resume."
+            )
+
+        # Remove physical file from storage disk if exists
+        if resume.file_path and os.path.exists(resume.file_path):
+            try:
+                os.remove(resume.file_path)
+            except Exception as exc:
+                logger.warning(f"Failed to remove physical file '{resume.file_path}': {exc}")
+
+        # Delete database record
+        await self.repo.delete(resume_id)
+        return {"message": f"Resume '{resume.filename}' permanently deleted successfully."}
+

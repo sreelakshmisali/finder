@@ -121,3 +121,20 @@ async def parse_resume(resume_id: uuid.UUID, db: AsyncSession = Depends(get_db))
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.delete(
+    "/{resume_id}",
+    summary="Permanently delete resume",
+    description="Permanently deletes PDF resume from storage disk and database."
+)
+async def delete_resume(
+    resume_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Delete resume endpoint.
+    """
+    service = ResumeService(db)
+    return await service.delete_resume(resume_id)
+

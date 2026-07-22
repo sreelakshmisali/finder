@@ -32,9 +32,9 @@ function StatusFilter({ selectedStatus = "all", onSelectStatus, counts }: Status
             key={opt.id}
             type="button"
             onClick={() => onSelectStatus(opt.id)}
-            className={`px-4 py-2 rounded-[12px] text-sm font-semibold transition-all cursor-pointer flex items-center gap-2 ${
+            className={`px-4 py-4 rounded-[12px] text-sm font-semibold transition-all cursor-pointer flex items-center gap-2 ${
               isSelected
-                ? "bg-primary text-white shadow-md"
+                ? "bg-primary text-black shadow-md"
                 : "text-text-secondary hover:text-text hover:bg-surface-elevated"
             }`}
           >
@@ -42,7 +42,7 @@ function StatusFilter({ selectedStatus = "all", onSelectStatus, counts }: Status
             {count !== undefined && (
               <span
                 className={`px-1.5 py-0.2 text-[10px] rounded-full ${
-                  isSelected ? "bg-white/20 text-white" : "bg-surface-elevated text-text-muted"
+                  isSelected ? "bg-white/20 text-black" : "bg-surface-elevated text-text-muted"
                 }`}
               >
                 {count}

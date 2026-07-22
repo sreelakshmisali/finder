@@ -11,24 +11,28 @@ import ResumeUploader from "../components/shared/ResumeUploader";
 import ResumeCard from "../components/shared/ResumeCard";
 import ParsedResumeView from "../components/shared/ParsedResumeView";
 import EmptyState from "../components/shared/EmptyState";
-import { Card, CardHeader, CardTitle, Modal, Spinner } from "../components/ui";
+import { Card, CardHeader, CardTitle, Modal, Spinner, Button } from "../components/ui";
 import {
   useResumes,
   useUploadResume,
   useSetActiveResume,
   useParseResume,
+  useDeleteResume,
 } from "../hooks/useResume";
 import type { Resume } from "../types/resume";
-import { FileText, Sparkles, CheckCircle2 } from "lucide-react";
+import { FileText, Sparkles, CheckCircle2, AlertTriangle, Trash2 } from "lucide-react";
 
 function ResumePage() {
   const [selectedResumeForView, setSelectedResumeForView] = useState<Resume | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [resumeToDelete, setResumeToDelete] = useState<Resume | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const { data: resumesData, isLoading, isError } = useResumes();
   const uploadMutation = useUploadResume();
   const setActiveMutation = useSetActiveResume();
   const parseMutation = useParseResume();
+  const deleteMutation = useDeleteResume();
 
   const handleUpload = (file: File) => {
     uploadMutation.mutate(file);
@@ -53,6 +57,25 @@ function ResumePage() {
         },
       });
     }
+  };
+
+  const handleConfirmDelete = () => {
+    if (!resumeToDelete) return;
+    setDeleteError(null);
+
+    deleteMutation.mutate(resumeToDelete.id, {
+      onSuccess: () => {
+        setResumeToDelete(null);
+        setDeleteError(null);
+      },
+      onError: (error: any) => {
+        const errorMsg =
+          error?.response?.data?.detail ||
+          error?.message ||
+          "Failed to delete resume.";
+        setDeleteError(errorMsg);
+      },
+    });
   };
 
   const resumes = resumesData?.resumes || [];
@@ -141,7 +164,12 @@ function ResumePage() {
                       resume={resume}
                       onSetActive={handleSetActive}
                       onParse={handleParseOrCreateView}
+                      onDelete={(r) => {
+                        setDeleteError(null);
+                        setResumeToDelete(r);
+                      }}
                       isSettingActive={setActiveMutation.isPending}
+                      isDeleting={deleteMutation.isPending && deleteMutation.variables === resume.id}
                     />
                   ))}
                 </div>
@@ -168,9 +196,64 @@ function ResumePage() {
             <ParsedResumeView data={selectedResumeForView?.parsed_data} />
           )}
         </Modal>
+
+        {/* Delete Confirmation Modal */}
+        <Modal
+          isOpen={!!resumeToDelete}
+          onClose={() => {
+            setResumeToDelete(null);
+            setDeleteError(null);
+          }}
+          title="Permanent Resume Deletion"
+          size="md"
+        >
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 p-4 rounded-lg bg-error/10 border border-error/20 text-error">
+              <AlertTriangle size={24} className="shrink-0 mt-0.5" />
+              <div className="text-sm space-y-1">
+                <p className="font-semibold">
+                  Are you sure you want to delete "{resumeToDelete?.filename}"?
+                </p>
+                <p className="text-xs opacity-90">
+                  This action is permanent and cannot be undone. The PDF file will be removed completely from disk storage and database records.
+                </p>
+              </div>
+            </div>
+
+            {deleteError && (
+              <div className="p-3 text-xs rounded bg-error/20 text-error font-medium border border-error/30">
+                {deleteError}
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setResumeToDelete(null);
+                  setDeleteError(null);
+                }}
+              >
+                Cancel
+              </Button>
+
+              <Button
+                variant="danger"
+                size="sm"
+                isLoading={deleteMutation.isPending}
+                onClick={handleConfirmDelete}
+                icon={<Trash2 size={14} />}
+              >
+                Delete Resume
+              </Button>
+            </div>
+          </div>
+        </Modal>
       </PageWrapper>
     </>
   );
 }
 
 export default ResumePage;
+

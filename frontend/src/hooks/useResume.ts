@@ -9,6 +9,7 @@ import {
   uploadResume,
   setActiveResume,
   parseResume,
+  deleteResume,
 } from "../services/resumeService";
 
 /**
@@ -72,3 +73,18 @@ export function useParseResume() {
     },
   });
 }
+
+/**
+ * Delete resume mutation hook.
+ */
+export function useDeleteResume() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (resumeId: string) => deleteResume(resumeId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["resumes"] });
+    },
+  });
+}
+

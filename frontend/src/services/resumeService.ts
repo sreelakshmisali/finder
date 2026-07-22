@@ -53,3 +53,12 @@ export async function parseResume(resumeId: string): Promise<Resume> {
   const response = await api.post<Resume>(`/resume/${resumeId}/parse`);
   return response.data;
 }
+
+/**
+ * Permanently delete an uploaded resume.
+ */
+export async function deleteResume(resumeId: string): Promise<{ message: string }> {
+  const response = await api.delete<{ message: string }>(`/resume/${resumeId}`);
+  return response.data;
+}
+

@@ -30,7 +30,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   /** Show a loading spinner and disable the button */
   isLoading?: boolean;
   /** Content inside the button */
-  children: ReactNode;
+  children?: ReactNode;
 }
 
 /**

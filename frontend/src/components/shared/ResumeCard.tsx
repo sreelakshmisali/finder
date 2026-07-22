@@ -6,17 +6,26 @@
 
 import type { Resume } from "../../types/resume";
 import { Card, Badge, Button } from "../ui";
-import { FileText, CheckCircle, Calendar, Sparkles } from "lucide-react";
+import { FileText, CheckCircle, Calendar, Sparkles, Trash2 } from "lucide-react";
 import { formatDate } from "../../lib/utils";
 
 interface ResumeCardProps {
   resume: Resume;
   onSetActive?: (resumeId: string) => void;
   onParse?: (resumeId: string) => void;
+  onDelete?: (resume: Resume) => void;
   isSettingActive?: boolean;
+  isDeleting?: boolean;
 }
 
-function ResumeCard({ resume, onSetActive, onParse, isSettingActive }: ResumeCardProps) {
+function ResumeCard({
+  resume,
+  onSetActive,
+  onParse,
+  onDelete,
+  isSettingActive,
+  isDeleting,
+}: ResumeCardProps) {
   return (
     <Card hoverable className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-6 shadow-sm">
       <div className="flex items-center gap-4 min-w-0">
@@ -74,9 +83,21 @@ function ResumeCard({ resume, onSetActive, onParse, isSettingActive }: ResumeCar
             Make Active
           </Button>
         )}
+
+        {onDelete && (
+          <Button
+            variant="danger"
+            size="sm"
+            isLoading={isDeleting}
+            onClick={() => onDelete(resume)}
+            title="Delete Resume"
+            icon={<Trash2 size={14} />}
+          />
+        )}
       </div>
     </Card>
   );
 }
 
 export default ResumeCard;
+
