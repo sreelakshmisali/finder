@@ -7,12 +7,16 @@ Maps to `applications` and `application_logs` tables in PostgreSQL / SQLite.
 
 from datetime import datetime
 import uuid
-from typing import Optional, List, Dict, Any
-from sqlalchemy import String, Text, Float, DateTime, JSON, ForeignKey
+from typing import Optional, List, Dict, Any, TYPE_CHECKING
+from sqlalchemy import String, Text, Float, DateTime, JSON, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 
 from app.database.base import Base
+
+if TYPE_CHECKING:
+    from app.models.user import User
+    from app.models.job import Job
 
 
 class Application(Base):
@@ -24,12 +28,23 @@ class Application(Base):
     saved -> approved -> queued -> running -> awaiting_input -> awaiting_confirmation -> completed / failed -> interview / rejected / offer
     """
     __tablename__ = "applications"
+    __table_args__ = (
+        UniqueConstraint("user_id", "job_id", name="uq_user_job_application"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         primary_key=True,
         default=uuid.uuid4,
         comment="Unique identifier for the application"
+    )
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+        comment="ID of owning user candidate"
     )
 
     job_id: Mapped[uuid.UUID] = mapped_column(
@@ -88,6 +103,7 @@ class Application(Base):
     )
 
     # Relationships
+    user: Mapped["User"] = relationship("User", back_populates="applications")
     job: Mapped["Job"] = relationship("Job", lazy="joined")
     logs: Mapped[List["ApplicationLog"]] = relationship(
         "ApplicationLog",

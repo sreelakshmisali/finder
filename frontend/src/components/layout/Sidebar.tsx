@@ -2,22 +2,18 @@
  * Sidebar Component
  *
  * Left navigation sidebar displaying logo, primary navigation links,
- * active link indicator, and user authentication status footer.
+ * active link indicator, and user profile / logout button.
  */
 
-import { useState } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { NAV_ITEMS } from "../../lib/constants";
 import { useAuth } from "../../contexts/AuthContext";
-import LoginModal from "../shared/LoginModal";
-import RegisterModal from "../shared/RegisterModal";
 import {
   LayoutDashboard,
   Search,
   FileText,
   SlidersHorizontal,
   ClipboardList,
-  LogIn,
   LogOut,
   X,
 } from "lucide-react";
@@ -38,9 +34,13 @@ interface SidebarProps {
 }
 
 function Sidebar({ isOpen = false, onClose }: SidebarProps) {
-  const { user, isAuthenticated, logout } = useAuth();
-  const [isLoginOpen, setIsLoginOpen] = useState(false);
-  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login", { replace: true });
+  };
 
   return (
     <>
@@ -74,7 +74,7 @@ function Sidebar({ isOpen = false, onClose }: SidebarProps) {
             </div>
           </div>
           <button 
-            className="md:hidden text-text-secondary hover:text-text p-1"
+            className="md:hidden text-text-secondary hover:text-text p-1 cursor-pointer"
             onClick={onClose}
           >
             <X size={20} />
@@ -106,15 +106,16 @@ function Sidebar({ isOpen = false, onClose }: SidebarProps) {
           })}
         </nav>
 
+        {/* User Profile & Logout Footer */}
         <div className="p-4 border-t border-border">
-          {isAuthenticated && user ? (
+          {user && (
             <div className="p-2 rounded-xl bg-surface-elevated/30 border border-border flex items-center justify-between">
               <div className="flex items-center gap-3 min-w-0 px-1">
-                <div className="h-8 w-8 rounded-full bg-surface-elevated text-text border border-border flex items-center justify-center font-medium text-xs shrink-0">
+                <div className="h-8 w-8 rounded-full bg-primary/20 text-primary border border-primary/30 flex items-center justify-center font-bold text-xs shrink-0">
                   {getInitials(user.full_name)}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-text truncate">
+                  <p className="text-sm font-semibold text-text truncate">
                     {user.full_name}
                   </p>
                   <p className="text-xs text-text-muted truncate">
@@ -125,45 +126,15 @@ function Sidebar({ isOpen = false, onClose }: SidebarProps) {
 
               <button
                 type="button"
-                onClick={logout}
+                onClick={handleLogout}
                 title="Sign Out"
                 className="p-2 rounded-lg text-text-muted hover:text-error hover:bg-error/10 transition-colors cursor-pointer"
               >
                 <LogOut size={16} />
               </button>
             </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={() => setIsLoginOpen(true)}
-                className="w-full h-10 rounded-lg bg-surface-elevated border border-border text-sm font-medium text-text hover:bg-surface-hover transition-colors flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <LogIn size={16} />
-                Sign In
-              </button>
-            </div>
           )}
         </div>
-
-        {/* Auth Modals */}
-        <LoginModal
-          isOpen={isLoginOpen}
-          onClose={() => setIsLoginOpen(false)}
-          onSwitchToRegister={() => {
-            setIsLoginOpen(false);
-            setIsRegisterOpen(true);
-          }}
-        />
-
-        <RegisterModal
-          isOpen={isRegisterOpen}
-          onClose={() => setIsRegisterOpen(false)}
-          onSwitchToLogin={() => {
-            setIsRegisterOpen(false);
-            setIsLoginOpen(true);
-          }}
-        />
       </aside>
     </>
   );

@@ -48,21 +48,22 @@ class AutomationService:
     async def start_automation(
         self,
         application_id: uuid.UUID,
+        user_id: uuid.UUID,
         answers: Optional[Dict[str, str]] = None
     ) -> AutomationStateResponse:
         """
         Launches Playwright form automation for standard candidate details and resume upload.
         Pauses at `awaiting_confirmation` or `awaiting_input`.
         """
-        app = await self.app_repo.get_by_id(application_id)
+        app = await self.app_repo.get_by_id(application_id, user_id)
         if not app:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Application with ID '{application_id}' not found."
             )
 
-        # Retrieve active candidate resume
-        resume = await self.resume_repo.get_active()
+        # Retrieve active candidate resume for this user
+        resume = await self.resume_repo.get_active(user_id)
         if not resume:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -81,6 +82,7 @@ class AutomationService:
         # Transition status to 'running'
         await self.app_repo.update_status(
             application_id=app.id,
+            user_id=user_id,
             new_status="running",
             details="Playwright automation initialized. Navigating to job page."
         )
@@ -98,6 +100,7 @@ class AutomationService:
         # Update application status based on step result
         await self.app_repo.update_status(
             application_id=app.id,
+            user_id=user_id,
             new_status=step_result.status,
             details=step_result.step_summary
         )
@@ -115,19 +118,20 @@ class AutomationService:
     async def confirm_and_submit(
         self,
         application_id: uuid.UUID,
+        user_id: uuid.UUID,
         payload: AutomationConfirmSubmitRequest
     ) -> ApplicationResponse:
         """
         Executes final application submission ONLY after explicit user confirmation.
         """
-        app = await self.app_repo.get_by_id(application_id)
+        app = await self.app_repo.get_by_id(application_id, user_id)
         if not app:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Application with ID '{application_id}' not found."
             )
 
-        resume = await self.resume_repo.get_active()
+        resume = await self.resume_repo.get_active(user_id)
 
         candidate_info = {
             "full_name": (resume.parsed_data or {}).get("full_name", "Applicant Name") if resume else "Applicant Name",
@@ -148,6 +152,7 @@ class AutomationService:
         # Update status to completed
         updated_app = await self.app_repo.update_status(
             application_id=app.id,
+            user_id=user_id,
             new_status=submit_result.status,
             details=submit_result.step_summary
         )

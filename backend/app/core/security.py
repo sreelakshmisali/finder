@@ -1,7 +1,7 @@
 """
 Security & Authentication Utilities
 
-Handles bcrypt password hashing/verification and JSON Web Token (JWT) creation & validation.
+Handles Argon2 / bcrypt password hashing & verification and JSON Web Token (JWT) creation & validation.
 """
 
 from datetime import datetime, timedelta
@@ -11,20 +11,21 @@ from passlib.context import CryptContext
 
 from app.core.config import settings
 
-# Password Hashing Context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Password Hashing Context (Argon2 primary, bcrypt fallback for legacy hashes)
+pwd_context = CryptContext(schemes=["argon2", "bcrypt"], deprecated="auto")
+JWT_ISSUER = "finder-api"
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
-    Verifies plain text password against stored bcrypt hash.
+    Verifies plain text password against stored Argon2/bcrypt hash.
     """
     return pwd_context.verify(plain_password, hashed_password)
 
 
 def get_password_hash(password: str) -> str:
     """
-    Generates bcrypt hash from plain text password.
+    Generates Argon2 hash from plain text password.
     """
     return pwd_context.hash(password)
 
@@ -34,21 +35,23 @@ def create_access_token(subject: str | Any, expires_delta: Optional[timedelta] =
     Creates a signed JWT access token.
 
     Args:
-        subject: Unique identifier (user ID or email).
+        subject: Unique identifier (user ID string).
         expires_delta: Optional custom expiration timedelta.
 
     Returns:
         Encoded JWT token string.
     """
+    now = datetime.utcnow()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = now + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = now + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
     to_encode = {
         "exp": expire,
         "sub": str(subject),
-        "iat": datetime.utcnow()
+        "iat": now,
+        "iss": JWT_ISSUER
     }
 
     encoded_jwt = jwt.encode(
@@ -62,6 +65,7 @@ def create_access_token(subject: str | Any, expires_delta: Optional[timedelta] =
 def decode_access_token(token: str) -> Optional[str]:
     """
     Decodes and validates a JWT token, returning the subject ID string.
+    Verifies signature, expiration, and issuer claim.
     """
     try:
         payload = jwt.decode(
@@ -69,6 +73,9 @@ def decode_access_token(token: str) -> Optional[str]:
             settings.SECRET_KEY,
             algorithms=[settings.JWT_ALGORITHM]
         )
+        issuer = payload.get("iss")
+        if issuer and issuer != JWT_ISSUER:
+            return None
         return payload.get("sub")
     except JWTError:
         return None

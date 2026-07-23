@@ -7,7 +7,7 @@ Pydantic validation models for registration, login, token output, and user profi
 from datetime import datetime
 import uuid
 from typing import Optional
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr, field_validator
 
 
 class UserCreate(BaseModel):
@@ -18,6 +18,11 @@ class UserCreate(BaseModel):
     full_name: str = Field(..., min_length=2, max_length=100, description="Full name")
     password: str = Field(..., min_length=6, max_length=100, description="Password string")
 
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        return v.lower().strip()
+
 
 class UserLogin(BaseModel):
     """
@@ -25,6 +30,11 @@ class UserLogin(BaseModel):
     """
     email: EmailStr = Field(..., description="User email address")
     password: str = Field(..., description="Password string")
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        return v.lower().strip()
 
 
 class UserResponse(BaseModel):
@@ -35,8 +45,8 @@ class UserResponse(BaseModel):
     email: EmailStr
     full_name: str
     is_active: bool
-    is_superuser: bool
     created_at: datetime
+    last_login: Optional[datetime] = None
 
     class Config:
         from_attributes = True

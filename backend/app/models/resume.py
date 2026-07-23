@@ -7,12 +7,15 @@ Maps to the `resumes` table in PostgreSQL.
 
 from datetime import datetime
 import uuid
-from typing import Optional, Dict, Any
-from sqlalchemy import String, Text, Boolean, DateTime, JSON
-from sqlalchemy.orm import Mapped, mapped_column
+from typing import Optional, Dict, Any, TYPE_CHECKING
+from sqlalchemy import String, Text, Boolean, DateTime, JSON, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 
 from app.database.base import Base
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 
 class Resume(Base):
@@ -29,6 +32,14 @@ class Resume(Base):
         primary_key=True,
         default=uuid.uuid4,
         comment="Unique identifier for the resume"
+    )
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+        comment="ID of owning user account"
     )
 
     filename: Mapped[str] = mapped_column(
@@ -68,3 +79,6 @@ class Resume(Base):
         nullable=False,
         comment="Timestamp when resume was uploaded"
     )
+
+    # Relationships
+    user: Mapped["User"] = relationship("User", back_populates="resumes")

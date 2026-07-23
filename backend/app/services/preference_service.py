@@ -1,10 +1,11 @@
 """
 Preference Service
 
-Business logic layer for saving and retrieving user job search preferences.
+Business logic layer for retrieving and updating user job search preferences.
 """
 
 import logging
+import uuid
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,35 +17,34 @@ logger = logging.getLogger(__name__)
 
 class PreferenceService:
     """
-    Business logic orchestrator for user preferences.
+    Service layer for managing candidate job search criteria.
     """
 
     def __init__(self, db: AsyncSession):
         self.db = db
         self.repo = PreferenceRepository(db)
 
-    async def get_preferences(self) -> PreferenceResponse:
+    async def get_preferences(self, user_id: uuid.UUID) -> PreferenceResponse:
         """
-        Fetches existing preferences or creates default preference record if none exists.
+        Retrieves current preferences for a user, or returns default baseline if unset.
         """
-        pref = await self.repo.get_preference()
+        pref = await self.repo.get_preference(user_id)
         if not pref:
-            # Create default preference object
-            default_update = PreferenceUpdate(
-                preferred_roles=["Software Engineer", "Backend Engineer", "Full Stack Developer"],
-                preferred_locations=["Remote", "San Francisco, CA"],
-                min_salary=110000,
+            return PreferenceResponse(
+                id=uuid.uuid4(),
+                preferred_roles=[],
+                preferred_locations=[],
+                min_salary=100000,
                 max_salary=180000,
                 work_type="remote",
-                preferred_companies=["Stripe", "Notion", "Figma", "Linear"],
+                preferred_companies=[],
                 experience_years=3
             )
-            pref = await self.repo.create_or_update(default_update)
         return PreferenceResponse.model_validate(pref)
 
-    async def save_preferences(self, update_data: PreferenceUpdate) -> PreferenceResponse:
+    async def save_preferences(self, user_id: uuid.UUID, payload: PreferenceUpdate) -> PreferenceResponse:
         """
-        Saves updated preference record.
+        Saves updated search criteria for a user.
         """
-        pref = await self.repo.create_or_update(update_data)
+        pref = await self.repo.create_or_update(user_id, payload)
         return PreferenceResponse.model_validate(pref)

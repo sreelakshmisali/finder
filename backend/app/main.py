@@ -15,10 +15,9 @@ settings = get_settings()
 async def lifespan(app: FastAPI):
     """Lifespan event handler for startup and shutdown tasks."""
     setup_logging()
-    # Initialize DB tables for development (in production, use Alembic)
+    # Initialize DB tables for development
     await init_db()
     yield
-    # Clean up resources on shutdown if needed
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -27,10 +26,12 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS middleware setup - Allow all origins for dev flexibility
+# CORS middleware setup using configured origins
+origins = settings.CORS_ORIGINS if isinstance(settings.CORS_ORIGINS, list) else [settings.CORS_ORIGINS]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

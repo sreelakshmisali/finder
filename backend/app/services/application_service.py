@@ -2,20 +2,7 @@
 Application Service
 
 Business logic layer managing application lifecycle, state machine transitions,
-and audit log generation.
-
-Valid Application Statuses:
-- `saved`: Bookmarked role for later review.
-- `approved`: User approved for application submission.
-- `queued`: Waiting in automation queue.
-- `running`: Playwright browser actively filling form.
-- `awaiting_input`: Custom questions surfaced for user input.
-- `awaiting_confirmation`: Form filled; awaiting user final confirmation submit.
-- `completed`: Successfully applied.
-- `failed`: Automation failure or user cancellation.
-- `interview`: Interview call scheduled.
-- `rejected`: Application declined.
-- `offer`: Job offer received.
+and audit log generation per candidate user.
 """
 
 import logging
@@ -46,7 +33,7 @@ VALID_STATUSES = {
 
 class ApplicationService:
     """
-    Service layer orchestrating application state transitions and tracking.
+    Service layer orchestrating application state transitions and tracking per candidate.
     """
 
     def __init__(self, db: AsyncSession):
@@ -54,10 +41,10 @@ class ApplicationService:
         self.repo = ApplicationRepository(db)
         self.job_repo = JobRepository(db)
 
-    async def create_application(self, payload: ApplicationCreate) -> ApplicationResponse:
+    async def create_application(self, user_id: uuid.UUID, payload: ApplicationCreate) -> ApplicationResponse:
         """
-        Creates a new application record for a job posting.
-        Calculates initial match score if available.
+        Creates a new application record for a job posting for the specified user.
+        Calculates initial match score if candidate has an active resume.
         """
         if payload.status not in VALID_STATUSES:
             raise HTTPException(
@@ -65,7 +52,7 @@ class ApplicationService:
                 detail=f"Invalid status '{payload.status}'. Valid statuses: {VALID_STATUSES}"
             )
 
-        # Check job exists
+        # Check job exists (Jobs catalog remains global)
         job = await self.job_repo.get_by_id(payload.job_id)
         if not job:
             raise HTTPException(
@@ -73,18 +60,19 @@ class ApplicationService:
                 detail=f"Job with ID '{payload.job_id}' not found."
             )
 
-        # Calculate match score snapshot
+        # Calculate match score snapshot for candidate
         match_score = None
         match_details = None
         try:
             matcher = MatchingService(self.db)
-            match_res = await matcher.match_job(payload.job_id)
+            match_res = await matcher.match_job(job_id=payload.job_id, user_id=user_id)
             match_score = match_res.score
             match_details = match_res.model_dump()
         except Exception as exc:
             logger.warning(f"Could not compute match score for application: {exc}")
 
         app = await self.repo.create(
+            user_id=user_id,
             job_id=payload.job_id,
             status=payload.status,
             match_score=match_score,
@@ -94,24 +82,24 @@ class ApplicationService:
 
         return ApplicationResponse.model_validate(app)
 
-    async def get_all_applications(self, status_filter: Optional[str] = None) -> ApplicationListResponse:
+    async def get_all_applications(self, user_id: uuid.UUID, status_filter: Optional[str] = None) -> ApplicationListResponse:
         """
-        Retrieves all applications with optional status filter.
+        Retrieves all applications for a user with optional status filter.
         """
-        apps = await self.repo.get_all(status_filter=status_filter)
+        apps = await self.repo.get_all(user_id=user_id, status_filter=status_filter)
         responses = [ApplicationResponse.model_validate(a) for a in apps]
         return ApplicationListResponse(total=len(responses), applications=responses)
 
-    async def get_application_by_id(self, application_id: uuid.UUID) -> Optional[ApplicationResponse]:
+    async def get_application_by_id(self, application_id: uuid.UUID, user_id: uuid.UUID) -> Optional[ApplicationResponse]:
         """
-        Retrieves a single application by ID with audit logs.
+        Retrieves a single application by ID for a user.
         """
-        app = await self.repo.get_by_id(application_id)
+        app = await self.repo.get_by_id(application_id=application_id, user_id=user_id)
         if not app:
             return None
         return ApplicationResponse.model_validate(app)
 
-    async def update_status(self, application_id: uuid.UUID, payload: ApplicationUpdateStatus) -> ApplicationResponse:
+    async def update_status(self, application_id: uuid.UUID, user_id: uuid.UUID, payload: ApplicationUpdateStatus) -> ApplicationResponse:
         """
         Transitions application status and records an audit log entry.
         """
@@ -123,6 +111,7 @@ class ApplicationService:
 
         updated_app = await self.repo.update_status(
             application_id=application_id,
+            user_id=user_id,
             new_status=payload.status,
             details=payload.details
         )
@@ -135,12 +124,13 @@ class ApplicationService:
 
         return ApplicationResponse.model_validate(updated_app)
 
-    async def update_notes(self, application_id: uuid.UUID, payload: ApplicationUpdateNotes) -> ApplicationResponse:
+    async def update_notes(self, application_id: uuid.UUID, user_id: uuid.UUID, payload: ApplicationUpdateNotes) -> ApplicationResponse:
         """
         Updates user notes for an application.
         """
         updated_app = await self.repo.update_notes(
             application_id=application_id,
+            user_id=user_id,
             notes=payload.notes
         )
 

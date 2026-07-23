@@ -45,26 +45,25 @@ class ResumeParserService:
 
         return extracted_text.strip()
 
-    async def parse_resume(self, resume_id: uuid.UUID) -> Optional[ResumeResponse]:
+    async def parse_resume(self, resume_id: uuid.UUID, user_id: uuid.UUID) -> Optional[ResumeResponse]:
         """
         Extracts text from PDF file, sends text to AI parser, and saves parsed JSON to DB.
         """
-        db_resume = await self.repo.get_by_id(resume_id)
+        db_resume = await self.repo.get_by_id(resume_id, user_id)
         if not db_resume:
             return None
 
         # 1. Extract text from PDF file
         raw_text = self.extract_text_from_pdf(db_resume.file_path)
-        print("raw_text---------------------", raw_text)
 
         # 2. Parse structured fields using AI provider
         parsed_model = await self.ai.parse_resume(raw_text)
-        print("parsed_model---------------------", parsed_model)
         parsed_dict = parsed_model.model_dump()
 
         # 3. Save to database
         updated_resume = await self.repo.update_parsed_data(
             resume_id=resume_id,
+            user_id=user_id,
             raw_text=raw_text,
             parsed_data=parsed_dict
         )

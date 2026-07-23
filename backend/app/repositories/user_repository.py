@@ -6,8 +6,9 @@ Database access layer for User entity.
 
 import logging
 import uuid
+from datetime import datetime
 from typing import Optional
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
@@ -33,9 +34,10 @@ class UserRepository:
 
     async def get_by_email(self, email: str) -> Optional[User]:
         """
-        Fetch single user by email address.
+        Fetch single user by normalized email address.
         """
-        result = await self.db.execute(select(User).where(User.email == email.lower().strip()))
+        clean_email = email.lower().strip()
+        result = await self.db.execute(select(User).where(User.email == clean_email))
         return result.scalar_one_or_none()
 
     async def create(self, email: str, full_name: str, password: str) -> User:
@@ -46,11 +48,19 @@ class UserRepository:
         db_user = User(
             email=email.lower().strip(),
             full_name=full_name.strip(),
-            hashed_password=hashed_pwd,
-            is_active=True,
-            is_superuser=False
+            password_hash=hashed_pwd,
+            is_active=True
         )
         self.db.add(db_user)
         await self.db.commit()
         await self.db.refresh(db_user)
         return db_user
+
+    async def update_last_login(self, user_id: uuid.UUID) -> None:
+        """
+        Updates last_login timestamp for a user.
+        """
+        await self.db.execute(
+            update(User).where(User.id == user_id).values(last_login=datetime.utcnow())
+        )
+        await self.db.commit()

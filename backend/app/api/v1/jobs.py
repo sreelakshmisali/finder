@@ -10,7 +10,8 @@ import uuid
 from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_db
+from app.core.dependencies import get_db, get_current_user
+from app.models.user import User
 from app.providers.registry import registry
 from app.schemas.job import JobSearchQuery, JobListResponse, JobResponse, ProviderInfo
 from app.schemas.match import MatchRequest, MatchResult, BatchMatchRequest, BatchMatchResult
@@ -32,10 +33,11 @@ async def search_jobs(
     remote_only: bool = Query(False, description="Filter for remote roles only"),
     sources: Optional[List[str]] = Query(None, description="Provider filter (e.g. ['greenhouse', 'lever'])"),
     limit: int = Query(50, ge=1, le=200, description="Max results to return"),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Search jobs endpoint.
+    Search jobs endpoint (Authenticated).
     """
     query = JobSearchQuery(
         query=q,
@@ -55,9 +57,9 @@ async def search_jobs(
     summary="List available job search providers",
     description="Returns metadata for all registered job discovery engines."
 )
-async def list_providers():
+async def list_providers(current_user: User = Depends(get_current_user)):
     """
-    List providers endpoint.
+    List providers endpoint (Authenticated).
     """
     return registry.list_providers_info()
 
@@ -68,9 +70,13 @@ async def list_providers():
     summary="Get single job details",
     description="Retrieves a specific job posting by its unique ID."
 )
-async def get_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def get_job(
+    job_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
     """
-    Get job details endpoint.
+    Get job details endpoint (Authenticated).
     """
     service = JobService(db)
     job = await service.get_job_by_id(job_id)
@@ -88,13 +94,21 @@ async def get_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     summary="Match single job with active resume",
     description="Calculates hybrid skill & preference match score and generates AI explanation."
 )
-async def match_job(payload: MatchRequest, db: AsyncSession = Depends(get_db)):
+async def match_job(
+    payload: MatchRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
     """
-    Match single job endpoint.
+    Match single job endpoint (Authenticated).
     """
     matcher = MatchingService(db)
     try:
-        return await matcher.match_job(job_id=payload.job_id, resume_id=payload.resume_id)
+        return await matcher.match_job(
+            job_id=payload.job_id,
+            user_id=current_user.id,
+            resume_id=payload.resume_id
+        )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except Exception as e:
@@ -107,10 +121,18 @@ async def match_job(payload: MatchRequest, db: AsyncSession = Depends(get_db)):
     summary="Batch match multiple jobs",
     description="Calculates match scores for a list of job IDs."
 )
-async def batch_match_jobs(payload: BatchMatchRequest, db: AsyncSession = Depends(get_db)):
+async def batch_match_jobs(
+    payload: BatchMatchRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
     """
-    Batch match jobs endpoint.
+    Batch match jobs endpoint (Authenticated).
     """
     matcher = MatchingService(db)
-    results = await matcher.batch_match_jobs(job_ids=payload.job_ids, resume_id=payload.resume_id)
+    results = await matcher.batch_match_jobs(
+        job_ids=payload.job_ids,
+        user_id=current_user.id,
+        resume_id=payload.resume_id
+    )
     return BatchMatchResult(matches=results)

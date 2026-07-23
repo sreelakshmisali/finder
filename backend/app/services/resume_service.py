@@ -1,102 +1,84 @@
 """
 Resume Service
 
-Handles saving PDF resume files to disk storage and managing Resume database records.
+Business logic layer managing PDF uploads, storage, active status toggling, and deletion.
 """
 
-import os
-import uuid
 import logging
-from typing import List, Optional
+import uuid
+from typing import List, Optional, Sequence
 from fastapi import UploadFile, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
-from app.models.resume import Resume
 from app.repositories.resume_repository import ResumeRepository
 from app.schemas.resume import ResumeResponse, ResumeListResponse
+from app.services.storage_service import StorageService
 
 logger = logging.getLogger(__name__)
 
 
 class ResumeService:
     """
-    Business logic layer for uploaded resumes.
+    Service layer orchestrating PDF resume file management per user.
     """
 
     def __init__(self, db: AsyncSession):
         self.db = db
         self.repo = ResumeRepository(db)
-        self.upload_dir = os.path.join(settings.UPLOAD_DIR, "resumes")
-        os.makedirs(self.upload_dir, exist_ok=True)
 
-    async def save_resume_file(self, file: UploadFile) -> ResumeResponse:
+    async def save_resume_file(self, user_id: uuid.UUID, file: UploadFile) -> ResumeResponse:
         """
-        Validates, saves PDF file to disk, and creates a database record.
+        Saves uploaded PDF resume using StorageService, registers DB record,
+        and sets as active resume for candidate.
         """
-        if not file.filename.lower().endswith(".pdf"):
+        if not file.filename or not file.filename.lower().endswith(".pdf"):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Only PDF resume files are supported."
             )
 
-        # Generate unique filename to avoid overwriting files with identical names
-        file_ext = os.path.splitext(file.filename)[1]
-        unique_name = f"{uuid.uuid4()}{file_ext}"
-        saved_path = os.path.join(self.upload_dir, unique_name)
+        file_path = await StorageService.save_resume_file(user_id=user_id, file=file)
 
-        try:
-            content = await file.read()
-            with open(saved_path, "wb") as f:
-                f.write(content)
-
-            db_resume = await self.repo.create(
-                filename=file.filename,
-                file_path=saved_path,
-                is_active=True
-            )
-            return ResumeResponse.model_validate(db_resume)
-
-        except Exception as exc:
-            logger.error(f"Failed to save resume file: {exc}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Could not save resume file to disk."
-            )
-
-    async def get_all_resumes(self) -> ResumeListResponse:
-        """
-        Retrieves all uploaded resumes.
-        """
-        resumes = await self.repo.get_all()
-        return ResumeListResponse(
-            total=len(resumes),
-            resumes=[ResumeResponse.model_validate(r) for r in resumes]
+        db_resume = await self.repo.create(
+            user_id=user_id,
+            filename=file.filename,
+            file_path=file_path,
+            is_active=True
         )
 
-    async def get_active_resume(self) -> Optional[ResumeResponse]:
+        return ResumeResponse.model_validate(db_resume)
+
+    async def get_all_resumes(self, user_id: uuid.UUID) -> ResumeListResponse:
         """
-        Retrieves the currently active resume.
+        Retrieves all uploaded resumes for a user.
         """
-        resume = await self.repo.get_active()
+        resumes = await self.repo.get_all(user_id)
+        responses = [ResumeResponse.model_validate(r) for r in resumes]
+        return ResumeListResponse(total=len(responses), resumes=responses)
+
+    async def get_active_resume(self, user_id: uuid.UUID) -> Optional[ResumeResponse]:
+        """
+        Retrieves the currently active resume for a user.
+        """
+        resume = await self.repo.get_active(user_id)
         if not resume:
             return None
         return ResumeResponse.model_validate(resume)
 
-    async def get_resume_by_id(self, resume_id: uuid.UUID) -> Optional[ResumeResponse]:
+    async def get_resume_by_id(self, resume_id: uuid.UUID, user_id: uuid.UUID) -> Optional[ResumeResponse]:
         """
-        Retrieves a single resume by UUID.
+        Retrieves single resume by ID for a user.
         """
-        resume = await self.repo.get_by_id(resume_id)
+        resume = await self.repo.get_by_id(resume_id=resume_id, user_id=user_id)
         if not resume:
             return None
         return ResumeResponse.model_validate(resume)
 
-    async def set_active_resume(self, resume_id: uuid.UUID) -> ResumeResponse:
+    async def set_active_resume(self, resume_id: uuid.UUID, user_id: uuid.UUID) -> ResumeResponse:
         """
-        Marks a specific resume as active.
+        Marks a specific resume as active for the user.
         """
-        resume = await self.repo.set_active(resume_id)
+        resume = await self.repo.set_active(resume_id=resume_id, user_id=user_id)
         if not resume:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -104,34 +86,22 @@ class ResumeService:
             )
         return ResumeResponse.model_validate(resume)
 
-    async def delete_resume(self, resume_id: uuid.UUID) -> dict:
+    async def delete_resume(self, resume_id: uuid.UUID, user_id: uuid.UUID) -> ResumeResponse:
         """
-        Permanently deletes a PDF file from disk and database record.
-        Enforces rule: cannot delete the only remaining resume.
-        Promotes next most recent remaining resume if active resume is deleted.
+        Deletes resume database record and removes physical PDF file from storage.
         """
-        resume = await self.repo.get_by_id(resume_id)
+        resume = await self.repo.get_by_id(resume_id=resume_id, user_id=user_id)
         if not resume:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Resume with ID '{resume_id}' not found."
             )
 
-        total_count = await self.repo.get_count()
-        if total_count <= 1:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot delete the only remaining resume. You must keep at least one resume."
-            )
+        file_path_to_delete = resume.file_path
 
-        # Remove physical file from storage disk if exists
-        if resume.file_path and os.path.exists(resume.file_path):
-            try:
-                os.remove(resume.file_path)
-            except Exception as exc:
-                logger.warning(f"Failed to remove physical file '{resume.file_path}': {exc}")
+        deleted_resume = await self.repo.delete(resume_id=resume_id, user_id=user_id)
+        
+        # Explicit disk file deletion via StorageService abstraction
+        StorageService.delete_file(file_path_to_delete)
 
-        # Delete database record
-        await self.repo.delete(resume_id)
-        return {"message": f"Resume '{resume.filename}' permanently deleted successfully."}
-
+        return ResumeResponse.model_validate(deleted_resume)

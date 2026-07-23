@@ -7,12 +7,15 @@ Maps to the `preferences` table in PostgreSQL / SQLite.
 
 from datetime import datetime
 import uuid
-from typing import List, Optional, Any
-from sqlalchemy import String, Integer, DateTime, JSON
-from sqlalchemy.orm import Mapped, mapped_column
+from typing import List, Optional, Any, TYPE_CHECKING
+from sqlalchemy import String, Integer, DateTime, JSON, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 
 from app.database.base import Base
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 
 class Preference(Base):
@@ -30,6 +33,15 @@ class Preference(Base):
         primary_key=True,
         default=uuid.uuid4,
         comment="Unique identifier for preference record"
+    )
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        unique=True,
+        nullable=False,
+        index=True,
+        comment="ID of owning user account"
     )
 
     preferred_roles: Mapped[List[str]] = mapped_column(
@@ -88,3 +100,6 @@ class Preference(Base):
         nullable=False,
         comment="Timestamp when preferences were last modified"
     )
+
+    # Relationships
+    user: Mapped["User"] = relationship("User", back_populates="preferences")

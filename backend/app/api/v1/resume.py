@@ -10,7 +10,8 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_db
+from app.core.dependencies import get_db, get_current_user
+from app.models.user import User
 from app.schemas.resume import ResumeResponse, ResumeListResponse
 from app.services.resume_service import ResumeService
 from app.services.resume_parser_service import ResumeParserService
@@ -27,55 +28,66 @@ router = APIRouter(prefix="/resume", tags=["Resume"])
 )
 async def upload_resume(
     file: UploadFile = File(..., description="PDF file to upload"),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Upload resume endpoint.
+    Upload resume endpoint (Authenticated).
     """
     service = ResumeService(db)
-    return await service.save_resume_file(file)
+    return await service.save_resume_file(user_id=current_user.id, file=file)
 
 
 @router.get(
     "/",
     response_model=ResumeListResponse,
     summary="List uploaded resumes",
-    description="Retrieves all uploaded resume entries."
+    description="Retrieves all uploaded resume entries for the current user."
 )
-async def list_resumes(db: AsyncSession = Depends(get_db)):
+async def list_resumes(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
     """
-    List resumes endpoint.
+    List resumes endpoint (Authenticated).
     """
     service = ResumeService(db)
-    return await service.get_all_resumes()
+    return await service.get_all_resumes(user_id=current_user.id)
 
 
 @router.get(
     "/active",
     response_model=Optional[ResumeResponse],
     summary="Get active resume",
-    description="Returns the currently active resume model."
+    description="Returns the currently active resume for the current user."
 )
-async def get_active_resume(db: AsyncSession = Depends(get_db)):
+async def get_active_resume(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
     """
-    Get active resume endpoint.
+    Get active resume endpoint (Authenticated).
     """
     service = ResumeService(db)
-    return await service.get_active_resume()
+    return await service.get_active_resume(user_id=current_user.id)
 
 
 @router.get(
     "/{resume_id}",
     response_model=ResumeResponse,
     summary="Get single resume details",
-    description="Retrieves resume metadata by ID."
+    description="Retrieves resume metadata by ID for the current user."
 )
-async def get_resume(resume_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def get_resume(
+    resume_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
     """
-    Get single resume endpoint.
+    Get single resume endpoint (Authenticated).
     """
     service = ResumeService(db)
-    resume = await service.get_resume_by_id(resume_id)
+    resume = await service.get_resume_by_id(resume_id=resume_id, user_id=current_user.id)
     if not resume:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -90,12 +102,16 @@ async def get_resume(resume_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     summary="Set resume as active",
     description="Marks a specific resume as active for job matching."
 )
-async def set_active_resume(resume_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def set_active_resume(
+    resume_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
     """
-    Set active resume endpoint.
+    Set active resume endpoint (Authenticated).
     """
     service = ResumeService(db)
-    return await service.set_active_resume(resume_id)
+    return await service.set_active_resume(resume_id=resume_id, user_id=current_user.id)
 
 
 @router.post(
@@ -104,14 +120,17 @@ async def set_active_resume(resume_id: uuid.UUID, db: AsyncSession = Depends(get
     summary="Parse resume with AI",
     description="Extracts text from PDF resume and uses AI provider to parse skills, experience, and education."
 )
-async def parse_resume(resume_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def parse_resume(
+    resume_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
     """
-    Parse resume endpoint.
+    Parse resume endpoint (Authenticated).
     """
-    print("db---------------------", db)
     parser_service = ResumeParserService(db)
     try:
-        parsed_resume = await parser_service.parse_resume(resume_id)
+        parsed_resume = await parser_service.parse_resume(resume_id=resume_id, user_id=current_user.id)
         if not parsed_resume:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -131,11 +150,11 @@ async def parse_resume(resume_id: uuid.UUID, db: AsyncSession = Depends(get_db))
 )
 async def delete_resume(
     resume_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Delete resume endpoint.
+    Delete resume endpoint (Authenticated).
     """
     service = ResumeService(db)
-    return await service.delete_resume(resume_id)
-
+    return await service.delete_resume(resume_id=resume_id, user_id=current_user.id)

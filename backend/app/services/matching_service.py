@@ -5,11 +5,6 @@ Implements the Hybrid Job Matching Engine:
 1. Keyword Scoring: Computes skill overlap between candidate resume skills and job requirements.
 2. Preference Bonus Alignment: Evaluates location, remote preference, role title fit, and salary targets.
 3. AI Explanation: Calls `AIProvider.explain_match()` to generate human-readable reasons and recommendations.
-
-Design Rationale:
-The LLM does NOT decide the score arbitrarily.
-The score is calculated deterministically via transparent keyword & preference math,
-and the LLM is used to EXPLAIN why the job is a good or bad fit.
 """
 
 import re
@@ -47,7 +42,6 @@ class MatchingService:
         """
         text_to_check = f"{job.title} {job.description}".lower()
         if not resume_skills:
-            # Fallback: extract common words from raw text if skills list is empty
             words = re.findall(r"\b[a-zA-Z]{3,}\b", raw_text.lower())
             skills_to_check = set(words[:30])
         else:
@@ -62,7 +56,6 @@ class MatchingService:
                 matches += 1
 
         score = (matches / max(len(skills_to_check), 1)) * 100.0
-        # Title bonus: if job title contains a skill candidate possesses
         for skill in skills_to_check:
             if skill in job.title.lower():
                 score += 15.0
@@ -79,7 +72,6 @@ class MatchingService:
 
         bonus = 0.0
 
-        # Location & Remote fit
         if preferences.work_type == "remote" and job.remote:
             bonus += 10.0
         elif preferences.preferred_locations:
@@ -88,14 +80,12 @@ class MatchingService:
                     bonus += 10.0
                     break
 
-        # Role title fit
         if preferences.preferred_roles:
             for pref_role in preferences.preferred_roles:
                 if pref_role.lower() in job.title.lower() or job.title.lower() in pref_role.lower():
                     bonus += 10.0
                     break
 
-        # Preferred companies fit
         if preferences.preferred_companies:
             for pref_comp in preferences.preferred_companies:
                 if pref_comp.lower() in job.company.lower():
@@ -104,22 +94,24 @@ class MatchingService:
 
         return min(bonus, 30.0)
 
-    async def match_job(self, job_id: uuid.UUID, resume_id: Optional[uuid.UUID] = None) -> MatchResult:
+    async def match_job(
+        self,
+        job_id: uuid.UUID,
+        user_id: uuid.UUID,
+        resume_id: Optional[uuid.UUID] = None
+    ) -> MatchResult:
         """
         Main entrypoint: matches a single job against candidate resume and preferences.
         """
-        # Fetch job
         job = await self.job_repo.get_by_id(job_id)
         if not job:
             raise ValueError(f"Job with ID '{job_id}' not found.")
 
-        # Fetch resume (specified ID or active fallback)
         if resume_id:
-            resume = await self.resume_repo.get_by_id(resume_id)
+            resume = await self.resume_repo.get_by_id(resume_id, user_id)
         else:
-            resume = await self.resume_repo.get_active()
+            resume = await self.resume_repo.get_active(user_id)
 
-        # If no resume uploaded yet, return default baseline score
         if not resume:
             return MatchResult(
                 job_id=job.id,
@@ -130,24 +122,16 @@ class MatchingService:
                 score_breakdown={"keyword_score": 60.0, "preference_bonus": 0.0}
             )
 
-        # Fetch preferences
-        preferences = await self.pref_repo.get_preference()
+        preferences = await self.pref_repo.get_preference(user_id)
 
-        # Extract skills & text
         parsed_data = resume.parsed_data or {}
         resume_skills = parsed_data.get("skills", [])
         raw_text = resume.raw_text or ""
 
-        # 1. Keyword overlap score
         keyword_score = self._calculate_keyword_score(resume_skills, raw_text, job)
-
-        # 2. Preference bonus
         pref_bonus = self._calculate_preference_bonus(job, preferences)
-
-        # 3. Final combined score calculation (70% keyword + 30% preference)
         combined_score = round(min((keyword_score * 0.7) + pref_bonus, 98.0), 1)
 
-        # 4. Generate AI explanation text
         ai_explanation = await self.ai.explain_match(
             resume_data=parsed_data,
             job_title=job.title,
@@ -171,15 +155,16 @@ class MatchingService:
     async def batch_match_jobs(
         self,
         job_ids: List[uuid.UUID],
+        user_id: uuid.UUID,
         resume_id: Optional[uuid.UUID] = None
     ) -> List[MatchResult]:
         """
-        Batch matches multiple jobs in parallel.
+        Batch matches multiple jobs for candidate in parallel.
         """
         results: List[MatchResult] = []
         for j_id in job_ids:
             try:
-                res = await self.match_job(j_id, resume_id)
+                res = await self.match_job(j_id, user_id, resume_id)
                 results.append(res)
             except Exception as exc:
                 logger.warning(f"Failed to match job '{j_id}': {exc}")

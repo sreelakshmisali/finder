@@ -1,10 +1,11 @@
 """
 Preference Repository
 
-Database access layer for Preference entity.
+Database access layer for Preference entity, scoped by user_id.
 """
 
 import logging
+import uuid
 from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,27 +18,30 @@ logger = logging.getLogger(__name__)
 
 class PreferenceRepository:
     """
-    DAO for managing Preference records in database.
+    DAO for managing Preference records in database, scoped per user.
     """
 
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_preference(self) -> Optional[Preference]:
+    async def get_preference(self, user_id: uuid.UUID) -> Optional[Preference]:
         """
-        Retrieves the single preference record.
+        Retrieves the preference record for a specific user.
         """
-        result = await self.db.execute(select(Preference).limit(1))
+        result = await self.db.execute(
+            select(Preference).where(Preference.user_id == user_id).limit(1)
+        )
         return result.scalars().first()
 
-    async def create_or_update(self, update_data: PreferenceUpdate) -> Preference:
+    async def create_or_update(self, user_id: uuid.UUID, update_data: PreferenceUpdate) -> Preference:
         """
-        Upserts (creates or updates) the preference record.
+        Upserts (creates or updates) the preference record for a specific user.
         """
-        pref = await self.get_preference()
+        pref = await self.get_preference(user_id)
 
         if not pref:
             pref = Preference(
+                user_id=user_id,
                 preferred_roles=update_data.preferred_roles,
                 preferred_locations=update_data.preferred_locations,
                 min_salary=update_data.min_salary,

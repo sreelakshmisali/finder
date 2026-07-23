@@ -9,7 +9,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_db
+from app.core.dependencies import get_db, get_current_user
+from app.models.user import User
 from app.schemas.application import (
     ApplicationCreate,
     ApplicationUpdateStatus,
@@ -33,34 +34,36 @@ router = APIRouter(prefix="/applications", tags=["Applications"])
     response_model=ApplicationResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create or save application",
-    description="Bookmarks a job or approves it for application."
+    description="Bookmarks a job or approves it for application for the authenticated user."
 )
 async def create_application(
     payload: ApplicationCreate,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Create application endpoint.
+    Create application endpoint (Authenticated).
     """
     service = ApplicationService(db)
-    return await service.create_application(payload)
+    return await service.create_application(user_id=current_user.id, payload=payload)
 
 
 @router.get(
     "/",
     response_model=ApplicationListResponse,
     summary="List tracked applications",
-    description="Retrieves all tracked applications with optional status filtering."
+    description="Retrieves all tracked applications for the authenticated user with optional status filtering."
 )
 async def list_applications(
     status: Optional[str] = Query(None, description="Status filter (e.g. 'saved', 'approved', 'interview')"),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    List applications endpoint.
+    List applications endpoint (Authenticated).
     """
     service = ApplicationService(db)
-    return await service.get_all_applications(status_filter=status)
+    return await service.get_all_applications(user_id=current_user.id, status_filter=status)
 
 
 @router.get(
@@ -69,12 +72,16 @@ async def list_applications(
     summary="Get single application details",
     description="Retrieves full details and audit logs for an application."
 )
-async def get_application(application_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def get_application(
+    application_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
     """
-    Get application endpoint.
+    Get application endpoint (Authenticated).
     """
     service = ApplicationService(db)
-    app = await service.get_application_by_id(application_id)
+    app = await service.get_application_by_id(application_id=application_id, user_id=current_user.id)
     if not app:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -92,13 +99,14 @@ async def get_application(application_id: uuid.UUID, db: AsyncSession = Depends(
 async def update_application_status(
     application_id: uuid.UUID,
     payload: ApplicationUpdateStatus,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Update status endpoint.
+    Update status endpoint (Authenticated).
     """
     service = ApplicationService(db)
-    return await service.update_status(application_id, payload)
+    return await service.update_status(application_id=application_id, user_id=current_user.id, payload=payload)
 
 
 @router.patch(
@@ -110,13 +118,14 @@ async def update_application_status(
 async def update_application_notes(
     application_id: uuid.UUID,
     payload: ApplicationUpdateNotes,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Update notes endpoint.
+    Update notes endpoint (Authenticated).
     """
     service = ApplicationService(db)
-    return await service.update_notes(application_id, payload)
+    return await service.update_notes(application_id=application_id, user_id=current_user.id, payload=payload)
 
 
 @router.post(
@@ -128,14 +137,15 @@ async def update_application_notes(
 async def start_automation(
     application_id: uuid.UUID,
     payload: Optional[AutomationStartRequest] = None,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Start automation endpoint.
+    Start automation endpoint (Authenticated).
     """
     auto_service = AutomationService(db)
     answers = payload.answers if payload else None
-    return await auto_service.start_automation(application_id, answers=answers)
+    return await auto_service.start_automation(application_id=application_id, user_id=current_user.id, answers=answers)
 
 
 @router.post(
@@ -147,10 +157,11 @@ async def start_automation(
 async def confirm_submit(
     application_id: uuid.UUID,
     payload: AutomationConfirmSubmitRequest,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Confirm and submit endpoint.
+    Confirm and submit endpoint (Authenticated).
     """
     auto_service = AutomationService(db)
-    return await auto_service.confirm_and_submit(application_id, payload)
+    return await auto_service.confirm_and_submit(application_id=application_id, user_id=current_user.id, payload=payload)

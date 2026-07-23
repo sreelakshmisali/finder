@@ -28,15 +28,16 @@ class AuthService:
         """
         Registers a new user account and returns an access token.
         """
-        existing = await self.repo.get_by_email(payload.email)
+        clean_email = payload.email.lower().strip()
+        existing = await self.repo.get_by_email(clean_email)
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"User with email '{payload.email}' already exists."
+                detail=f"User with email '{clean_email}' already exists."
             )
 
         user = await self.repo.create(
-            email=payload.email,
+            email=clean_email,
             full_name=payload.full_name,
             password=payload.password
         )
@@ -53,9 +54,11 @@ class AuthService:
     async def login_user(self, payload: UserLogin) -> TokenResponse:
         """
         Authenticates user credentials and returns an access token.
+        Updates last_login timestamp upon success.
         """
-        user = await self.repo.get_by_email(payload.email)
-        if not user or not verify_password(payload.password, user.hashed_password):
+        clean_email = payload.email.lower().strip()
+        user = await self.repo.get_by_email(clean_email)
+        if not user or not verify_password(payload.password, user.password_hash):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect email or password."
@@ -66,6 +69,9 @@ class AuthService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="User account is deactivated."
             )
+
+        # Update last_login timestamp asynchronously
+        await self.repo.update_last_login(user.id)
 
         token = create_access_token(subject=str(user.id))
         user_resp = UserResponse.model_validate(user)
