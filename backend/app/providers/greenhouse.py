@@ -10,7 +10,7 @@ from typing import List, Optional
 from datetime import datetime
 import httpx
 
-from app.providers.base import JobProvider
+from app.providers.base_discovery import ATSProvider, DiscoveryContext
 from app.schemas.job import JobSearchQuery, NormalizedJob
 
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ SAMPLE_BOARDS = [
 ]
 
 
-class GreenhouseProvider(JobProvider):
+class GreenhouseProvider(ATSProvider):
     """
     Job provider for Greenhouse Job Boards.
     """
@@ -39,10 +39,11 @@ class GreenhouseProvider(JobProvider):
     def description(self) -> str:
         return "Discovers postings from top tech companies using Greenhouse ATS."
 
-    async def search(self, query: JobSearchQuery) -> List[NormalizedJob]:
+    async def discover(self, context: DiscoveryContext) -> List[NormalizedJob]:
         """
-        Queries Greenhouse board endpoints concurrently and returns matching normalized jobs.
+        Executes discovery on Greenhouse board endpoints matching DiscoveryContext.
         """
+        query = context.query
         results: List[NormalizedJob] = []
         search_kw = (query.query or "").lower()
         search_loc = (query.location or "").lower()
@@ -106,6 +107,12 @@ class GreenhouseProvider(JobProvider):
                     break
 
         return results
+
+    async def search(self, query: JobSearchQuery) -> List[NormalizedJob]:
+        """
+        Legacy search method forwarding to discover().
+        """
+        return await self.discover(DiscoveryContext(query=query))
 
     async def get_details(self, url: str) -> Optional[NormalizedJob]:
         """

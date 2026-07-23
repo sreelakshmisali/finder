@@ -62,3 +62,25 @@ export async function deleteResume(resumeId: string): Promise<{ message: string 
   return response.data;
 }
 
+/**
+ * Fetch general AI quality analysis for a resume.
+ */
+export async function analyzeResumeQuality(resumeId: string): Promise<import("../types/resume").ResumeQualityAnalysis> {
+  const response = await api.post<import("../types/resume").ResumeQualityAnalysis>(`/resume/${resumeId}/quality-analysis`);
+  return response.data;
+}
+
+/**
+ * Fetch job-specific tailored resume suggestions.
+ */
+export async function fetchJobSpecificSuggestions(
+  resumeId: string,
+  payload: import("../types/resume").JobSpecificSuggestionsRequest
+): Promise<import("../types/resume").JobSpecificSuggestions> {
+  const response = await api.post<import("../types/resume").JobSpecificSuggestions>(
+    `/resume/${resumeId}/job-suggestions`,
+    payload
+  );
+  return response.data;
+}
+

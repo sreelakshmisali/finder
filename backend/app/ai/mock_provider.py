@@ -402,3 +402,134 @@ class MockProvider(AIProvider):
             "missing_skills": missing[:3],
             "recommendation": rec
         }
+
+    async def analyze_resume_quality(
+        self,
+        raw_text: str,
+        parsed_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Analyzes general resume quality, identifying missing skills, weak descriptions, and ATS issues.
+        """
+        skills = parsed_data.get("skills", [])
+        skills_set = set(s.lower() for s in skills)
+        email = parsed_data.get("email")
+        phone = parsed_data.get("phone")
+        experience = parsed_data.get("experience", [])
+
+        # 1. Identify missing industry standard skills
+        essential_tech = ["Git", "Docker", "Unit Testing", "CI/CD", "REST API", "SQL", "Agile"]
+        missing_skills = [tech for tech in essential_tech if tech.lower() not in skills_set]
+
+        # 2. Identify weak descriptions
+        weak_descriptions: List[str] = []
+        passive_words = ["worked on", "responsible for", "helped", "assisted", "did", "handled"]
+
+        text_lower = raw_text.lower()
+        for phrase in passive_words:
+            if phrase in text_lower:
+                weak_descriptions.append(
+                    f"Replace passive phrase '{phrase}' with strong action verbs (e.g. 'Architected', 'Engineered', 'Optimized', 'Spearheaded')."
+                )
+
+        # Check for metrics / numbers in experience
+        has_metrics = bool(re.search(r"\b\d+%\b|\b\d+\s*ms\b|\b\d+k\b|\$\d+", raw_text))
+        if not has_metrics:
+            weak_descriptions.append(
+                "Work experience lacks quantifiable impact metrics. Add numbers like 'reduced latency by 35%', 'handled 50k daily active users', or 'increased coverage to 90%'."
+            )
+
+        # 3. ATS Issues
+        ats_issues: List[str] = []
+        if not email:
+            ats_issues.append("ATS Alert: Candidate email address is missing from header.")
+        if not phone:
+            ats_issues.append("ATS Alert: Phone number is missing from header.")
+        if len(skills) < 5:
+            ats_issues.append("ATS Alert: Fewer than 5 technical skills detected. Group skills into clear categories (Languages, Frameworks, Databases).")
+        if not experience:
+            ats_issues.append("ATS Alert: Work experience section heading not clearly parsed. Use standard headers like 'Professional Experience' or 'Work History'.")
+
+        # 4. Quality Score calculation
+        quality_score = 100.0
+        if missing_skills:
+            quality_score -= len(missing_skills) * 3
+        if weak_descriptions:
+            quality_score -= len(weak_descriptions) * 6
+        if ats_issues:
+            quality_score -= len(ats_issues) * 8
+        quality_score = max(35.0, min(100.0, quality_score))
+
+        summary = f"Resume quality score is {round(quality_score)}%. " + (
+            "Excellent structure and formatting." if quality_score >= 85 else
+            "Good foundation with minor ATS formatting and metric improvements needed." if quality_score >= 70 else
+            "Requires action verb enhancements and key technical skills additions."
+        )
+
+        return {
+            "quality_score": round(quality_score, 1),
+            "missing_skills": missing_skills[:4],
+            "weak_descriptions": weak_descriptions[:3],
+            "ats_issues": ats_issues,
+            "summary": summary
+        }
+
+    async def suggest_job_specific_improvements(
+        self,
+        raw_text: str,
+        parsed_data: Dict[str, Any],
+        job_title: str,
+        job_description: str
+    ) -> Dict[str, Any]:
+        """
+        Provides tailored recommendations to customize resume for a target job posting.
+        """
+        skills = parsed_data.get("skills", [])
+        skills_set = set(s.lower() for s in skills)
+        desc_lower = job_description.lower()
+
+        matching_skills: List[str] = []
+        missing_job_skills: List[str] = []
+
+        for skill in INDIAN_TECH_SKILLS:
+            if skill.lower() in desc_lower:
+                if skill.lower() in skills_set:
+                    matching_skills.append(skill)
+                else:
+                    missing_job_skills.append(skill)
+
+        suggested_changes: List[str] = []
+
+        if missing_job_skills:
+            top_missing = ", ".join(missing_job_skills[:3])
+            suggested_changes.append(
+                f"Add target keywords '{top_missing}' into your Skills section as emphasized in the {job_title} position description."
+            )
+
+        suggested_changes.append(
+            f"Tailor summary header to explicitly highlight experience relevant to '{job_title}' role."
+        )
+
+        if "microservices" in desc_lower and "microservices" not in raw_text.lower():
+            suggested_changes.append(
+                "Emphasize experience with API design, microservices architecture, and distributed services in bullet points."
+            )
+
+        if "cloud" in desc_lower or "aws" in desc_lower or "azure" in desc_lower:
+            if not any(c in skills_set for c in ["aws", "azure", "gcp", "cloud"]):
+                suggested_changes.append(
+                    "Highlight cloud deployment experience (AWS, Azure, Docker, or Kubernetes) in project descriptions."
+                )
+
+        tailored_summary = (
+            f"Resume aligns well with {len(matching_skills)} core skills required for '{job_title}'. "
+            f"Incorporate {len(missing_job_skills)} missing keywords to maximize ATS keyword matching score."
+        )
+
+        return {
+            "matching_skills": matching_skills,
+            "missing_job_skills": missing_job_skills,
+            "suggested_changes": suggested_changes,
+            "tailored_summary": tailored_summary
+        }
+

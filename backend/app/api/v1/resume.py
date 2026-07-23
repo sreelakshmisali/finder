@@ -12,7 +12,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_db, get_current_user
 from app.models.user import User
-from app.schemas.resume import ResumeResponse, ResumeListResponse
+from app.schemas.resume import (
+    ResumeResponse,
+    ResumeListResponse,
+    ResumeQualityAnalysisResponse,
+    JobSpecificSuggestionsRequest,
+    JobSpecificSuggestionsResponse,
+)
 from app.services.resume_service import ResumeService
 from app.services.resume_parser_service import ResumeParserService
 from app.services.cache_service import search_cache
@@ -147,6 +153,63 @@ async def parse_resume(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.post(
+    "/{resume_id}/quality-analysis",
+    response_model=ResumeQualityAnalysisResponse,
+    summary="Analyze resume quality",
+    description="Analyzes resume quality, identifying missing skills, weak descriptions, and ATS compliance issues."
+)
+async def analyze_resume_quality(
+    resume_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Resume quality analysis endpoint (Authenticated).
+    """
+    from app.services.resume_improvement_service import ResumeImprovementService
+    service = ResumeImprovementService(db)
+    analysis = await service.analyze_quality(resume_id=resume_id, user_id=current_user.id)
+    if not analysis:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Resume with ID '{resume_id}' not found."
+        )
+    return analysis
+
+
+@router.post(
+    "/{resume_id}/job-suggestions",
+    response_model=JobSpecificSuggestionsResponse,
+    summary="Get job-specific resume suggestions",
+    description="Compares candidate resume against a target job description and returns actionable tailoring suggestions without modifying original resume."
+)
+async def get_job_specific_suggestions(
+    resume_id: uuid.UUID,
+    payload: JobSpecificSuggestionsRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Job-specific resume suggestions endpoint (Authenticated).
+    """
+    from app.services.resume_improvement_service import ResumeImprovementService
+    service = ResumeImprovementService(db)
+    suggestions = await service.suggest_job_improvements(
+        resume_id=resume_id,
+        user_id=current_user.id,
+        job_id=payload.job_id,
+        job_title=payload.job_title,
+        job_description=payload.job_description
+    )
+    if not suggestions:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Resume with ID '{resume_id}' not found."
+        )
+    return suggestions
 
 
 @router.delete(

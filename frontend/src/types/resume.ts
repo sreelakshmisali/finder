@@ -26,3 +26,25 @@ export interface ResumeListResponse {
   total: number;
   resumes: Resume[];
 }
+
+export interface ResumeQualityAnalysis {
+  quality_score: number;
+  missing_skills: string[];
+  weak_descriptions: string[];
+  ats_issues: string[];
+  summary: string;
+}
+
+export interface JobSpecificSuggestionsRequest {
+  job_id?: string;
+  job_title?: string;
+  job_description?: string;
+}
+
+export interface JobSpecificSuggestions {
+  job_title?: string;
+  matching_skills: string[];
+  missing_job_skills: string[];
+  suggested_changes: string[];
+  tailored_summary: string;
+}

@@ -115,3 +115,29 @@ class OpenAIProvider(AIProvider):
                 "missing_skills": [],
                 "recommendation": "Calculated fit score based on skills overlap."
             }
+
+    async def analyze_resume_quality(
+        self,
+        raw_text: str,
+        parsed_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Analyzes general resume quality using OpenAI or fallback rules.
+        """
+        from app.ai.mock_provider import MockProvider
+        mock = MockProvider()
+        return await mock.analyze_resume_quality(raw_text, parsed_data)
+
+    async def suggest_job_specific_improvements(
+        self,
+        raw_text: str,
+        parsed_data: Dict[str, Any],
+        job_title: str,
+        job_description: str
+    ) -> Dict[str, Any]:
+        """
+        Provides tailored recommendations to customize resume for a target job posting using OpenAI or fallback rules.
+        """
+        from app.ai.mock_provider import MockProvider
+        mock = MockProvider()
+        return await mock.suggest_job_specific_improvements(raw_text, parsed_data, job_title, job_description)

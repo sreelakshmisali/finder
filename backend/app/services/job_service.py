@@ -150,17 +150,21 @@ class JobService:
                 await search_cache.cleanup_key_lock(cache_key)
                 return response
 
-            # Launch all provider searches concurrently
-            tasks = [provider.search(query) for provider in target_providers]
+            # Wrap execution parameter in rich DiscoveryContext
+            from app.providers.base_discovery import DiscoveryContext
+            context = DiscoveryContext(query=query, user_id=user_id)
+
+            # Launch all provider discovery tasks concurrently with isolated error handling
+            tasks = [provider.discover(context) for provider in target_providers]
             results_list = await asyncio.gather(*tasks, return_exceptions=True)
 
             raw_jobs: List[NormalizedJob] = []
             for idx, result in enumerate(results_list):
                 p_name = target_providers[idx].source_name
                 if isinstance(result, Exception):
-                    logger.error(f"Provider '{p_name}' failed with error: {result}")
+                    logger.error(f"Discovery provider '{p_name}' failed with error: {result}")
                 elif isinstance(result, list):
-                    logger.info(f"Provider '{p_name}' returned {len(result)} jobs")
+                    logger.info(f"Discovery provider '{p_name}' returned {len(result)} jobs")
                     raw_jobs.extend(result)
 
             # Persist & deduplicate in database

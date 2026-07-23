@@ -10,7 +10,7 @@ from typing import List, Optional
 from datetime import datetime
 import httpx
 
-from app.providers.base import JobProvider
+from app.providers.base_discovery import ATSProvider, DiscoveryContext
 from app.schemas.job import JobSearchQuery, NormalizedJob
 
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ SAMPLE_ASHBY_COMPANIES = [
 ]
 
 
-class AshbyProvider(JobProvider):
+class AshbyProvider(ATSProvider):
     """
     Job provider for Ashby HQ Job Boards.
     """
@@ -38,10 +38,11 @@ class AshbyProvider(JobProvider):
     def description(self) -> str:
         return "Discovers postings from fast-growing startups and scaleups using Ashby HQ."
 
-    async def search(self, query: JobSearchQuery) -> List[NormalizedJob]:
+    async def discover(self, context: DiscoveryContext) -> List[NormalizedJob]:
         """
-        Queries Ashby public posting API for sample companies and returns matching normalized jobs.
+        Executes discovery on Ashby public posting API matching DiscoveryContext.
         """
+        query = context.query
         results: List[NormalizedJob] = []
         search_kw = (query.query or "").lower()
         search_loc = (query.location or "").lower()
@@ -105,6 +106,12 @@ class AshbyProvider(JobProvider):
                     break
 
         return results
+
+    async def search(self, query: JobSearchQuery) -> List[NormalizedJob]:
+        """
+        Legacy search method forwarding to discover().
+        """
+        return await self.discover(DiscoveryContext(query=query))
 
     async def get_details(self, url: str) -> Optional[NormalizedJob]:
         """

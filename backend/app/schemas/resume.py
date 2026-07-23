@@ -45,3 +45,34 @@ class ResumeListResponse(BaseModel):
     """
     total: int
     resumes: List[ResumeResponse]
+
+
+class ResumeQualityAnalysisResponse(BaseModel):
+    """
+    Response payload for general resume quality analysis (missing skills, weak descriptions, ATS issues).
+    """
+    quality_score: float = Field(..., description="Overall resume quality score (0 to 100)")
+    missing_skills: List[str] = Field(default_factory=list, description="Missing industry standard tech skills")
+    weak_descriptions: List[str] = Field(default_factory=list, description="Weak descriptions & passive phrasing recommendations")
+    ats_issues: List[str] = Field(default_factory=list, description="ATS formatting and structural compliance warnings")
+    summary: str = Field(..., description="Executive summary of resume quality audit")
+
+
+class JobSpecificSuggestionsRequest(BaseModel):
+    """
+    Request payload for job-specific resume improvement recommendations.
+    """
+    job_id: Optional[uuid.UUID] = Field(None, description="Optional target job ID from Finder database")
+    job_title: Optional[str] = Field(None, description="Optional target job title (e.g. 'Senior Python Developer')")
+    job_description: Optional[str] = Field(None, description="Optional raw text of job description")
+
+
+class JobSpecificSuggestionsResponse(BaseModel):
+    """
+    Response payload for job-specific resume recommendations.
+    """
+    job_title: Optional[str] = Field(None, description="Target position title")
+    matching_skills: List[str] = Field(default_factory=list, description="Skills present in both resume and job posting")
+    missing_job_skills: List[str] = Field(default_factory=list, description="Required skills missing from candidate resume")
+    suggested_changes: List[str] = Field(default_factory=list, description="Actionable bullet point improvement suggestions")
+    tailored_summary: str = Field(..., description="Executive advice for tailoring resume to target job")

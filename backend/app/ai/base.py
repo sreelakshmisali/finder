@@ -54,15 +54,35 @@ class AIProvider(ABC):
     ) -> Dict[str, Any]:
         """
         Generates human-readable match explanation (reasons, missing skills, recommendation).
+        """
+        pass
 
-        Args:
-            resume_data: Parsed resume dictionary.
-            job_title: Target job role title.
-            company: Company offering position.
-            job_description: Full job description text.
-            score: Calculated matching percentage.
+    @abstractmethod
+    async def analyze_resume_quality(
+        self,
+        raw_text: str,
+        parsed_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Analyzes overall resume quality, identifying missing skills, weak descriptions, and ATS issues.
 
         Returns:
-            Dict containing `reasons` list, `missing_skills` list, and `recommendation` string.
+            Dict containing `quality_score`, `missing_skills`, `weak_descriptions`, `ats_issues`, and `summary`.
+        """
+        pass
+
+    @abstractmethod
+    async def suggest_job_specific_improvements(
+        self,
+        raw_text: str,
+        parsed_data: Dict[str, Any],
+        job_title: str,
+        job_description: str
+    ) -> Dict[str, Any]:
+        """
+        Provides tailored recommendations to customize resume for a target job posting.
+
+        Returns:
+            Dict containing `matching_skills`, `missing_job_skills`, `suggested_changes`, and `tailored_summary`.
         """
         pass

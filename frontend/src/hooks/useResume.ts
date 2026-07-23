@@ -10,7 +10,10 @@ import {
   setActiveResume,
   parseResume,
   deleteResume,
+  analyzeResumeQuality,
+  fetchJobSpecificSuggestions,
 } from "../services/resumeService";
+import type { JobSpecificSuggestionsRequest } from "../types/resume";
 
 /**
  * Fetch all resumes hook.
@@ -92,6 +95,30 @@ export function useDeleteResume() {
       queryClient.invalidateQueries({ queryKey: ["resumes"] });
       queryClient.invalidateQueries({ queryKey: ["onboarding"] });
     },
+  });
+}
+
+/**
+ * AI Resume Quality Analysis hook.
+ */
+export function useResumeQualityAnalysis() {
+  return useMutation({
+    mutationFn: (resumeId: string) => analyzeResumeQuality(resumeId),
+  });
+}
+
+/**
+ * AI Job-Specific Resume Suggestions hook.
+ */
+export function useJobSpecificSuggestions() {
+  return useMutation({
+    mutationFn: ({
+      resumeId,
+      payload,
+    }: {
+      resumeId: string;
+      payload: JobSpecificSuggestionsRequest;
+    }) => fetchJobSpecificSuggestions(resumeId, payload),
   });
 }
 
