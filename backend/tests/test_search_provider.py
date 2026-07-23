@@ -163,10 +163,15 @@ def test_search_discovery_url_deduplication():
     p1 = MockSearchEnginePlugin("g1", res1)
     p2 = MockSearchEnginePlugin("b1", res2)
 
-    discovery = SearchDiscoveryProvider(search_providers=[p1, p2])
+    class MockJobExtractor:
+        async def extract_from_url(self, url: str, search_result=None):
+            return NormalizedJob(title="Mock", company="Mock", location="Rem", description="Desc", url=url, source="mock")
+
+    discovery = SearchDiscoveryProvider(search_providers=[p1, p2], job_extractor=MockJobExtractor())
     ctx = DiscoveryContext(query=JobSearchQuery(query="Python", limit=10))
 
     jobs = asyncio.run(discovery.discover(ctx))
+    print("DEBUG JOBS:", jobs)
     assert len(jobs) == 2  # duplicate_url deduplicated from 3 items to 2
 
 

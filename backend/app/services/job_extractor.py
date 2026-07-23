@@ -1,8 +1,8 @@
 """
 Job Extractor Service
 
-Orchestrates page fetching, pluggable metadata extraction, skill/apply-url parsing,
-and normalization into `NormalizedJob` instances. Decoupled from search engine result models.
+Orchestrates page fetching, page classification, pluggable metadata extraction,
+skill/apply-url parsing, and normalization into `NormalizedJob` instances.
 """
 
 import logging
@@ -19,18 +19,22 @@ from app.providers.search_engine.extractors.meta_tag import MetaTagExtractor
 from app.providers.search_engine.extractors.heuristic import HeuristicExtractor
 from app.providers.search_engine.base_search import SearchResult
 
+from app.services.classification.job_page_classifier import BasePageClassifier, RuleBasedJobPageClassifier
+
 logger = logging.getLogger(__name__)
 
 
 class JobExtractor:
     """
     Main Service for converting any career page URL into a normalized Finder Job object.
+    Acts as gatekeeper using JobPageClassifier.
     """
 
     def __init__(
         self,
         fetcher: Optional[SmartPageFetcher] = None,
-        extractors: Optional[List[BaseExtractor]] = None
+        extractors: Optional[List[BaseExtractor]] = None,
+        classifier: Optional[BasePageClassifier] = None
     ):
         self.fetcher = fetcher or SmartPageFetcher()
         self.extractors = extractors or [
@@ -39,6 +43,7 @@ class JobExtractor:
             MetaTagExtractor(),
             HeuristicExtractor()
         ]
+        self.classifier = classifier or RuleBasedJobPageClassifier()
 
     async def extract_from_url(
         self,
@@ -53,23 +58,33 @@ class JobExtractor:
             search_result: Optional SearchResult context metadata.
 
         Returns:
-            `NormalizedJob` if extraction succeeds, or `None` if page unparseable.
+            `NormalizedJob` if extraction succeeds, or `None` if page unparseable or rejected by classifier.
         """
         if not url or not isinstance(url, str):
             return None
 
-        # 1. Fetch HTML content (Fast static HTTP + Playwright fallback for JS SPAs)
+        # 1. Fetch HTML content
         try:
             html = await self.fetcher.fetch(url)
         except Exception as exc:
             logger.warning(f"Failed to fetch content for career URL '{url}': {exc}")
             html = ""
 
-        # 2. Execute Extractor Pipeline to extract core fields (Title, Company, Location, Description)
+        if not html:
+            return None
+
+        # 2. Classify Page (Gatekeeper)
+        classification = self.classifier.classify(url, html)
+        if not classification.is_valid_job:
+            logger.info(f"Page '{url}' rejected by classifier: {classification.rejected_reason} "
+                        f"(Type: {classification.page_type.value}, Conf: {classification.confidence:.2f})")
+            return None
+
+        # 3. Execute Extractor Pipeline to extract core fields
         base_job: Optional[NormalizedJob] = None
         for extractor in self.extractors:
             try:
-                job = await extractor.extract(url=url, html=html or "", search_result=search_result)
+                job = await extractor.extract(url=url, html=html, search_result=search_result)
                 if job:
                     base_job = job
                     break
@@ -81,15 +96,15 @@ class JobExtractor:
 
         # Fallback if pipeline returned None but search_result exists
         if not base_job and search_result:
-            base_job = await HeuristicExtractor().extract(url=url, html=html or "", search_result=search_result)
+            base_job = await HeuristicExtractor().extract(url=url, html=html, search_result=search_result)
 
         if not base_job:
             return None
 
-        # 3. Enrich with Required Skills and direct Apply URL
+        # 4. Enrich with Required Skills and direct Apply URL
         skills, apply_url = SkillAndApplyExtractor.extract_skills_and_apply_url(
             page_url=url,
-            html=html or "",
+            html=html,
             description=base_job.description
         )
 

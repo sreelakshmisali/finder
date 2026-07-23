@@ -84,6 +84,7 @@ def test_job_extractor_static_page():
     html = '''
     <html>
       <head>
+        <title>Backend Lead Engineer</title>
         <script type="application/ld+json">
         {
           "@context": "https://schema.org/",
@@ -104,6 +105,9 @@ def test_job_extractor_static_page():
         </script>
       </head>
       <body>
+        <h1>Backend Lead Engineer</h1>
+        <div>Full-time Job</div>
+        <h2>Requirements</h2>
         <a href="https://figma.com/apply/backend-lead" class="apply">Apply for this Job</a>
       </body>
     </html>
@@ -135,11 +139,15 @@ def test_job_extractor_js_spa_fallback():
     rendered_html = '''
     <html>
       <head>
+        <title>Senior React Engineer</title>
         <meta property="og:title" content="Senior React Engineer" />
         <meta property="og:site_name" content="SPA Corp" />
         <meta property="og:description" content="Build modern user interfaces with React, TypeScript, and Tailwind." />
       </head>
       <body>
+        <h1>Senior React Engineer</h1>
+        <div>Full-time, Salary</div>
+        <h2>Responsibilities</h2>
         <a href="/careers/123/apply" class="apply">Submit Application</a>
       </body>
     </html>
