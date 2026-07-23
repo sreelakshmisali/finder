@@ -17,6 +17,7 @@ from app.providers.base_discovery import JobDiscoveryProvider, ProviderType
 from app.providers.greenhouse import GreenhouseProvider
 from app.providers.lever import LeverProvider
 from app.providers.ashby import AshbyProvider
+from app.providers.search_engine.search_discovery import SearchDiscoveryProvider
 from app.schemas.job import ProviderInfo
 
 logger = logging.getLogger(__name__)
@@ -119,8 +120,9 @@ class ProviderRegistry:
         return info_list
 
 
-# Singleton registry instance initialized with default ATS discovery providers
+# Singleton registry instance initialized with default discovery providers
 registry = ProviderRegistry()
 registry.register_provider(GreenhouseProvider(), priority=10)
 registry.register_provider(LeverProvider(), priority=20)
 registry.register_provider(AshbyProvider(), priority=30)
+registry.register_provider(SearchDiscoveryProvider(), priority=40)
