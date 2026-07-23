@@ -22,6 +22,9 @@ class JobSearchQuery(BaseModel):
     remote_only: bool = Field(False, description="Filter to remote positions only")
     providers: Optional[List[str]] = Field(None, description="Specific providers to query (e.g. ['greenhouse', 'lever'])")
     limit: int = Field(50, ge=1, le=200, description="Maximum number of results to return")
+    manual_search: bool = Field(False, description="Whether user explicitly supplied search overrides")
+    min_salary: Optional[int] = Field(None, description="Minimum salary filter")
+    force_refresh: bool = Field(False, description="Bypass search cache and force fresh provider query")
 
 
 class NormalizedJob(BaseModel):
@@ -70,6 +73,10 @@ class JobListResponse(BaseModel):
     total: int = Field(..., description="Total number of unique jobs returned")
     jobs: List[JobResponse] = Field(..., description="List of normalized jobs")
     providers_searched: List[str] = Field(..., description="List of providers queried")
+    suggested_queries: List[str] = Field(default=[], description="Generated candidate-aware search suggestions")
+    is_generated: bool = Field(False, description="Whether search query was auto-generated from resume")
+    applied_query: Optional[str] = Field(None, description="The actual search query string executed")
+    applied_location: Optional[str] = Field(None, description="The actual location parameter executed")
 
 
 class ProviderInfo(BaseModel):

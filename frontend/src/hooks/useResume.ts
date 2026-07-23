@@ -42,6 +42,8 @@ export function useUploadResume() {
     mutationFn: (file: File) => uploadResume(file),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["resumes"] });
+      queryClient.invalidateQueries({ queryKey: ["onboarding"] });
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
   });
 }
@@ -56,6 +58,8 @@ export function useSetActiveResume() {
     mutationFn: (resumeId: string) => setActiveResume(resumeId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["resumes"] });
+      queryClient.invalidateQueries({ queryKey: ["onboarding"] });
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
   });
 }
@@ -70,6 +74,8 @@ export function useParseResume() {
     mutationFn: (resumeId: string) => parseResume(resumeId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["resumes"] });
+      queryClient.invalidateQueries({ queryKey: ["onboarding"] });
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
   });
 }
@@ -84,6 +90,7 @@ export function useDeleteResume() {
     mutationFn: (resumeId: string) => deleteResume(resumeId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["resumes"] });
+      queryClient.invalidateQueries({ queryKey: ["onboarding"] });
     },
   });
 }

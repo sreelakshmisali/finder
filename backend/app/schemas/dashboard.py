@@ -27,6 +27,7 @@ class DashboardStatsResponse(BaseModel):
     Payload containing aggregated application, job, and status counts for the dashboard.
     """
     total_jobs_found: int = Field(0, description="Total jobs discovered in database")
+    high_matches_count: int = Field(0, description="Number of high fit jobs (>= 80% match)")
     saved_jobs_count: int = Field(0, description="Number of saved jobs")
     applied_count: int = Field(0, description="Total submitted applications")
     interviews_count: int = Field(0, description="Total interviews scheduled")

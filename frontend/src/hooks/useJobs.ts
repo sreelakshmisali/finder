@@ -5,8 +5,9 @@
  */
 
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { searchJobs, fetchProviders, matchJob } from "../services/jobService";
+import { searchJobs, fetchProviders, matchJob, fetchSuggestedQueries } from "../services/jobService";
 import type { JobSearchQueryParams } from "../types/job";
+import { useAuth } from "../contexts/AuthContext";
 
 /**
  * Custom hook to execute a job search with React Query.
@@ -16,7 +17,7 @@ export function useJobSearch(params: JobSearchQueryParams, enabled = true) {
     queryKey: ["jobs", "search", params],
     queryFn: () => searchJobs(params),
     enabled,
-    staleTime: 1000 * 60 * 5, // Cache results for 5 minutes
+    staleTime: 1000 * 60 * 20, // 20 minutes (aligned with backend TTL)
   });
 }
 
@@ -28,6 +29,20 @@ export function useProviders() {
     queryKey: ["jobs", "providers"],
     queryFn: fetchProviders,
     staleTime: 1000 * 60 * 30, // Cache for 30 minutes
+  });
+}
+
+/**
+ * Custom hook to fetch suggested queries generated from active resume and preferences.
+ */
+export function useSuggestedQueries() {
+  const { token, isLoading: isAuthLoading } = useAuth();
+
+  return useQuery({
+    queryKey: ["jobs", "suggested-queries"],
+    queryFn: fetchSuggestedQueries,
+    enabled: Boolean(token) && !isAuthLoading,
+    staleTime: 1000 * 60 * 5,
   });
 }
 

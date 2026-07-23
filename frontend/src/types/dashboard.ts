@@ -14,6 +14,7 @@ export interface RecentActivityItem {
 
 export interface DashboardStats {
   total_jobs_found: number;
+  high_matches_count?: number;
   saved_jobs_count: number;
   applied_count: number;
   interviews_count: number;

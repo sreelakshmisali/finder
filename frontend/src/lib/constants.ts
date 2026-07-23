@@ -70,7 +70,6 @@ export const STATUS_COLORS: Record<string, string> = {
 export const NAV_ITEMS = [
   { label: "Dashboard", path: "/", icon: "LayoutDashboard" },
   { label: "Jobs", path: "/jobs", icon: "Search" },
-  { label: "Resume", path: "/resume", icon: "FileText" },
-  { label: "Preferences", path: "/preferences", icon: "SlidersHorizontal" },
+  { label: "Profile Setup", path: "/profile", icon: "UserCheck" },
   { label: "Tracker", path: "/tracker", icon: "ClipboardList" },
 ] as const;

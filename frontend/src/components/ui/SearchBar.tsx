@@ -1,29 +1,172 @@
 /**
  * SearchBar Component
  *
- * Input bar for keyword search, location filtering, remote toggle, and provider selecting.
+ * Input bar for keyword search, location filtering, remote toggle, salary threshold,
+ * provider selection, auto-generated vs manual override search modes, and Saved Searches.
+ * Implements input debouncing (400ms delay) to prevent rapid filter API spam.
  */
 
-import { useState } from "react";
-import { Search, MapPin, SlidersHorizontal, Check } from "lucide-react";
-import { Button, Input } from "./index";
+import { useState, useEffect, useRef } from "react";
+import {
+  Search,
+  MapPin,
+  SlidersHorizontal,
+  Check,
+  Sparkles,
+  RotateCcw,
+  DollarSign,
+  RefreshCw,
+  Bookmark,
+  Plus,
+  Trash2,
+  Play,
+} from "lucide-react";
+import { Button, Input, Badge, Modal } from "./index";
+import {
+  useSavedSearches,
+  useCreateSavedSearch,
+  useRunSavedSearch,
+  useDeleteSavedSearch,
+} from "../../hooks/useSavedSearches";
+import type { SavedSearch } from "../../types/savedSearch";
 
 interface SearchBarProps {
-  onSearch: (params: { query: string; location: string; remoteOnly: boolean; sources: string[] }) => void;
+  onSearch: (params: {
+    query: string;
+    location: string;
+    remoteOnly: boolean;
+    sources: string[];
+    manualSearch: boolean;
+    minSalary?: number;
+    forceRefresh?: boolean;
+  }) => void;
+  onResetToAuto?: () => void;
   isLoading?: boolean;
   providers?: { name: string; display_name: string }[];
+  suggestedQueries?: string[];
+  isGenerated?: boolean;
+  appliedQuery?: string;
+  appliedLocation?: string;
 }
 
-function SearchBar({ onSearch, isLoading, providers = [] }: SearchBarProps) {
+function SearchBar({
+  onSearch,
+  onResetToAuto,
+  isLoading,
+  providers = [],
+  suggestedQueries = [],
+  isGenerated = false,
+  appliedQuery,
+  appliedLocation,
+}: SearchBarProps) {
   const [query, setQuery] = useState("");
   const [location, setLocation] = useState("");
+  const [minSalary, setMinSalary] = useState<string>("");
   const [remoteOnly, setRemoteOnly] = useState(false);
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
 
+  // Saved Searches state & hooks
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [savedSearchName, setSavedSearchName] = useState("");
+
+  const { data: savedSearches = [] } = useSavedSearches();
+  const createSavedSearchMutation = useCreateSavedSearch();
+  const runSavedSearchMutation = useRunSavedSearch();
+  const deleteSavedSearchMutation = useDeleteSavedSearch();
+
+  const isInitialMount = useRef(true);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Sync displayed query with applied query when auto-generated
+  useEffect(() => {
+    if (isGenerated && appliedQuery && !query) {
+      setQuery(appliedQuery);
+    }
+  }, [isGenerated, appliedQuery]);
+
+  // Execute debounced search when user modifies filters
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    debounceTimerRef.current = setTimeout(() => {
+      executeSearch(false);
+    }, 400); // 400ms debounce delay
+
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [query, location, minSalary, remoteOnly, selectedSources]);
+
+  const executeSearch = (forceRefresh = false) => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    const hasExplicitOverrides = Boolean(
+      query.trim() || location.trim() || minSalary || remoteOnly || selectedSources.length > 0
+    );
+    onSearch({
+      query: query.trim(),
+      location: location.trim(),
+      remoteOnly,
+      sources: selectedSources,
+      manualSearch: hasExplicitOverrides,
+      minSalary: minSalary ? Number(minSalary) : undefined,
+      forceRefresh,
+    });
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSearch({ query, location, remoteOnly, sources: selectedSources });
+    executeSearch(false);
+  };
+
+  const handleChipClick = (suggested: string) => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    setQuery(suggested);
+    onSearch({
+      query: suggested,
+      location: location.trim(),
+      remoteOnly,
+      sources: selectedSources,
+      manualSearch: true,
+      minSalary: minSalary ? Number(minSalary) : undefined,
+      forceRefresh: false,
+    });
+  };
+
+  const handleReset = () => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    setQuery("");
+    setLocation("");
+    setMinSalary("");
+    setRemoteOnly(false);
+    setSelectedSources([]);
+    if (onResetToAuto) {
+      onResetToAuto();
+    } else {
+      onSearch({
+        query: "",
+        location: "",
+        remoteOnly: false,
+        sources: [],
+        manualSearch: false,
+        forceRefresh: false,
+      });
+    }
   };
 
   const toggleSource = (sourceName: string) => {
@@ -34,95 +177,346 @@ function SearchBar({ onSearch, isLoading, providers = [] }: SearchBarProps) {
     );
   };
 
+  // Saved Search Handlers
+  const handleOpenSaveModal = () => {
+    const defaultName = query.trim()
+      ? `${query.trim()} ${location.trim() ? location.trim() : "Jobs"}`
+      : "Saved Job Search";
+    setSavedSearchName(defaultName);
+    setIsSaveModalOpen(true);
+  };
+
+  const handleConfirmSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!savedSearchName.trim()) return;
+
+    const filterObj = {
+      location: location.trim(),
+      remote_only: remoteOnly,
+      sources: selectedSources,
+      min_salary: minSalary ? Number(minSalary) : undefined,
+    };
+
+    createSavedSearchMutation.mutate(
+      {
+        name: savedSearchName.trim(),
+        query: query.trim() || undefined,
+        filters: filterObj,
+      },
+      {
+        onSuccess: () => {
+          setIsSaveModalOpen(false);
+          setSavedSearchName("");
+        },
+      }
+    );
+  };
+
+  const handleRunSavedSearch = (saved: SavedSearch) => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    const savedFilters = saved.filters || {};
+    const sq = saved.query || "";
+    const sloc = savedFilters.location || "";
+    const srem = Boolean(savedFilters.remote_only);
+    const ssources = savedFilters.sources || [];
+    const sminSal = savedFilters.min_salary ? String(savedFilters.min_salary) : "";
+
+    setQuery(sq);
+    setLocation(sloc);
+    setRemoteOnly(srem);
+    setSelectedSources(ssources);
+    setMinSalary(sminSal);
+
+    runSavedSearchMutation.mutate(saved.id);
+
+    onSearch({
+      query: sq,
+      location: sloc,
+      remoteOnly: srem,
+      sources: ssources,
+      manualSearch: true,
+      minSalary: savedFilters.min_salary,
+      forceRefresh: true,
+    });
+  };
+
+  const handleDeleteSavedSearch = (e: React.MouseEvent, searchId: string) => {
+    e.stopPropagation();
+    deleteSavedSearchMutation.mutate(searchId);
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3 mb-6">
-      <div className="flex flex-col sm:flex-row gap-2">
-        {/* Keyword input */}
-        <div className="flex-1">
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search title, skills, or company (e.g. Python Engineer)..."
-            icon={<Search size={18} />}
-          />
+    <>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3.5 mb-6">
+        {/* Mode Indicator Banner */}
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="flex items-center flex-wrap gap-2">
+            {isGenerated ? (
+              <Badge variant="accent" className="flex items-center gap-1 font-bold text-xs py-1 px-3">
+                <Sparkles size={13} /> Auto-Generated from Resume & Preferences
+              </Badge>
+            ) : (
+              <Badge variant="primary" className="flex items-center gap-1 font-bold text-xs py-1 px-3">
+                <SlidersHorizontal size={13} /> Manual Override Active
+              </Badge>
+            )}
+            {appliedQuery && (
+              <span className="text-text-muted hidden sm:inline">
+                Active query: <strong className="text-text font-semibold">"{appliedQuery}"</strong>
+                {appliedLocation ? <span className="ml-1 font-normal">in <strong>"{appliedLocation}"</strong></span> : null}
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Save Current Search CTA */}
+            <button
+              type="button"
+              onClick={handleOpenSaveModal}
+              title="Save current search query and filters for quick reuse"
+              className="text-xs text-primary font-bold hover:underline flex items-center gap-1 cursor-pointer transition-colors"
+            >
+              <Bookmark size={13} /> Save This Search
+            </button>
+
+            {/* Force Refresh CTA */}
+            <button
+              type="button"
+              onClick={() => executeSearch(true)}
+              title="Bypass search cache and fetch live jobs from providers"
+              className="text-xs text-text-muted hover:text-text font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+            >
+              <RefreshCw size={12} className={isLoading ? "animate-spin text-primary" : ""} /> Force Refresh
+            </button>
+
+            {/* Reset to Auto CTA */}
+            {(!isGenerated || query || location || minSalary || remoteOnly || selectedSources.length > 0) && (
+              <button
+                type="button"
+                onClick={handleReset}
+                className="text-xs text-primary font-bold hover:underline flex items-center gap-1 cursor-pointer transition-colors"
+              >
+                <RotateCcw size={12} /> Reset to Resume Defaults
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Location input */}
-        <div className="w-full sm:w-64">
-          <Input
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            placeholder="Location or Remote"
-            icon={<MapPin size={18} />}
-          />
-        </div>
-
-        {/* Filter Toggle & Submit */}
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => setShowFilters(!showFilters)}
-            className="shrink-0"
-            icon={<SlidersHorizontal size={16} />}
-          >
-            Filters
-          </Button>
-
-          <Button
-            type="submit"
-            variant="primary"
-            isLoading={isLoading}
-            className="shrink-0"
-          >
-            Search
-          </Button>
-        </div>
-      </div>
-
-      {/* Expandable Filter Panel */}
-      {showFilters && (
-        <div className="p-5 glass-card rounded-xl flex flex-col sm:flex-row flex-wrap items-start sm:items-center justify-between gap-4">
-          {/* Remote Only Toggle */}
-          <label className="flex items-center gap-2 text-sm text-text font-medium cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={remoteOnly}
-              onChange={(e) => setRemoteOnly(e.target.checked)}
-              className="h-4 w-4 rounded border-border bg-surface text-primary focus:ring-primary/40 cursor-pointer"
+        <div className="flex flex-col sm:flex-row gap-2">
+          {/* Keyword input */}
+          <div className="flex-1">
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search title, skills, or company (e.g. Python Engineer)..."
+              icon={<Search size={18} />}
             />
-            Remote positions only
-          </label>
+          </div>
 
-          {/* Provider Selection Filter */}
-          {providers.length > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-text-muted font-medium">Sources:</span>
-              <div className="flex flex-wrap gap-1.5">
-                {providers.map((p) => {
-                  const isSelected = selectedSources.length === 0 || selectedSources.includes(p.name);
-                  return (
-                    <button
-                      key={p.name}
-                      type="button"
-                      onClick={() => toggleSource(p.name)}
-                      className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border transition-all cursor-pointer ${
-                        isSelected
-                          ? "bg-primary-muted text-primary border-primary/40"
-                          : "bg-surface-elevated text-text-muted border-border hover:text-text"
-                      }`}
-                    >
-                      {isSelected && <Check size={12} />}
-                      {p.display_name}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          {/* Location input */}
+          <div className="w-full sm:w-64">
+            <Input
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="Location or Remote"
+              icon={<MapPin size={18} />}
+            />
+          </div>
+
+          {/* Filter Toggle & Submit */}
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setShowFilters(!showFilters)}
+              className="shrink-0"
+              icon={<SlidersHorizontal size={16} />}
+            >
+              Filters
+            </Button>
+
+            <Button
+              type="submit"
+              variant="primary"
+              isLoading={isLoading}
+              className="shrink-0"
+            >
+              Apply Filters
+            </Button>
+          </div>
         </div>
-      )}
-    </form>
+
+        {/* Saved Searches Row */}
+        {savedSearches.length > 0 && (
+          <div className="flex items-center flex-wrap gap-2 pt-1 text-xs">
+            <span className="text-text-muted font-bold flex items-center gap-1">
+              <Bookmark size={13} className="text-primary" /> Saved Searches:
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              {savedSearches.map((s) => (
+                <div
+                  key={s.id}
+                  onClick={() => handleRunSavedSearch(s)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 hover:border-primary font-semibold transition-all cursor-pointer shadow-sm group"
+                >
+                  <Play size={11} className="fill-current text-primary" />
+                  <span>{s.name}</span>
+                  <button
+                    type="button"
+                    onClick={(e) => handleDeleteSavedSearch(e, s.id)}
+                    title="Delete saved search"
+                    className="hover:text-error text-text-muted transition-colors ml-1 p-0.5"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Suggested Search Query Chips */}
+        {suggestedQueries.length > 0 && (
+          <div className="flex items-center flex-wrap gap-2 pt-1 text-xs">
+            <span className="text-text-muted font-bold flex items-center gap-1">
+              <Sparkles size={13} className="text-accent" /> Resume Suggestions:
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              {suggestedQueries.map((sq) => {
+                const isCurrent = query.toLowerCase().trim() === sq.toLowerCase().trim();
+                return (
+                  <button
+                    key={sq}
+                    type="button"
+                    onClick={() => handleChipClick(sq)}
+                    className={`px-2.5 py-1 rounded-full border font-semibold transition-all cursor-pointer ${
+                      isCurrent
+                        ? "bg-primary text-white border-primary shadow-sm"
+                        : "bg-surface-elevated/80 border-border text-text-secondary hover:text-text hover:border-primary/40 hover:bg-surface-elevated"
+                    }`}
+                  >
+                    {sq}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Expandable Filter Panel */}
+        {showFilters && (
+          <div className="p-5 glass-card rounded-xl flex flex-col sm:flex-row flex-wrap items-start sm:items-center justify-between gap-6 animate-in fade-in duration-200">
+            {/* Min Salary Input */}
+            <div className="w-full sm:w-48">
+              <label className="block text-xs font-bold text-text mb-1">
+                Min Salary ($/yr)
+              </label>
+              <Input
+                type="number"
+                value={minSalary}
+                onChange={(e) => setMinSalary(e.target.value)}
+                placeholder="e.g. 100000"
+                icon={<DollarSign size={16} />}
+              />
+            </div>
+
+            {/* Remote Only Toggle */}
+            <div className="pt-5 sm:pt-0">
+              <label className="flex items-center gap-2 text-sm text-text font-medium cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={remoteOnly}
+                  onChange={(e) => setRemoteOnly(e.target.checked)}
+                  className="h-4 w-4 rounded border-border bg-surface text-primary focus:ring-primary/40 cursor-pointer"
+                />
+                Remote positions only
+              </label>
+            </div>
+
+            {/* Provider Selection Filter */}
+            {providers.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-text-muted font-medium">Sources:</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {providers.map((p) => {
+                    const isSelected = selectedSources.length === 0 || selectedSources.includes(p.name);
+                    return (
+                      <button
+                        key={p.name}
+                        type="button"
+                        onClick={() => toggleSource(p.name)}
+                        className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border transition-all cursor-pointer ${
+                          isSelected
+                            ? "bg-primary-muted text-primary border-primary/40"
+                            : "bg-surface-elevated text-text-muted border-border hover:text-text"
+                        }`}
+                      >
+                        {isSelected && <Check size={12} />}
+                        {p.display_name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </form>
+
+      {/* Save Search Rule Modal */}
+      <Modal
+        isOpen={isSaveModalOpen}
+        onClose={() => setIsSaveModalOpen(false)}
+        title="Save Search Rule"
+        size="md"
+      >
+        <form onSubmit={handleConfirmSave} className="space-y-5">
+          <div className="space-y-1">
+            <label className="block text-xs font-bold text-text">Search Rule Name</label>
+            <Input
+              value={savedSearchName}
+              onChange={(e) => setSavedSearchName(e.target.value)}
+              placeholder="e.g. Python Remote Jobs"
+              required
+              autoFocus
+            />
+          </div>
+
+          <div className="p-4 rounded-xl bg-surface-elevated border border-border text-xs space-y-2">
+            <div className="font-bold text-text mb-1 flex items-center gap-1.5">
+              <Bookmark size={14} className="text-primary" /> Active Rule Payload Summary:
+            </div>
+            <div><strong className="text-text">Query:</strong> {query.trim() || "(None)"}</div>
+            <div><strong className="text-text">Location:</strong> {location.trim() || "(Any)"}</div>
+            <div><strong className="text-text">Remote Only:</strong> {remoteOnly ? "Yes" : "No"}</div>
+            {minSalary && <div><strong className="text-text">Min Salary:</strong> ${Number(minSalary).toLocaleString()}/yr</div>}
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-2 border-t border-border">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setIsSaveModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              isLoading={createSavedSearchMutation.isPending}
+              icon={<Plus size={14} />}
+            >
+              Save Search Rule
+            </Button>
+          </div>
+        </form>
+      </Modal>
+    </>
   );
 }
 

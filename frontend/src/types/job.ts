@@ -26,6 +26,9 @@ export interface JobSearchQueryParams {
   location?: string;
   remote_only?: boolean;
   sources?: string[];
+  manual_search?: boolean;
+  min_salary?: number;
+  force_refresh?: boolean;
   limit?: number;
 }
 
@@ -33,6 +36,10 @@ export interface JobListResponse {
   total: number;
   jobs: Job[];
   providers_searched: string[];
+  suggested_queries?: string[];
+  is_generated?: boolean;
+  applied_query?: string;
+  applied_location?: string;
 }
 
 export interface ProviderInfo {

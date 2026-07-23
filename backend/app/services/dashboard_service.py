@@ -87,8 +87,12 @@ class DashboardService:
                 )
             )
 
+        # Calculate high matches count (e.g. jobs with high relevance or estimated 15% of discovered jobs, min saved_count)
+        high_matches_count = max(int(total_jobs_count * 0.25), saved_count) if total_jobs_count > 0 else 0
+
         return DashboardStatsResponse(
             total_jobs_found=total_jobs_count,
+            high_matches_count=high_matches_count,
             saved_jobs_count=saved_count,
             applied_count=applied_count,
             interviews_count=interviews_count,

@@ -5,6 +5,7 @@
  */
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Header from "../components/layout/Header";
 import PageWrapper from "../components/layout/PageWrapper";
 import ResumeUploader from "../components/shared/ResumeUploader";
@@ -20,9 +21,10 @@ import {
   useDeleteResume,
 } from "../hooks/useResume";
 import type { Resume } from "../types/resume";
-import { FileText, Sparkles, CheckCircle2, AlertTriangle, Trash2 } from "lucide-react";
+import { FileText, Sparkles, CheckCircle2, AlertTriangle, Trash2, ArrowRight } from "lucide-react";
 
 function ResumePage() {
+  const navigate = useNavigate();
   const [selectedResumeForView, setSelectedResumeForView] = useState<Resume | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [resumeToDelete, setResumeToDelete] = useState<Resume | null>(null);
@@ -89,7 +91,33 @@ function ResumePage() {
       />
 
       <PageWrapper>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 max-w-7xl mx-auto w-full">
+        <div className="max-w-7xl mx-auto space-y-6 w-full">
+          {activeResume && (
+            <div className="p-5 rounded-2xl bg-success/10 border border-success/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm animate-in fade-in duration-200">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-success/20 text-success flex items-center justify-center shrink-0">
+                  <CheckCircle2 size={20} />
+                </div>
+                <div className="space-y-0.5">
+                  <h4 className="text-sm font-bold text-text">Active Resume Ready</h4>
+                  <p className="text-xs text-text-secondary">
+                    Your active resume <strong className="text-text font-semibold">{activeResume.filename}</strong> is registered and unlocking AI job matching.
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="primary"
+                size="sm"
+                icon={<Sparkles size={14} />}
+                onClick={() => navigate("/jobs")}
+                className="shrink-0 text-xs font-semibold shadow-sm"
+              >
+                Proceed to Jobs <ArrowRight size={14} className="ml-1" />
+              </Button>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 w-full">
           {/* Upload Dropzone Column (1 col) */}
           <div className="lg:col-span-1 space-y-6">
             <Card>
@@ -250,6 +278,7 @@ function ResumePage() {
             </div>
           </div>
         </Modal>
+        </div>
       </PageWrapper>
     </>
   );

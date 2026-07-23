@@ -27,14 +27,17 @@ class BatchMatchRequest(BaseModel):
 
 class MatchResult(BaseModel):
     """
-    Result payload containing calculated match score and AI explanation.
+    Result payload containing calculated hybrid match score and detailed breakdown.
     """
     job_id: uuid.UUID = Field(..., description="Evaluated job ID")
-    score: float = Field(..., ge=0.0, le=100.0, description="Match score percentage (0-100%)")
-    reasons: List[str] = Field(default=[], description="List of positive matching reasons")
+    score: float = Field(..., ge=0.0, le=100.0, description="Total match score percentage (0-100%)")
+    resume_match: float = Field(..., description="Resume compatibility contribution (70% influence)")
+    preference_match: float = Field(..., description="Preference alignment contribution (30% influence)")
     missing_skills: List[str] = Field(default=[], description="Required skills missing from candidate resume")
-    recommendation: str = Field(..., description="Overall AI recommendation summary")
-    score_breakdown: Optional[Dict[str, float]] = Field(None, description="Raw breakdown of keyword and preference scores")
+    reason: Optional[str] = Field(None, description="Primary match explanation summary")
+    reasons: List[str] = Field(default=[], description="List of positive matching reasons")
+    recommendation: Optional[str] = Field(None, description="Overall AI recommendation summary")
+    score_breakdown: Optional[Dict[str, Any]] = Field(None, description="Detailed sub-score breakdown")
 
 
 class BatchMatchResult(BaseModel):

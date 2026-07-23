@@ -13,8 +13,7 @@ import DashboardLayout from "./layouts/DashboardLayout";
 import AuthPage from "./pages/AuthPage";
 import DashboardPage from "./pages/DashboardPage";
 import JobsPage from "./pages/JobsPage";
-import ResumePage from "./pages/ResumePage";
-import PreferencesPage from "./pages/PreferencesPage";
+import ProfilePage from "./pages/ProfilePage";
 import TrackerPage from "./pages/TrackerPage";
 
 /* Create a single React Query client instance */
@@ -41,8 +40,9 @@ function App() {
               <Route path="/" element={<DashboardLayout />}>
                 <Route index element={<DashboardPage />} />
                 <Route path="jobs" element={<JobsPage />} />
-                <Route path="resume" element={<ResumePage />} />
-                <Route path="preferences" element={<PreferencesPage />} />
+                <Route path="profile" element={<ProfilePage />} />
+                <Route path="resume" element={<Navigate to="/profile" replace />} />
+                <Route path="preferences" element={<Navigate to="/profile" replace />} />
                 <Route path="tracker" element={<TrackerPage />} />
               </Route>
             </Route>

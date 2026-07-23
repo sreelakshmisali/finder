@@ -18,6 +18,9 @@ export async function searchJobs(params: JobSearchQueryParams): Promise<JobListR
       location: params.location,
       remote_only: params.remote_only,
       sources: params.sources,
+      manual_search: params.manual_search,
+      min_salary: params.min_salary,
+      force_refresh: params.force_refresh,
       limit: params.limit || 50,
     },
   });
@@ -59,5 +62,13 @@ export async function matchBatchJobs(jobIds: string[], resumeId?: string): Promi
     job_ids: jobIds,
     resume_id: resumeId,
   });
+  return response.data;
+}
+
+/**
+ * Fetch candidate-aware suggested search queries generated from active resume and preferences.
+ */
+export async function fetchSuggestedQueries(): Promise<string[]> {
+  const response = await api.get<string[]>("/jobs/suggested-queries");
   return response.data;
 }

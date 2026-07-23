@@ -31,17 +31,17 @@ function MatchDetails({ job, match, onApply }: MatchDetailsProps) {
         </div>
       </div>
 
-      {/* AI Recommendation Banner */}
+      {/* Primary Match Reason Banner */}
       <div className="p-5 rounded-2xl bg-primary/5 border border-primary/20 flex items-start gap-4">
         <div className="p-2 bg-primary/10 rounded-xl shrink-0">
           <Sparkles size={24} className="text-primary" />
         </div>
         <div>
           <h4 className="text-sm font-bold text-text mb-1.5">
-            AI Recommendation
+            {match.reason || "AI Fit Recommendation"}
           </h4>
           <p className="text-sm text-text-secondary leading-relaxed">
-            {match.recommendation}
+            {match.recommendation || `Overall hybrid match score: ${Math.round(match.score)}%`}
           </p>
         </div>
       </div>
@@ -84,24 +84,28 @@ function MatchDetails({ job, match, onApply }: MatchDetailsProps) {
         )}
       </div>
 
-      {/* Raw Score Math Breakdown */}
-      {match.score_breakdown && (
-        <div className="p-5 rounded-2xl bg-surface border border-border shadow-sm flex items-center justify-around text-center mt-2">
-          <div className="flex-1">
-            <span className="text-xs font-semibold text-text-muted uppercase tracking-wider block mb-1">Keyword Overlap</span>
-            <span className="font-bold text-text text-xl">
-              {match.score_breakdown.keyword_score}%
-            </span>
-          </div>
-          <div className="h-12 w-px bg-border mx-4" />
-          <div className="flex-1">
-            <span className="text-xs font-semibold text-text-muted uppercase tracking-wider block mb-1">Preference Fit</span>
-            <span className="font-bold text-primary text-xl">
-              +{match.score_breakdown.preference_bonus} pts
-            </span>
-          </div>
+      {/* 70/30 Hybrid Weight Score Breakdown */}
+      <div className="p-5 rounded-2xl bg-surface border border-border shadow-sm flex items-center justify-around text-center mt-2">
+        <div className="flex-1">
+          <span className="text-xs font-semibold text-text-muted uppercase tracking-wider block mb-1">Resume Compatibility (70%)</span>
+          <span className="font-bold text-text text-xl">
+            {match.resume_match ?? Math.round((match.score_breakdown?.keyword_score || 0) * 0.7)} pts
+          </span>
+          {match.score_breakdown?.resume_compatibility_raw !== undefined && (
+            <span className="block text-xs text-text-muted mt-0.5">({match.score_breakdown.resume_compatibility_raw}% fit)</span>
+          )}
         </div>
-      )}
+        <div className="h-12 w-px bg-border mx-4" />
+        <div className="flex-1">
+          <span className="text-xs font-semibold text-text-muted uppercase tracking-wider block mb-1">Preference Alignment (30%)</span>
+          <span className="font-bold text-primary text-xl">
+            +{match.preference_match ?? match.score_breakdown?.preference_bonus ?? 0} pts
+          </span>
+          {match.score_breakdown?.preference_alignment_raw !== undefined && (
+            <span className="block text-xs text-text-muted mt-0.5">({match.score_breakdown.preference_alignment_raw}% fit)</span>
+          )}
+        </div>
+      </div>
 
       {/* Footer Action Buttons */}
       <div className="pt-6 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">

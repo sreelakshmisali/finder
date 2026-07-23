@@ -87,8 +87,22 @@ class User(Base):
         passive_deletes=True,
         uselist=False
     )
+    if TYPE_CHECKING:
+        from app.models.saved_search import SavedSearch
+        from app.models.notification import Notification
+
     applications: Mapped[List["Application"]] = relationship(
         "Application",
+        back_populates="user",
+        passive_deletes=True
+    )
+    saved_searches: Mapped[List["SavedSearch"]] = relationship(
+        "SavedSearch",
+        back_populates="user",
+        passive_deletes=True
+    )
+    notifications: Mapped[List["Notification"]] = relationship(
+        "Notification",
         back_populates="user",
         passive_deletes=True
     )

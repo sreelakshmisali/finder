@@ -11,6 +11,7 @@ from app.core.dependencies import get_db, get_current_user
 from app.models.user import User
 from app.schemas.preference import PreferenceUpdate, PreferenceResponse
 from app.services.preference_service import PreferenceService
+from app.services.cache_service import search_cache
 
 router = APIRouter(prefix="/preferences", tags=["Preferences"])
 
@@ -47,4 +48,6 @@ async def update_preferences(
     Update preferences endpoint (Authenticated).
     """
     service = PreferenceService(db)
-    return await service.save_preferences(user_id=current_user.id, payload=payload)
+    result = await service.save_preferences(user_id=current_user.id, payload=payload)
+    await search_cache.invalidate_user(current_user.id)
+    return result

@@ -14,6 +14,7 @@ import {
   FileText,
   SlidersHorizontal,
   ClipboardList,
+  UserCheck,
   LogOut,
   X,
 } from "lucide-react";
@@ -25,6 +26,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
   FileText,
   SlidersHorizontal,
   ClipboardList,
+  UserCheck,
 };
 
 interface SidebarProps {

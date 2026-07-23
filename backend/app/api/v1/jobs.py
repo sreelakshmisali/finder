@@ -32,6 +32,9 @@ async def search_jobs(
     location: Optional[str] = Query(None, description="Location (e.g. 'San Francisco', 'Remote')"),
     remote_only: bool = Query(False, description="Filter for remote roles only"),
     sources: Optional[List[str]] = Query(None, description="Provider filter (e.g. ['greenhouse', 'lever'])"),
+    manual_search: bool = Query(False, description="Flag indicating explicit user manual override search"),
+    min_salary: Optional[int] = Query(None, description="Minimum salary threshold filter"),
+    force_refresh: bool = Query(False, description="Bypass search cache and force fresh provider search"),
     limit: int = Query(50, ge=1, le=200, description="Max results to return"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
@@ -44,11 +47,32 @@ async def search_jobs(
         location=location,
         remote_only=remote_only,
         providers=sources,
+        manual_search=manual_search,
+        min_salary=min_salary,
+        force_refresh=force_refresh,
         limit=limit
     )
 
     service = JobService(db)
-    return await service.search_jobs(query)
+    return await service.search_jobs(query, user_id=current_user.id)
+
+
+@router.get(
+    "/suggested-queries",
+    response_model=List[str],
+    summary="Get resume-generated search queries",
+    description="Returns candidate-aware search suggestions based on active resume skills and search preferences."
+)
+async def get_suggested_queries(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Suggested queries endpoint (Authenticated).
+    """
+    service = JobService(db)
+    return await service.generate_suggested_queries(user_id=current_user.id)
+
 
 
 @router.get(
@@ -110,7 +134,8 @@ async def match_job(
             resume_id=payload.resume_id
         )
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        status_code = status.HTTP_404_NOT_FOUND if "not found" in str(e).lower() else status.HTTP_400_BAD_REQUEST
+        raise HTTPException(status_code=status_code, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
@@ -130,9 +155,17 @@ async def batch_match_jobs(
     Batch match jobs endpoint (Authenticated).
     """
     matcher = MatchingService(db)
+    active_resume = await matcher.resume_repo.get_active(current_user.id)
+    if not active_resume:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Active resume is required for job matching. Please upload a PDF resume first."
+        )
+
     results = await matcher.batch_match_jobs(
         job_ids=payload.job_ids,
         user_id=current_user.id,
         resume_id=payload.resume_id
     )
     return BatchMatchResult(matches=results)
+

@@ -26,6 +26,7 @@ export function useSavePreferences() {
     mutationFn: (payload: PreferenceUpdatePayload) => savePreferences(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["preferences"] });
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
   });
 }

@@ -6,12 +6,15 @@ import MatchDetails from "../components/shared/MatchDetails";
 import EmptyState from "../components/shared/EmptyState";
 import SearchBar from "../components/ui/SearchBar";
 import { Badge, Spinner, Modal, Button } from "../components/ui";
-import { useJobSearch, useProviders, useMatchJob } from "../hooks/useJobs";
+import { useNavigate } from "react-router-dom";
+import { useJobSearch, useProviders, useMatchJob, useSuggestedQueries } from "../hooks/useJobs";
+import { useOnboardingStatus } from "../hooks/useOnboarding";
 import type { Job, JobSearchQueryParams } from "../types/job";
 import type { MatchResult } from "../types/match";
-import { Search, Layers, Sparkles } from "lucide-react";
+import { Search, Layers, Sparkles, FileText, AlertTriangle } from "lucide-react";
 
 function JobsPage() {
+  const navigate = useNavigate();
   const [queryParams, setQueryParams] = useState<JobSearchQueryParams>({
     query: "",
     location: "",
@@ -23,23 +26,58 @@ function JobsPage() {
   const [activeModalJob, setActiveModalJob] = useState<Job | null>(null);
   const [activeMatchResult, setActiveMatchResult] = useState<MatchResult | null>(null);
   const [isMatchModalOpen, setIsMatchModalOpen] = useState(false);
+  const [isResumeWarningModalOpen, setIsResumeWarningModalOpen] = useState(false);
   const [sortByMatch, setSortByMatch] = useState(false);
 
   const { data: providersData } = useProviders();
   const { data: searchData, isLoading, isError, refetch } = useJobSearch(queryParams);
+  const { data: onboarding } = useOnboardingStatus();
+  const { data: suggestedQueriesData } = useSuggestedQueries();
   const matchMutation = useMatchJob();
 
-  const handleSearch = (filters: { query: string; location: string; remoteOnly: boolean; sources: string[] }) => {
+  const hasActiveResume = onboarding?.has_active_resume ?? true;
+  const suggestedQueries = searchData?.suggested_queries?.length
+    ? searchData.suggested_queries
+    : suggestedQueriesData || [];
+
+  const handleSearch = (filters: {
+    query: string;
+    location: string;
+    remoteOnly: boolean;
+    sources: string[];
+    manualSearch: boolean;
+    minSalary?: number;
+    forceRefresh?: boolean;
+  }) => {
     setQueryParams({
       query: filters.query,
       location: filters.location,
       remote_only: filters.remoteOnly,
       sources: filters.sources,
+      manual_search: filters.manualSearch,
+      min_salary: filters.minSalary,
+      force_refresh: filters.forceRefresh,
+      limit: 50,
+    });
+  };
+
+  const handleResetToAuto = () => {
+    setQueryParams({
+      query: "",
+      location: "",
+      remote_only: false,
+      sources: [],
+      manual_search: false,
       limit: 50,
     });
   };
 
   const handleMatchClick = (job: Job) => {
+    if (!hasActiveResume) {
+      setIsResumeWarningModalOpen(true);
+      return;
+    }
+
     setActiveModalJob(job);
     setIsMatchModalOpen(true);
 
@@ -103,12 +141,41 @@ function JobsPage() {
 
       <PageWrapper>
         <div className="max-w-7xl mx-auto p-6 lg:p-12 space-y-8">
+          {/* Missing Resume Warning Banner */}
+          {!hasActiveResume && (
+            <div className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm animate-in fade-in duration-200">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-amber-500/20 text-amber-500 flex items-center justify-center shrink-0">
+                  <AlertTriangle size={20} />
+                </div>
+                <div className="space-y-0.5">
+                  <h4 className="text-sm font-bold text-text">AI Fit Analysis Restricted</h4>
+                  <p className="text-xs text-text-secondary">Upload an active PDF resume to unlock personalized skill matching and job fit ranking.</p>
+                </div>
+              </div>
+              <Button
+                variant="primary"
+                size="sm"
+                icon={<FileText size={14} />}
+                onClick={() => navigate("/profile")}
+                className="shrink-0 text-xs font-semibold shadow-sm"
+              >
+                Upload Resume
+              </Button>
+            </div>
+          )}
+
           {/* Search & Filter Bar */}
           <section className="bg-surface border border-border shadow-sm p-4 sm:p-6 rounded-2xl">
             <SearchBar
               onSearch={handleSearch}
+              onResetToAuto={handleResetToAuto}
               isLoading={isLoading}
               providers={providersData}
+              suggestedQueries={suggestedQueries}
+              isGenerated={searchData?.is_generated}
+              appliedQuery={searchData?.applied_query}
+              appliedLocation={searchData?.applied_location}
             />
           </section>
 
@@ -135,7 +202,13 @@ function JobsPage() {
               <Button
                 variant={sortByMatch ? "primary" : "secondary"}
                 size="md"
-                onClick={() => setSortByMatch(!sortByMatch)}
+                onClick={() => {
+                  if (!hasActiveResume) {
+                    setIsResumeWarningModalOpen(true);
+                  } else {
+                    setSortByMatch(!sortByMatch);
+                  }
+                }}
                 icon={<Sparkles size={16} className={sortByMatch ? "text-white" : "text-primary"} />}
                 className="text-sm font-semibold whitespace-nowrap shadow-sm"
               >
@@ -221,6 +294,47 @@ function JobsPage() {
                 onApply={handleApply}
               />
             ) : null}
+          </Modal>
+
+          {/* Resume Required Alert Modal */}
+          <Modal
+            isOpen={isResumeWarningModalOpen}
+            onClose={() => setIsResumeWarningModalOpen(false)}
+            title="Resume Required for AI Fit Analysis"
+            size="md"
+          >
+            <div className="space-y-6">
+              <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-500 flex items-start gap-3">
+                <AlertTriangle size={24} className="shrink-0 mt-0.5" />
+                <div className="text-xs space-y-1">
+                  <p className="font-bold text-sm text-text">Active Resume Missing</p>
+                  <p className="text-text-secondary leading-relaxed">
+                    AI Job Matching compares candidate resume skills against job requirements. Please upload an active PDF resume to enable personalized scoring.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setIsResumeWarningModalOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => {
+                    setIsResumeWarningModalOpen(false);
+                    navigate("/profile");
+                  }}
+                  icon={<FileText size={14} />}
+                >
+                  Upload Resume
+                </Button>
+              </div>
+            </div>
           </Modal>
         </div>
       </PageWrapper>

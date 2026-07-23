@@ -15,6 +15,7 @@ from app.models.user import User
 from app.schemas.resume import ResumeResponse, ResumeListResponse
 from app.services.resume_service import ResumeService
 from app.services.resume_parser_service import ResumeParserService
+from app.services.cache_service import search_cache
 
 router = APIRouter(prefix="/resume", tags=["Resume"])
 
@@ -35,7 +36,9 @@ async def upload_resume(
     Upload resume endpoint (Authenticated).
     """
     service = ResumeService(db)
-    return await service.save_resume_file(user_id=current_user.id, file=file)
+    result = await service.save_resume_file(user_id=current_user.id, file=file)
+    await search_cache.invalidate_user(current_user.id)
+    return result
 
 
 @router.get(
@@ -111,7 +114,9 @@ async def set_active_resume(
     Set active resume endpoint (Authenticated).
     """
     service = ResumeService(db)
-    return await service.set_active_resume(resume_id=resume_id, user_id=current_user.id)
+    result = await service.set_active_resume(resume_id=resume_id, user_id=current_user.id)
+    await search_cache.invalidate_user(current_user.id)
+    return result
 
 
 @router.post(
@@ -136,6 +141,7 @@ async def parse_resume(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Resume with ID '{resume_id}' not found."
             )
+        await search_cache.invalidate_user(current_user.id)
         return parsed_resume
     except FileNotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
@@ -157,4 +163,6 @@ async def delete_resume(
     Delete resume endpoint (Authenticated).
     """
     service = ResumeService(db)
-    return await service.delete_resume(resume_id=resume_id, user_id=current_user.id)
+    result = await service.delete_resume(resume_id=resume_id, user_id=current_user.id)
+    await search_cache.invalidate_user(current_user.id)
+    return result

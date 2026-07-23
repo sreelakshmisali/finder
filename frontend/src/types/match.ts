@@ -15,12 +15,25 @@ export interface BatchMatchRequest {
 export interface MatchResult {
   job_id: string;
   score: number;
-  reasons: string[];
+  resume_match: number;
+  preference_match: number;
   missing_skills: string[];
-  recommendation: string;
+  reason?: string;
+  reasons: string[];
+  recommendation?: string;
   score_breakdown?: {
-    keyword_score: number;
-    preference_bonus: number;
+    resume_compatibility_raw?: number;
+    preference_alignment_raw?: number;
+    skills_match?: number;
+    experience_match?: number;
+    role_similarity?: number;
+    tech_overlap?: number;
+    location_match?: number;
+    salary_match?: number;
+    remote_match?: number;
+    company_match?: number;
+    keyword_score?: number;
+    preference_bonus?: number;
   };
 }
 

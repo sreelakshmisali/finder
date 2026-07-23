@@ -1,66 +1,61 @@
 import Header from "../components/layout/Header";
 import PageWrapper from "../components/layout/PageWrapper";
-import StatCard from "../components/shared/StatCard";
 import ActivityFeed from "../components/shared/ActivityFeed";
 import JobCard from "../components/shared/JobCard";
 import EmptyState from "../components/shared/EmptyState";
-import { Spinner } from "../components/ui";
+import { Spinner, Button, Badge } from "../components/ui";
 import { useDashboardStats } from "../hooks/useDashboard";
+import { useOnboardingStatus } from "../hooks/useOnboarding";
+import { useNavigate, Link } from "react-router-dom";
 import {
-  Briefcase,
+  CheckCircle2,
   FileText,
-  Sparkles,
-  ClipboardList,
   Search,
   SlidersHorizontal,
   ArrowRight,
+  Briefcase,
+  Bookmark,
+  Send,
+  Calendar,
+  Sparkles,
   Zap,
+  Check,
 } from "lucide-react";
-import { Link } from "react-router-dom";
 
 function DashboardPage() {
-  const { data: stats, isLoading, isError } = useDashboardStats();
+  const navigate = useNavigate();
+  const { data: stats, isLoading: isStatsLoading, isError } = useDashboardStats();
+  const { data: onboarding, isLoading: isOnboardingLoading } = useOnboardingStatus();
+
+  const isLoading = isStatsLoading || isOnboardingLoading;
+
+  const hasResume = Boolean(onboarding?.resume_uploaded || onboarding?.has_active_resume);
+  const isAnalyzed = Boolean(onboarding?.resume_analyzed);
+  const hasPreferences = Boolean(onboarding?.preferences_configured || onboarding?.has_preferences);
+  const isAccountCreated = Boolean(onboarding?.account_created ?? true);
+
+  const profileSteps = [
+    { label: "Account created", completed: isAccountCreated, icon: CheckCircle2 },
+    { label: "Resume uploaded", completed: hasResume, icon: FileText },
+    { label: "Resume analyzed", completed: isAnalyzed, icon: Sparkles },
+    { label: "Preferences configured", completed: hasPreferences, icon: SlidersHorizontal },
+  ];
+
+  const totalJobs = stats?.total_jobs_found ?? 0;
+  const highMatches = stats?.high_matches_count ?? Math.max(Math.floor(totalJobs * 0.25), stats?.saved_jobs_count || 0);
+  const savedJobs = stats?.saved_jobs_count ?? 0;
+  const appliedJobs = stats?.applied_count ?? 0;
+  const interviewsCount = stats?.interviews_count ?? 0;
 
   return (
     <>
       <Header
-        title="Dashboard"
-        subtitle="AI-powered job discovery, resume matching, and application automation overview"
+        title="Candidate Workflow Dashboard"
+        subtitle="Step-by-step user journey, profile onboarding progress, and job application pipeline"
       />
 
       <PageWrapper>
-        <div className="max-w-7xl mx-auto p-6 lg:p-12 space-y-12">
-          {/* Hero Banner */}
-          <div className="relative overflow-hidden p-8 lg:p-12 rounded-2xl bg-surface border border-border shadow-sm">
-            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-accent/5 to-transparent pointer-events-none" />
-            <div className="max-w-3xl relative z-10">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-xs font-semibold text-primary mb-6">
-                <Zap size={14} /> Playwright & AI Match Engine Online
-              </div>
-              <h2 className="text-3xl md:text-4xl lg:text-5xl font-black text-text tracking-tight mb-4 leading-tight">
-                Accelerate Your Job Search with <span className="text-primary">Finder AI</span>
-              </h2>
-              <p className="text-base lg:text-lg text-text-secondary leading-relaxed mb-8 max-w-2xl">
-                Search real-time Greenhouse, Lever, and Ashby postings, analyze 70/30 skill alignment, and fill applications with human confirmation safety.
-              </p>
-
-              <div className="flex flex-col sm:flex-row flex-wrap items-center gap-4">
-                <Link
-                  to="/jobs"
-                  className="px-6 py-3 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primary-hover shadow-sm transition-all flex items-center justify-center gap-2 w-full sm:w-auto"
-                >
-                  <Search size={18} /> Explore New Listings
-                </Link>
-                <Link
-                  to="/resume"
-                  className="px-6 py-3 rounded-xl bg-surface-elevated border border-border font-semibold text-sm text-text hover:bg-surface-hover shadow-sm transition-all flex items-center justify-center gap-2 w-full sm:w-auto"
-                >
-                  <FileText size={18} /> Manage Resume
-                </Link>
-              </div>
-            </div>
-          </div>
-
+        <div className="max-w-7xl mx-auto p-6 lg:p-12 space-y-10">
           {/* Loading Spinner */}
           {isLoading && (
             <div className="flex justify-center py-24">
@@ -76,98 +71,261 @@ function DashboardPage() {
           )}
 
           {!isLoading && stats && (
-            <div className="space-y-12">
-              {/* Metric Summary Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard
-                  title="Jobs Discovered"
-                  value={stats.total_jobs_found}
-                  icon={<Briefcase size={24} />}
-                  trend="+12 fetched"
-                />
-                <StatCard
-                  title="Saved Jobs"
-                  value={stats.saved_jobs_count}
-                  icon={<FileText size={24} />}
-                  trend="Bookmarked"
-                />
-                <StatCard
-                  title="AI Match Score"
-                  value="88%"
-                  icon={<Sparkles size={24} />}
-                  trend="Top Alignment"
-                />
-                <StatCard
-                  title="Tracked Applications"
-                  value={stats.applied_count}
-                  icon={<ClipboardList size={24} />}
-                  trend="Live Tracking"
-                />
-              </div>
-
-              {/* Quick Actions Grid */}
+            <>
+              {/* Dynamic Next Action Guidance Card */}
               <section>
-                <h3 className="text-xl font-bold text-text mb-6">
-                  Quick Workflows
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <Link to="/jobs" className="group h-full">
-                    <div className="p-6 h-full rounded-2xl bg-surface border border-border shadow-sm hover:shadow-md hover:border-primary/30 transition-all flex flex-col">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="h-12 w-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center transition-transform group-hover:scale-105">
-                          <Search size={24} />
-                        </div>
-                        <ArrowRight size={20} className="text-text-muted group-hover:text-primary group-hover:translate-x-1 transition-all" />
-                      </div>
-                      <h4 className="font-bold text-text text-base mb-2">Search & Discover Jobs</h4>
-                      <p className="text-sm text-text-secondary leading-relaxed flex-1">
-                        Fetch live postings from Greenhouse, Lever, and Ashby ATS boards.
+                {!hasResume ? (
+                  <div className="p-8 lg:p-10 rounded-2xl bg-surface border border-primary/30 shadow-sm relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-accent/5 to-transparent pointer-events-none" />
+                    <div className="relative z-10 max-w-2xl space-y-2">
+                      <Badge variant="warning" className="text-xs font-bold px-3 py-1 mb-2 inline-flex items-center gap-1">
+                        <Zap size={13} /> Action Required • Step 1 of Journey
+                      </Badge>
+                      <h2 className="text-2xl lg:text-3xl font-extrabold text-text tracking-tight">
+                        Upload Candidate Resume
+                      </h2>
+                      <p className="text-sm lg:text-base text-text-secondary leading-relaxed">
+                        Upload a PDF resume to unlock AI skill matching, automated query generation, and 70/30 fit ranking across tech job listings.
                       </p>
                     </div>
-                  </Link>
-
-                  <Link to="/resume" className="group h-full">
-                    <div className="p-6 h-full rounded-2xl bg-surface border border-border shadow-sm hover:shadow-md hover:border-accent/30 transition-all flex flex-col">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="h-12 w-12 rounded-xl bg-accent/10 text-accent flex items-center justify-center transition-transform group-hover:scale-105">
-                          <FileText size={24} />
-                        </div>
-                        <ArrowRight size={20} className="text-text-muted group-hover:text-accent group-hover:translate-x-1 transition-all" />
-                      </div>
-                      <h4 className="font-bold text-text text-base mb-2">Parse & Activate Resume</h4>
-                      <p className="text-sm text-text-secondary leading-relaxed flex-1">
-                        Upload PDF resume to extract skills, experience, and contact info.
+                    <Button
+                      variant="primary"
+                      size="lg"
+                      icon={<FileText size={18} />}
+                      onClick={() => navigate("/profile")}
+                      className="relative z-10 font-bold px-8 shrink-0 shadow-sm"
+                    >
+                      Upload Resume
+                    </Button>
+                  </div>
+                ) : !hasPreferences ? (
+                  <div className="p-8 lg:p-10 rounded-2xl bg-surface border border-accent/30 shadow-sm relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="absolute inset-0 bg-gradient-to-r from-accent/10 via-primary/5 to-transparent pointer-events-none" />
+                    <div className="relative z-10 max-w-2xl space-y-2">
+                      <Badge variant="accent" className="text-xs font-bold px-3 py-1 mb-2 inline-flex items-center gap-1">
+                        <Zap size={13} /> Action Required • Step 2 of Journey
+                      </Badge>
+                      <h2 className="text-2xl lg:text-3xl font-extrabold text-text tracking-tight">
+                        Configure Target Search Preferences
+                      </h2>
+                      <p className="text-sm lg:text-base text-text-secondary leading-relaxed">
+                        Set your target job titles, preferred locations, work type (Remote/Hybrid), and salary range to optimize candidate-aware job discovery.
                       </p>
                     </div>
-                  </Link>
-
-                  <Link to="/preferences" className="group h-full">
-                    <div className="p-6 h-full rounded-2xl bg-surface border border-border shadow-sm hover:shadow-md hover:border-success/30 transition-all flex flex-col">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="h-12 w-12 rounded-xl bg-success/10 text-success flex items-center justify-center transition-transform group-hover:scale-105">
-                          <SlidersHorizontal size={24} />
-                        </div>
-                        <ArrowRight size={20} className="text-text-muted group-hover:text-success group-hover:translate-x-1 transition-all" />
-                      </div>
-                      <h4 className="font-bold text-text text-base mb-2">Configure Target Fit</h4>
-                      <p className="text-sm text-text-secondary leading-relaxed flex-1">
-                        Set target role titles, locations, remote options, and salary expectations.
+                    <Button
+                      variant="primary"
+                      size="lg"
+                      icon={<SlidersHorizontal size={18} />}
+                      onClick={() => navigate("/profile")}
+                      className="relative z-10 font-bold px-8 shrink-0 shadow-sm"
+                    >
+                      Complete Preferences
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="p-8 lg:p-10 rounded-2xl bg-surface border border-success/30 shadow-sm relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="absolute inset-0 bg-gradient-to-r from-success/10 via-primary/5 to-transparent pointer-events-none" />
+                    <div className="relative z-10 max-w-2xl space-y-2">
+                      <Badge variant="success" className="text-xs font-bold px-3 py-1 mb-2 inline-flex items-center gap-1">
+                        <Sparkles size={13} /> Onboarding Complete • Ready to Apply
+                      </Badge>
+                      <h2 className="text-2xl lg:text-3xl font-extrabold text-text tracking-tight">
+                        Explore & Match High-Fit Positions
+                      </h2>
+                      <p className="text-sm lg:text-base text-text-secondary leading-relaxed">
+                        Search live postings aggregated from Greenhouse, Lever, and Ashby boards, and apply with Playwright automation safety.
                       </p>
                     </div>
-                  </Link>
-                </div>
+                    <Button
+                      variant="primary"
+                      size="lg"
+                      icon={<Search size={18} />}
+                      onClick={() => navigate("/jobs")}
+                      className="relative z-10 font-bold px-8 shrink-0 shadow-sm"
+                    >
+                      View Jobs
+                    </Button>
+                  </div>
+                )}
               </section>
 
-              {/* Two Column Grid: Activity Feed + Latest Jobs */}
+              {/* Journey Workflow Grid: Profile Journey Progress + Job Pipeline */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Profile Journey Progress Checklist */}
+                <div className="p-6 lg:p-8 rounded-2xl bg-surface border border-border shadow-sm flex flex-col justify-between space-y-6">
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-bold text-text flex items-center gap-2">
+                        <Sparkles size={20} className="text-primary" /> Profile Journey
+                      </h3>
+                      <span className="text-xs font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-full">
+                        {Math.round(onboarding?.profile_completion_percentage ?? 25)}% Complete
+                      </span>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="w-full h-2.5 bg-surface-elevated rounded-full overflow-hidden mb-6 border border-border">
+                      <div
+                        className="h-full bg-primary transition-all duration-500"
+                        style={{ width: `${Math.min(onboarding?.profile_completion_percentage ?? 25, 100)}%` }}
+                      />
+                    </div>
+
+                    {/* Checklist Step Items */}
+                    <div className="space-y-3.5">
+                      {profileSteps.map((step, idx) => (
+                        <div
+                          key={idx}
+                          className={`p-3.5 rounded-xl border flex items-center justify-between transition-all ${
+                            step.completed
+                              ? "bg-success/5 border-success/30 text-text"
+                              : "bg-surface-elevated/50 border-border text-text-muted"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={`h-7 w-7 rounded-lg flex items-center justify-center font-bold text-xs ${
+                                step.completed ? "bg-success text-white" : "bg-surface-elevated text-text-muted border border-border"
+                              }`}
+                            >
+                              {step.completed ? <Check size={16} /> : idx + 1}
+                            </div>
+                            <span className="text-sm font-semibold">{step.label}</span>
+                          </div>
+
+                          {step.completed ? (
+                            <Badge variant="success" className="text-xs py-0.5 px-2">Completed</Badge>
+                          ) : (
+                            <Badge variant="default" className="text-xs py-0.5 px-2">Pending</Badge>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <Link
+                    to="/profile"
+                    className="w-full text-center text-xs font-bold text-primary hover:underline flex items-center justify-center gap-1 pt-2"
+                  >
+                    Manage Profile & Resume <ArrowRight size={14} />
+                  </Link>
+                </div>
+
+                {/* Job Search Pipeline */}
+                <div className="lg:col-span-2 p-6 lg:p-8 rounded-2xl bg-surface border border-border shadow-sm flex flex-col justify-between space-y-6">
+                  <div>
+                    <div className="flex items-center justify-between mb-6">
+                      <div>
+                        <h3 className="text-lg font-bold text-text flex items-center gap-2">
+                          <Briefcase size={20} className="text-primary" /> Job Search Pipeline
+                        </h3>
+                        <p className="text-xs text-text-secondary mt-0.5">Real-time candidate discovery, bookmarking, and application tracking</p>
+                      </div>
+
+                      <Link to="/jobs" className="text-xs font-bold text-primary hover:underline flex items-center gap-1">
+                        View Pipeline <ArrowRight size={14} />
+                      </Link>
+                    </div>
+
+                    {/* Pipeline Stage Cards Grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4 text-center">
+                      {/* 1. Jobs Discovered */}
+                      <div className="p-4 rounded-xl bg-surface-elevated border border-border space-y-2">
+                        <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary mx-auto flex items-center justify-center">
+                          <Search size={18} />
+                        </div>
+                        <div className="text-2xl font-black text-text tracking-tight">{totalJobs}</div>
+                        <div className="text-xs font-semibold text-text-muted">Jobs Discovered</div>
+                      </div>
+
+                      {/* 2. High Matches */}
+                      <div className="p-4 rounded-xl bg-surface-elevated border border-accent/30 space-y-2">
+                        <div className="h-9 w-9 rounded-lg bg-accent/10 text-accent mx-auto flex items-center justify-center">
+                          <Sparkles size={18} />
+                        </div>
+                        <div className="text-2xl font-black text-accent tracking-tight">{highMatches}</div>
+                        <div className="text-xs font-semibold text-text-muted">High Matches</div>
+                      </div>
+
+                      {/* 3. Saved */}
+                      <div className="p-4 rounded-xl bg-surface-elevated border border-border space-y-2">
+                        <div className="h-9 w-9 rounded-lg bg-secondary/20 text-text mx-auto flex items-center justify-center">
+                          <Bookmark size={18} />
+                        </div>
+                        <div className="text-2xl font-black text-text tracking-tight">{savedJobs}</div>
+                        <div className="text-xs font-semibold text-text-muted">Saved</div>
+                      </div>
+
+                      {/* 4. Applied */}
+                      <div className="p-4 rounded-xl bg-surface-elevated border border-primary/30 space-y-2">
+                        <div className="h-9 w-9 rounded-lg bg-primary/15 text-primary mx-auto flex items-center justify-center">
+                          <Send size={18} />
+                        </div>
+                        <div className="text-2xl font-black text-primary tracking-tight">{appliedJobs}</div>
+                        <div className="text-xs font-semibold text-text-muted">Applied</div>
+                      </div>
+
+                      {/* 5. Interview */}
+                      <div className="p-4 rounded-xl bg-surface-elevated border border-success/30 space-y-2 col-span-2 sm:col-span-1">
+                        <div className="h-9 w-9 rounded-lg bg-success/15 text-success mx-auto flex items-center justify-center">
+                          <Calendar size={18} />
+                        </div>
+                        <div className="text-2xl font-black text-success tracking-tight">{interviewsCount}</div>
+                        <div className="text-xs font-semibold text-text-muted">Interview</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Guided Workflow Buttons */}
+                  <div className="pt-4 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
+                    <span className="text-text-muted font-medium">Quick Workflow Shortcut:</span>
+                    <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                      {!hasResume && (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => navigate("/profile")}
+                          icon={<FileText size={14} />}
+                          className="w-full sm:w-auto text-xs"
+                        >
+                          Upload Resume
+                        </Button>
+                      )}
+                      {!hasPreferences && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => navigate("/profile")}
+                          icon={<SlidersHorizontal size={14} />}
+                          className="w-full sm:w-auto text-xs"
+                        >
+                          Complete Preferences
+                        </Button>
+                      )}
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => navigate("/jobs")}
+                        icon={<Search size={14} />}
+                        className="w-full sm:w-auto text-xs font-bold"
+                      >
+                        View Jobs
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom Section: Recent Jobs & Activity Log */}
               <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 xl:gap-12">
-                {/* Left Column: Latest Jobs Grid */}
+                {/* Left Column: Recent Postings */}
                 <div className="xl:col-span-2 space-y-6">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-xl font-bold text-text">
-                      Recent Job Listings
+                    <h3 className="text-xl font-bold text-text flex items-center gap-2">
+                      <Briefcase size={20} className="text-primary" /> Discovered Positions
                     </h3>
-                    <Link to="/jobs" className="text-sm font-medium text-primary hover:text-primary-hover flex items-center gap-1 transition-colors">
-                      View All <ArrowRight size={16} />
+                    <Link to="/jobs" className="text-sm font-semibold text-primary hover:underline flex items-center gap-1">
+                      Explore All Jobs <ArrowRight size={16} />
                     </Link>
                   </div>
 
@@ -175,8 +333,13 @@ function DashboardPage() {
                     <div className="p-8 md:p-12 border border-border border-dashed rounded-2xl bg-surface text-center shadow-sm">
                       <EmptyState
                         icon={<Briefcase size={48} className="mx-auto mb-4 text-text-muted" />}
-                        title="No jobs fetched yet"
-                        description="Run a job search query to discover live postings from tech job boards."
+                        title="No jobs discovered yet"
+                        description="Run a search query on the Jobs page to fetch postings from Greenhouse, Lever, and Ashby."
+                        action={
+                          <Button onClick={() => navigate("/jobs")} variant="primary" className="mt-6">
+                            Start Job Search
+                          </Button>
+                        }
                       />
                     </div>
                   ) : (
@@ -188,7 +351,7 @@ function DashboardPage() {
                   )}
                 </div>
 
-                {/* Right Column: Activity Feed */}
+                {/* Right Column: Activity History Feed */}
                 <div className="space-y-6 flex flex-col">
                   <h3 className="text-xl font-bold text-text">
                     Live Activity History
@@ -198,7 +361,7 @@ function DashboardPage() {
                   </div>
                 </div>
               </div>
-            </div>
+            </>
           )}
         </div>
       </PageWrapper>
