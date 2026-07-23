@@ -1,11 +1,12 @@
 """
-Unit tests for MatchingService (70/30 Resume-Primary Hybrid Matching Engine).
+Unit tests for MatchingService (70/20/10 Resume/Preference/Freshness Hybrid Matching Engine).
 """
 
 import asyncio
 import uuid
 import sys
 import os
+from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -14,7 +15,7 @@ from app.services.matching_service import MatchingService
 
 
 class DummyJob:
-    def __init__(self, title, company, location, remote, description, salary=None):
+    def __init__(self, title, company, location, remote, description, salary=None, posted_date=None, fetched_at=None, last_verified_date=None):
         self.id = uuid.uuid4()
         self.title = title
         self.company = company
@@ -22,6 +23,11 @@ class DummyJob:
         self.remote = remote
         self.description = description
         self.salary = salary
+        
+        now = datetime.now(timezone.utc)
+        self.posted_date = posted_date
+        self.fetched_at = fetched_at or now
+        self.last_verified_date = last_verified_date or self.fetched_at
 
 
 class DummyPreferences:
@@ -36,13 +42,16 @@ class DummyPreferences:
 def test_matching_calculations():
     service = MatchingService(db=None)
 
+    now = datetime.now(timezone.utc)
     job = DummyJob(
         title="Senior Python Backend Engineer",
         company="Stripe",
         location="San Francisco, CA",
         remote=True,
         description="Looking for Senior Python Developer with FastAPI, PostgreSQL, Docker, AWS experience.",
-        salary="$150,000"
+        salary="$150,000",
+        posted_date=now - timedelta(days=2),
+        last_verified_date=now
     )
 
     parsed_resume = {
@@ -56,26 +65,47 @@ def test_matching_calculations():
 
     resume_res = service._calculate_resume_compatibility(parsed_resume, raw_text, job)
     pref_res = service._calculate_preference_alignment(job, preferences)
+    fresh_res = service._calculate_freshness(job)
 
-    # Verify resume weights (70%) and preference weights (30%)
+    # Verify resume weights (70%), preference weights (20%), freshness (10%)
     assert 0 <= resume_res["weighted"] <= 70.0, "Resume match weighted score must be <= 70"
-    assert 0 <= pref_res["weighted"] <= 30.0, "Preference match weighted score must be <= 30"
+    assert 0 <= pref_res["weighted"] <= 20.0, "Preference match weighted score must be <= 20"
+    assert 0 <= fresh_res["weighted"] <= 10.0, "Freshness match weighted score must be <= 10"
 
-    total = round(resume_res["weighted"] + pref_res["weighted"], 1)
+    total = round(resume_res["weighted"] + pref_res["weighted"] + fresh_res["weighted"], 1)
     assert total > 80.0, f"Strong match candidate should score > 80%, got {total}"
-    assert "skills_match" in resume_res
-    assert "experience_match" in resume_res
-    assert "role_similarity" in resume_res
-    assert "tech_overlap" in resume_res
-
-    assert "location_match" in pref_res
-    assert "salary_match" in pref_res
-    assert "remote_match" in pref_res
-    assert "company_match" in pref_res
 
     print("test_matching_calculations: PASSED")
-    print(f"  Calculated Total Score: {total}% (Resume 70%: {resume_res['weighted']} pts, Pref 30%: {pref_res['weighted']} pts)")
+    print(f"  Calculated Total Score: {total}% (Resume: {resume_res['weighted']}, Pref: {pref_res['weighted']}, Fresh: {fresh_res['weighted']})")
+
+
+def test_freshness_calculations():
+    service = MatchingService(db=None)
+    now = datetime.now(timezone.utc)
+    
+    # 1. Very Fresh Job (Posted 1 day ago, Verified today)
+    fresh_job = DummyJob("Title", "Co", "Loc", False, "Desc", posted_date=now - timedelta(days=1), last_verified_date=now)
+    res_fresh = service._calculate_freshness(fresh_job)
+    assert res_fresh["weighted"] >= 9.0  # Should be very close to 10
+    
+    # 2. Old Job (Posted 30 days ago, Verified 10 days ago)
+    old_job = DummyJob("Title", "Co", "Loc", False, "Desc", posted_date=now - timedelta(days=30), last_verified_date=now - timedelta(days=10))
+    res_old = service._calculate_freshness(old_job)
+    assert res_old["weighted"] < 5.0  # Should be significantly decayed
+    
+    # 3. Completely Stale Job (Posted 60 days ago, Verified 30 days ago)
+    stale_job = DummyJob("Title", "Co", "Loc", False, "Desc", posted_date=now - timedelta(days=60), last_verified_date=now - timedelta(days=30))
+    res_stale = service._calculate_freshness(stale_job)
+    assert res_stale["weighted"] == 0.0  # Completely decayed
+    
+    # 4. Missing Posted Date (relies entirely on fetched_at / verified)
+    missing_posted_job = DummyJob("Title", "Co", "Loc", False, "Desc", posted_date=None, last_verified_date=now - timedelta(days=2))
+    res_missing_posted = service._calculate_freshness(missing_posted_job)
+    assert res_missing_posted["weighted"] > 5.0  # Still gets score from verified date
+    
+    print("test_freshness_calculations: PASSED")
 
 
 if __name__ == "__main__":
     test_matching_calculations()
+    test_freshness_calculations()

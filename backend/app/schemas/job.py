@@ -45,6 +45,7 @@ class NormalizedJob(BaseModel):
     posted_date: Optional[datetime] = Field(default_factory=datetime.utcnow, description="Original posting date")
     required_skills: List[str] = Field(default_factory=list, description="Extracted required technical skills")
     apply_url: Optional[str] = Field(None, description="Direct application form link")
+    last_verified_date: Optional[datetime] = Field(default_factory=datetime.utcnow, description="When this job was last verified as active")
 
 
 class JobResponse(BaseModel):
@@ -62,6 +63,7 @@ class JobResponse(BaseModel):
     source: str
     posted_date: datetime
     fetched_at: datetime
+    last_verified_date: datetime
     content_hash: str
 
     class Config:

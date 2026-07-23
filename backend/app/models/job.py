@@ -108,3 +108,10 @@ class Job(Base):
         nullable=False,
         comment="When Finder discovered this job listing"
     )
+
+    last_verified_date: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+        comment="When this job was last verified as active"
+    )

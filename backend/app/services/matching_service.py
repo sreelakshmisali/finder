@@ -19,7 +19,10 @@ import re
 import logging
 import uuid
 from typing import List, Dict, Any, Optional
+from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core import ranking_constants as rc
 
 from app.ai import get_ai_provider
 from app.models.job import Job
@@ -117,12 +120,12 @@ class MatchingService:
             tech_overlap = 80.0
         tech_overlap = min(tech_overlap, 100.0)
 
-        raw_score = (skills_match * 0.35) + (experience_match * 0.20) + (role_similarity * 0.25) + (tech_overlap * 0.20)
+        raw_score = (skills_match * rc.RESUME_SKILLS_WEIGHT) + (experience_match * rc.RESUME_EXP_WEIGHT) + (role_similarity * rc.RESUME_ROLE_WEIGHT) + (tech_overlap * rc.RESUME_TECH_WEIGHT)
         raw_score = round(min(raw_score, 100.0), 1)
 
         return {
             "raw": raw_score,
-            "weighted": round(raw_score * 0.70, 1),
+            "weighted": round(raw_score * rc.WEIGHT_RESUME, 1),
             "skills_match": round(skills_match, 1),
             "experience_match": round(experience_match, 1),
             "role_similarity": round(role_similarity, 1),
@@ -140,7 +143,7 @@ class MatchingService:
         if not preferences:
             return {
                 "raw": 70.0,
-                "weighted": 21.0,
+                "weighted": round(70.0 * rc.WEIGHT_PREFERENCE, 1),
                 "location_match": 70.0,
                 "salary_match": 70.0,
                 "remote_match": 70.0,
@@ -192,16 +195,53 @@ class MatchingService:
         else:
             company_match = 75.0
 
-        raw_score = (location_match * 0.30) + (salary_match * 0.25) + (remote_match * 0.25) + (company_match * 0.20)
+        raw_score = (location_match * rc.PREF_LOCATION_WEIGHT) + (salary_match * rc.PREF_SALARY_WEIGHT) + (remote_match * rc.PREF_REMOTE_WEIGHT) + (company_match * rc.PREF_COMPANY_WEIGHT)
         raw_score = round(min(raw_score, 100.0), 1)
 
         return {
             "raw": raw_score,
-            "weighted": round(raw_score * 0.30, 1),
+            "weighted": round(raw_score * rc.WEIGHT_PREFERENCE, 1),
             "location_match": round(location_match, 1),
             "salary_match": round(salary_match, 1),
             "remote_match": round(remote_match, 1),
             "company_match": round(company_match, 1),
+        }
+
+    def _calculate_freshness(self, job: Job) -> Dict[str, float]:
+        """
+        Calculates Freshness alignment (10% influence):
+        - Posted Date
+        - Last Verified Date / Fetched At
+        """
+        now = datetime.now(timezone.utc)
+        
+        # 1. Posted Date Score
+        posted_score = 0.0
+        if job.posted_date:
+            posted_age = max(0.0, (now - job.posted_date).total_seconds() / 86400.0)
+            # Linear decay to 0 at max days
+            posted_score = max(0.0, 100.0 * (1.0 - (posted_age / rc.DECAY_POSTED_DAYS_MAX)))
+            
+        # 2. Verified Date Score (gracefully handles missing last_verified_date using fetched_at)
+        verified_score = 0.0
+        verified_date = getattr(job, 'last_verified_date', None) or job.fetched_at
+        if verified_date:
+            verified_age = max(0.0, (now - verified_date).total_seconds() / 86400.0)
+            verified_score = max(0.0, 100.0 * (1.0 - (verified_age / rc.DECAY_VERIFIED_DAYS_MAX)))
+            
+        # If no posted date exists, put all weight on verification/discovery
+        if not job.posted_date:
+            raw_score = verified_score
+        else:
+            raw_score = (posted_score * rc.FRESH_POSTED_WEIGHT) + (verified_score * rc.FRESH_VERIFIED_WEIGHT)
+            
+        raw_score = round(min(raw_score, 100.0), 1)
+        
+        return {
+            "raw": raw_score,
+            "weighted": round(raw_score * rc.WEIGHT_FRESHNESS, 1),
+            "posted_score": round(posted_score, 1),
+            "verified_score": round(verified_score, 1)
         }
 
     async def match_job(
@@ -231,15 +271,19 @@ class MatchingService:
         parsed_data = resume.parsed_data or {}
         raw_text = resume.raw_text or ""
 
-        # 1. Resume compatibility (70% weight)
+        # 1. Resume compatibility
         resume_res = self._calculate_resume_compatibility(parsed_data, raw_text, job)
-        resume_match = resume_res["weighted"]  # out of 70 max points
+        resume_match = resume_res["weighted"]
 
-        # 2. Preference alignment (30% weight)
+        # 2. Preference alignment
         pref_res = self._calculate_preference_alignment(job, preferences)
-        preference_match = pref_res["weighted"]  # out of 30 max points
+        preference_match = pref_res["weighted"]
+        
+        # 3. Freshness alignment
+        fresh_res = self._calculate_freshness(job)
+        freshness_match = fresh_res["weighted"]
 
-        total_score = round(min(resume_match + preference_match, 100.0), 1)
+        total_score = round(min(resume_match + preference_match + freshness_match, 100.0), 1)
 
         # 3. AI Explanation & Reason Generation
         ai_explanation = await self.ai.explain_match(
@@ -256,7 +300,7 @@ class MatchingService:
 
         recommendation = ai_explanation.get(
             "recommendation",
-            f"Resume compatibility: {resume_res['raw']}% (70% weight = {resume_match} pts) + Preference fit: {pref_res['raw']}% (30% weight = {preference_match} pts)"
+            f"Resume: {resume_res['raw']}% ({resume_match} pts) | Pref: {pref_res['raw']}% ({preference_match} pts) | Fresh: {fresh_res['raw']}% ({freshness_match} pts)"
         )
 
         return MatchResult(
@@ -264,6 +308,7 @@ class MatchingService:
             score=total_score,
             resume_match=resume_match,
             preference_match=preference_match,
+            freshness_match=freshness_match,
             missing_skills=missing_skills,
             reason=primary_reason,
             reasons=reasons,
@@ -279,8 +324,12 @@ class MatchingService:
                 "salary_match": pref_res["salary_match"],
                 "remote_match": pref_res["remote_match"],
                 "company_match": pref_res["company_match"],
+                "freshness_raw": fresh_res["raw"],
+                "freshness_posted_score": fresh_res["posted_score"],
+                "freshness_verified_score": fresh_res["verified_score"],
                 "keyword_score": resume_res["skills_match"],
-                "preference_bonus": preference_match
+                "preference_bonus": preference_match,
+                "freshness_bonus": freshness_match
             }
         )
 
