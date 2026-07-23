@@ -31,7 +31,8 @@ class HeuristicExtractor(BaseExtractor):
         html: str,
         search_result: Optional[SearchResult] = None
     ) -> Optional[NormalizedJob]:
-        if not search_result and not url:
+        # If page fetch failed (empty html) and no search_result provided, return None
+        if not html and not search_result:
             return None
 
         title = search_result.title if search_result else "Software Position"

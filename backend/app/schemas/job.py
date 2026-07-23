@@ -43,6 +43,8 @@ class NormalizedJob(BaseModel):
     url: str = Field(..., description="Application URL")
     source: str = Field(..., description="Provider source identifier")
     posted_date: Optional[datetime] = Field(default_factory=datetime.utcnow, description="Original posting date")
+    required_skills: List[str] = Field(default_factory=list, description="Extracted required technical skills")
+    apply_url: Optional[str] = Field(None, description="Direct application form link")
 
 
 class JobResponse(BaseModel):

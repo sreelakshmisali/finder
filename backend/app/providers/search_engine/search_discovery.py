@@ -2,19 +2,18 @@
 Search Engine Job Discovery Provider
 
 Unified `JobDiscoveryProvider` orchestrating web search engine plugins (Google, Bing)
-and page extraction pipeline. Registered directly in ProviderRegistry.
+and career page extraction via `JobExtractor`. Registered directly in ProviderRegistry.
 """
 
 import asyncio
 import logging
-from typing import List, Optional
+from typing import List, Optional, Any
 from datetime import datetime
 
 from app.providers.base_discovery import SearchEngineProvider, DiscoveryContext
 from app.providers.search_engine.base_search import SearchProvider, SearchResult
 from app.providers.search_engine.google_search import GoogleSearchProvider
 from app.providers.search_engine.bing_search import BingSearchProvider
-from app.providers.search_engine.extractor_pipeline import JobPageExtractor
 from app.schemas.job import NormalizedJob
 
 logger = logging.getLogger(__name__)
@@ -28,13 +27,20 @@ class SearchDiscoveryProvider(SearchEngineProvider):
     def __init__(
         self,
         search_providers: Optional[List[SearchProvider]] = None,
-        extractor: Optional[JobPageExtractor] = None
+        job_extractor: Optional[Any] = None
     ):
         self.search_providers = search_providers if search_providers is not None else [
             GoogleSearchProvider(),
             BingSearchProvider()
         ]
-        self.extractor = extractor or JobPageExtractor()
+        self._job_extractor = job_extractor
+
+    @property
+    def job_extractor(self):
+        if self._job_extractor is None:
+            from app.services.job_extractor import JobExtractor
+            self._job_extractor = JobExtractor()
+        return self._job_extractor
 
     @property
     def source_name(self) -> str:
@@ -50,7 +56,7 @@ class SearchDiscoveryProvider(SearchEngineProvider):
 
     async def discover(self, context: DiscoveryContext) -> List[NormalizedJob]:
         """
-        Orchestrates search provider discovery, URL deduplication, and page extraction.
+        Orchestrates search provider discovery, URL deduplication, and career page extraction.
         """
         query_text = context.query.query or "Software Engineer"
         limit = context.query.limit
@@ -80,9 +86,9 @@ class SearchDiscoveryProvider(SearchEngineProvider):
         if not all_results:
             return []
 
-        # 4. Extract pages concurrently
+        # 4. Extract career pages concurrently via JobExtractor
         extraction_tasks = [
-            self.extractor.extract_job(search_result=item, fetch_page=True)
+            self.job_extractor.extract_from_url(url=item.url, search_result=item)
             for item in all_results[:limit]
         ]
         extracted_jobs = await asyncio.gather(*extraction_tasks, return_exceptions=True)
@@ -96,7 +102,6 @@ class SearchDiscoveryProvider(SearchEngineProvider):
 
     async def get_details(self, url: str) -> Optional[NormalizedJob]:
         """
-        Fetch details for a single web job URL using JobPageExtractor.
+        Fetch details for a single web job URL using JobExtractor.
         """
-        dummy_result = SearchResult(title="Job Listing", url=url, snippet="", engine="direct")
-        return await self.extractor.extract_job(dummy_result, fetch_page=True)
+        return await self.job_extractor.extract_from_url(url=url)
