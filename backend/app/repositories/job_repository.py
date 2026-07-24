@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.job import Job
 from app.schemas.job import NormalizedJob
 from app.utils.dedup import generate_content_hash
+from app.services.dedup import DuplicateDetectionService
 
 logger = logging.getLogger(__name__)
 
@@ -50,18 +51,39 @@ class JobRepository:
     async def save_normalized_job(self, norm_job: NormalizedJob) -> Job:
         """
         Converts a NormalizedJob schema to a Job DB record and saves it if not a duplicate.
-        Returns existing record if a duplicate URL or content hash is found.
+        Returns existing merged record if a duplicate is found using intelligent detection.
         """
         content_hash = generate_content_hash(norm_job.company, norm_job.title, norm_job.location)
 
-        # Check existing by content hash or URL
-        existing = await self.get_by_content_hash(content_hash)
-        if existing:
-            return existing
-
+        # 1. Exact URL match (fast path)
         existing_url = await self.get_by_url(norm_job.url)
         if existing_url:
-            return existing_url
+            return await self._merge_job(existing_url, norm_job)
+
+        # 2. Exact content hash match (legacy fast path)
+        existing_hash = await self.get_by_content_hash(content_hash)
+        if existing_hash:
+            return await self._merge_job(existing_hash, norm_job)
+
+        # 3. Intelligent Duplicate Detection
+        dedup_service = DuplicateDetectionService()
+        
+        # Fetch candidates: similar company, recent
+        # Extract a prefix or normalized term to query
+        norm_company = dedup_service.normalize_string(norm_job.company)
+        search_term = norm_company[:10] if len(norm_company) > 10 else norm_company
+        
+        stmt = select(Job).where(Job.company.ilike(f"%{search_term}%")).order_by(Job.posted_date.desc()).limit(50)
+        result = await self.db.execute(stmt)
+        candidates = result.scalars().all()
+
+        dup_result = dedup_service.detect_duplicate(norm_job, candidates)
+        if dup_result.is_duplicate and dup_result.duplicate_of_id:
+            existing_dup = await self.get_by_id(dup_result.duplicate_of_id)
+            if existing_dup:
+                return await self._merge_job(existing_dup, norm_job)
+
+        # 4. No duplicate found, create new record
 
         db_job = Job(
             company=norm_job.company,
@@ -80,6 +102,33 @@ class JobRepository:
         await self.db.commit()
         await self.db.refresh(db_job)
         return db_job
+
+    async def _merge_job(self, existing: Job, norm_job: NormalizedJob) -> Job:
+        """
+        Merges missing metadata from a newly fetched duplicate job into the existing database record.
+        """
+        changed = False
+
+        # Merge salary if existing is missing it
+        if not existing.salary and norm_job.salary:
+            existing.salary = norm_job.salary
+            changed = True
+            
+        # Merge remote flag (e.g. if one source didn't tag it but the other did)
+        if not existing.remote and norm_job.remote:
+            existing.remote = True
+            changed = True
+            
+        # Append source if new
+        if norm_job.source not in existing.source:
+            existing.source = f"{existing.source},{norm_job.source}"
+            changed = True
+            
+        if changed:
+            await self.db.commit()
+            await self.db.refresh(existing)
+            
+        return existing
 
     async def search_jobs(
         self,

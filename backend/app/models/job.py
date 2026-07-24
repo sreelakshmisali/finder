@@ -11,7 +11,7 @@ from datetime import datetime
 import uuid
 from typing import Optional
 from sqlalchemy import String, Text, Boolean, DateTime
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 
 from app.database.base import Base
@@ -115,3 +115,7 @@ class Job(Base):
         nullable=False,
         comment="When this job was last verified as active"
     )
+
+    # Relationships
+    verification = relationship("JobVerification", back_populates="job", uselist=False, cascade="all, delete-orphan")
+

@@ -23,7 +23,15 @@ class Settings(BaseSettings):
     APP_NAME: str = "Finder"
     API_V1_PREFIX: str = "/api/v1"
     UPLOAD_DIR: str = "./uploads"
+
+    # Duplicate Detection Settings
+    DEDUP_COMPANY_WEIGHT: float = 0.4
+    DEDUP_TITLE_WEIGHT: float = 0.4
+    DEDUP_LOCATION_WEIGHT: float = 0.1
+    DEDUP_DESCRIPTION_WEIGHT: float = 0.1
+    DEDUP_MIN_SCORE_THRESHOLD: float = 0.85
     
+
     # CORS
     CORS_ORIGINS: Union[str, List[AnyHttpUrl]] = ["http://localhost:5173"]
 
