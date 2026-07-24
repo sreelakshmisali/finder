@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Header from "../components/layout/Header";
 import PageWrapper from "../components/layout/PageWrapper";
 import JobCard from "../components/shared/JobCard";
@@ -32,16 +32,12 @@ function JobsPage() {
 
   const { data: providersData } = useProviders();
   const { data: searchData, isLoading, isError, refetch } = useJobSearch(
-    hasSearched ? queryParams : { ...queryParams, limit: 0 } // Don't trigger full search until hasSearched
+    queryParams,
+    hasSearched // Only enable query if user has explicitly searched
   );
   
-  // When component mounts, check if we have URL params or state to pre-fill search
-  useEffect(() => {
-    // Prevent auto-searching on mount unless we have active query params injected
-    if (queryParams.query || queryParams.search_mode === "SMART") {
-      setHasSearched(true);
-    }
-  }, [queryParams]);
+  // Notice: We intentionally do NOT use a useEffect to auto-restore search state.
+  // Returning to the Jobs page after leaving always resets to the search landing state.
 
   const { data: onboarding } = useOnboardingStatus();
   const { data: suggestedQueriesData } = useSuggestedQueries();

@@ -79,6 +79,20 @@ class JobService:
         applied_query = query.query
         applied_location = query.location
 
+        # Enforce search-first architecture: Do not execute empty searches.
+        # A valid search must either be SMART mode OR have a query, location, or source filter.
+        if query.search_mode == SearchMode.NORMAL and not query.query.strip() and not query.location.strip() and not query.providers:
+            logger.info("Rejected empty NORMAL search. Returning empty result set.")
+            return JobListResponse(
+                total=0,
+                jobs=[],
+                providers_searched=[],
+                suggested_queries=suggested_queries,
+                search_mode=query.search_mode,
+                applied_query=applied_query,
+                applied_location=applied_location
+            )
+
         cache_key = make_cache_key(
             user_id=user_id,
             query=applied_query,
@@ -108,7 +122,37 @@ class JobService:
                     logger.info(f"Cache HIT (coalesced) for search key: '{cache_key}'")
                     return cached_res
 
-            logger.info(f"Cache MISS for search key: '{cache_key}'. Querying providers...")
+            logger.info(f"Cache MISS for search key: '{cache_key}'. Querying Search Index...")
+
+            from app.core.config import settings
+
+            # 4. Check Search Index (Local Database)
+            stored_jobs = await self.repo.search_jobs(
+                query=query.query,
+                location=query.location,
+                remote_only=query.remote_only,
+                sources=query.providers,
+                limit=query.limit,
+                max_age_days=settings.SEARCH_INDEX_MAX_JOB_AGE_DAYS
+            )
+
+            # Evaluate Quantity & Freshness
+            if len(stored_jobs) >= settings.SEARCH_INDEX_MIN_RESULTS:
+                logger.info(f"Search Index HIT: Found {len(stored_jobs)} fresh indexed jobs for query '{query.query}'. Skipping external discovery.")
+                response = JobListResponse(
+                    total=len(stored_jobs),
+                    jobs=[JobResponse.model_validate(j) for j in stored_jobs],
+                    providers_searched=["Indexed Jobs"],
+                    suggested_queries=suggested_queries,
+                    search_mode=query.search_mode,
+                    applied_query=applied_query,
+                    applied_location=applied_location
+                )
+                await search_cache.set(cache_key, response)
+                await search_cache.cleanup_key_lock(cache_key)
+                return response
+
+            logger.info(f"Search Index MISS: Insufficient fresh jobs ({len(stored_jobs)}). Querying external providers...")
 
             all_providers = registry.get_enabled_providers()
 
@@ -123,13 +167,14 @@ class JobService:
             searched_provider_names = [p.source_name for p in target_providers]
 
             if not target_providers:
-                # Fallback: search stored database jobs directly
+                # Fallback: return what we have in the Search Index, even if insufficient
                 stored_jobs = await self.repo.search_jobs(
                     query=query.query,
                     location=query.location,
                     remote_only=query.remote_only,
                     sources=query.providers,
-                    limit=query.limit
+                    limit=query.limit,
+                    max_age_days=None # Ignored for ultimate fallback
                 )
                 response = JobListResponse(
                     total=len(stored_jobs),
@@ -161,7 +206,7 @@ class JobService:
                     logger.info(f"Discovery provider '{p_name}' returned {len(result)} jobs")
                     raw_jobs.extend(result)
 
-            # Persist & deduplicate in database
+            # Persist & deduplicate in Search Index
             saved_db_jobs: List[Job] = []
             for norm_job in raw_jobs:
                 try:
@@ -170,14 +215,15 @@ class JobService:
                 except Exception as exc:
                     logger.warning(f"Error saving job '{norm_job.title}' at '{norm_job.company}': {exc}")
 
-            # If no new jobs were scraped (or network offline), query stored database jobs
+            # If no new jobs were scraped (or network offline), query stored indexed jobs
             if not saved_db_jobs:
                 stored = await self.repo.search_jobs(
                     query=query.query,
                     location=query.location,
                     remote_only=query.remote_only,
                     sources=query.providers,
-                    limit=query.limit
+                    limit=query.limit,
+                    max_age_days=None # Fallback
                 )
                 saved_db_jobs = list(stored)
 

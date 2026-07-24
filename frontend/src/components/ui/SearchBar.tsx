@@ -74,7 +74,6 @@ function SearchBar({
   const runSavedSearchMutation = useRunSavedSearch();
   const deleteSavedSearchMutation = useDeleteSavedSearch();
 
-  const isInitialMount = useRef(true);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Sync displayed query with applied query
@@ -84,10 +83,10 @@ function SearchBar({
     }
   }, [appliedQuery]);
 
-  // Execute debounced search when user modifies filters
+  // Execute debounced search when user modifies filters ONLY if they are already in the header layout
+  // (i.e. they have already initiated a search). We don't auto-search from the landing page.
   useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
+    if (layout === "landing") {
       return;
     }
 
@@ -126,12 +125,11 @@ function SearchBar({
     executeSearch(false);
   };
 
-  const handleChipClick = (suggested: string) => {
+    const handleChipClick = (suggested: string) => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
     setQuery(suggested);
-    // When clicking a suggestion, we switch to NORMAL mode since it's a specific query now
     setSearchMode("NORMAL");
     onSearch({
       query: suggested,

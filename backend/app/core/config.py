@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     DEDUP_DESCRIPTION_WEIGHT: float = 0.1
     DEDUP_MIN_SCORE_THRESHOLD: float = 0.85
     
+    # Search Index Settings
+    SEARCH_INDEX_MIN_RESULTS: int = 15
+    SEARCH_INDEX_MAX_JOB_AGE_DAYS: int = 7
 
     # CORS
     CORS_ORIGINS: Union[str, List[AnyHttpUrl]] = ["http://localhost:5173"]

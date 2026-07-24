@@ -136,10 +136,11 @@ class JobRepository:
         location: Optional[str] = None,
         remote_only: bool = False,
         sources: Optional[List[str]] = None,
-        limit: int = 50
+        limit: int = 50,
+        max_age_days: Optional[int] = None
     ) -> Sequence[Job]:
         """
-        Search stored jobs in PostgreSQL matching keywords, location, or source filters.
+        Search indexed jobs in PostgreSQL matching keywords, location, or source filters.
         """
         stmt = select(Job)
 
@@ -161,6 +162,11 @@ class JobRepository:
 
         if sources and len(sources) > 0:
             stmt = stmt.where(Job.source.in_(sources))
+
+        if max_age_days is not None:
+            from datetime import datetime, timedelta, timezone
+            cutoff = datetime.now(timezone.utc) - timedelta(days=max_age_days)
+            stmt = stmt.where(Job.posted_date >= cutoff)
 
         stmt = stmt.order_by(Job.posted_date.desc()).limit(limit)
 
