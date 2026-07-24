@@ -21,7 +21,9 @@ def make_cache_key(
     remote_only: bool,
     providers: Optional[List[str]],
     min_salary: Optional[int],
-    limit: int
+    limit: int,
+    search_mode: str = "NORMAL",
+    profile_version: str = "none"
 ) -> str:
     """
     Generates a canonical cache key based on final applied search parameters.
@@ -33,8 +35,9 @@ def make_cache_key(
     prov_str = "_".join(sorted([p.lower() for p in providers])) if providers else "all_providers"
     sal_str = str(min_salary) if min_salary else "any_sal"
     limit_str = str(limit)
+    mode_str = search_mode.lower()
 
-    return f"search:{user_str}:{q_str}:{loc_str}:{remote_str}:{prov_str}:{sal_str}:{limit_str}"
+    return f"search:{user_str}:{q_str}:{loc_str}:{remote_str}:{prov_str}:{sal_str}:{limit_str}:{mode_str}:{profile_version}"
 
 
 class SearchCache:

@@ -37,6 +37,7 @@ async def create_saved_search(
     return await repo.create(
         user_id=current_user.id,
         name=payload.name,
+        mode=payload.mode.value,
         query=payload.query,
         filters=payload.filters
     )

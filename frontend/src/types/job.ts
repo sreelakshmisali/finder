@@ -4,6 +4,8 @@
  * Interfaces matching the backend Pydantic schemas for jobs and search parameters.
  */
 
+export type SearchMode = "NORMAL" | "SMART";
+
 export interface Job {
   id: string;
   company: string;
@@ -26,7 +28,7 @@ export interface JobSearchQueryParams {
   location?: string;
   remote_only?: boolean;
   sources?: string[];
-  manual_search?: boolean;
+  search_mode?: SearchMode;
   min_salary?: number;
   force_refresh?: boolean;
   limit?: number;
@@ -37,7 +39,7 @@ export interface JobListResponse {
   jobs: Job[];
   providers_searched: string[];
   suggested_queries?: string[];
-  is_generated?: boolean;
+  search_mode?: SearchMode;
   applied_query?: string;
   applied_location?: string;
 }

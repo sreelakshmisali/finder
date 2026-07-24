@@ -25,6 +25,7 @@ class SavedSearchRepository:
         self,
         user_id: uuid.UUID,
         name: str,
+        mode: str,
         query: Optional[str] = None,
         filters: Optional[Dict[str, Any]] = None
     ) -> SavedSearch:
@@ -35,6 +36,7 @@ class SavedSearchRepository:
             id=uuid.uuid4(),
             user_id=user_id,
             name=name.strip(),
+            mode=mode,
             query=query.strip() if query else None,
             filters=filters or {},
             created_at=datetime.now(timezone.utc),

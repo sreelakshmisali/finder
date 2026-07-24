@@ -8,6 +8,8 @@ from datetime import datetime
 import uuid
 from typing import Optional, Dict, Any
 from pydantic import BaseModel, Field
+from app.schemas.job import SearchMode
+
 
 
 class SavedSearchCreate(BaseModel):
@@ -17,6 +19,7 @@ class SavedSearchCreate(BaseModel):
     name: str = Field(..., max_length=150, description="Name for the search rule (e.g. 'Python Remote Jobs')")
     query: Optional[str] = Field(None, max_length=255, description="Search keyword terms (e.g. 'Python Backend')")
     filters: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Filter rules (location, remote_only, sources, min_salary, etc.)")
+    mode: SearchMode = Field(default=SearchMode.NORMAL, description="Search mode to execute")
 
 
 class SavedSearchResponse(BaseModel):
@@ -28,6 +31,7 @@ class SavedSearchResponse(BaseModel):
     name: str = Field(..., description="Name for the search rule")
     query: Optional[str] = Field(None, description="Search keyword string")
     filters: Dict[str, Any] = Field(default_factory=dict, description="Filter rules dictionary")
+    mode: SearchMode = Field(..., description="Search mode")
     created_at: datetime = Field(..., description="Timestamp when search rule was saved")
     last_run: Optional[datetime] = Field(None, description="Timestamp when search rule was last executed")
 

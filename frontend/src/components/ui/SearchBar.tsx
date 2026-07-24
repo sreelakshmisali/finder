@@ -13,7 +13,6 @@ import {
   SlidersHorizontal,
   Check,
   Sparkles,
-  RotateCcw,
   DollarSign,
   RefreshCw,
   Bookmark,
@@ -21,7 +20,7 @@ import {
   Trash2,
   Play,
 } from "lucide-react";
-import { Button, Input, Badge, Modal } from "./index";
+import { Button, Input, Modal } from "./index";
 import {
   useSavedSearches,
   useCreateSavedSearch,
@@ -29,6 +28,7 @@ import {
   useDeleteSavedSearch,
 } from "../../hooks/useSavedSearches";
 import type { SavedSearch } from "../../types/savedSearch";
+import type { SearchMode } from "../../types/job";
 
 interface SearchBarProps {
   onSearch: (params: {
@@ -36,28 +36,26 @@ interface SearchBarProps {
     location: string;
     remoteOnly: boolean;
     sources: string[];
-    manualSearch: boolean;
+    searchMode: SearchMode;
     minSalary?: number;
     forceRefresh?: boolean;
   }) => void;
-  onResetToAuto?: () => void;
   isLoading?: boolean;
   providers?: { name: string; display_name: string }[];
   suggestedQueries?: string[];
-  isGenerated?: boolean;
   appliedQuery?: string;
   appliedLocation?: string;
+  layout?: "landing" | "header";
 }
 
 function SearchBar({
   onSearch,
-  onResetToAuto,
   isLoading,
   providers = [],
   suggestedQueries = [],
-  isGenerated = false,
   appliedQuery,
   appliedLocation,
+  layout = "header",
 }: SearchBarProps) {
   const [query, setQuery] = useState("");
   const [location, setLocation] = useState("");
@@ -65,6 +63,7 @@ function SearchBar({
   const [remoteOnly, setRemoteOnly] = useState(false);
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
+  const [searchMode, setSearchMode] = useState<SearchMode>("NORMAL");
 
   // Saved Searches state & hooks
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
@@ -78,12 +77,12 @@ function SearchBar({
   const isInitialMount = useRef(true);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Sync displayed query with applied query when auto-generated
+  // Sync displayed query with applied query
   useEffect(() => {
-    if (isGenerated && appliedQuery && !query) {
+    if (appliedQuery && !query) {
       setQuery(appliedQuery);
     }
-  }, [isGenerated, appliedQuery]);
+  }, [appliedQuery]);
 
   // Execute debounced search when user modifies filters
   useEffect(() => {
@@ -105,21 +104,18 @@ function SearchBar({
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [query, location, minSalary, remoteOnly, selectedSources]);
+  }, [query, location, minSalary, remoteOnly, selectedSources, searchMode]);
 
   const executeSearch = (forceRefresh = false) => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
-    const hasExplicitOverrides = Boolean(
-      query.trim() || location.trim() || minSalary || remoteOnly || selectedSources.length > 0
-    );
     onSearch({
       query: query.trim(),
       location: location.trim(),
       remoteOnly,
       sources: selectedSources,
-      manualSearch: hasExplicitOverrides,
+      searchMode,
       minSalary: minSalary ? Number(minSalary) : undefined,
       forceRefresh,
     });
@@ -135,38 +131,17 @@ function SearchBar({
       clearTimeout(debounceTimerRef.current);
     }
     setQuery(suggested);
+    // When clicking a suggestion, we switch to NORMAL mode since it's a specific query now
+    setSearchMode("NORMAL");
     onSearch({
       query: suggested,
       location: location.trim(),
       remoteOnly,
       sources: selectedSources,
-      manualSearch: true,
+      searchMode: "NORMAL",
       minSalary: minSalary ? Number(minSalary) : undefined,
       forceRefresh: false,
     });
-  };
-
-  const handleReset = () => {
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-    setQuery("");
-    setLocation("");
-    setMinSalary("");
-    setRemoteOnly(false);
-    setSelectedSources([]);
-    if (onResetToAuto) {
-      onResetToAuto();
-    } else {
-      onSearch({
-        query: "",
-        location: "",
-        remoteOnly: false,
-        sources: [],
-        manualSearch: false,
-        forceRefresh: false,
-      });
-    }
   };
 
   const toggleSource = (sourceName: string) => {
@@ -202,6 +177,7 @@ function SearchBar({
         name: savedSearchName.trim(),
         query: query.trim() || undefined,
         filters: filterObj,
+        mode: searchMode,
       },
       {
         onSuccess: () => {
@@ -223,12 +199,14 @@ function SearchBar({
     const srem = Boolean(savedFilters.remote_only);
     const ssources = savedFilters.sources || [];
     const sminSal = savedFilters.min_salary ? String(savedFilters.min_salary) : "";
+    const smode = saved.mode || "NORMAL";
 
     setQuery(sq);
     setLocation(sloc);
     setRemoteOnly(srem);
     setSelectedSources(ssources);
     setMinSalary(sminSal);
+    setSearchMode(smode);
 
     runSavedSearchMutation.mutate(saved.id);
 
@@ -237,7 +215,7 @@ function SearchBar({
       location: sloc,
       remoteOnly: srem,
       sources: ssources,
-      manualSearch: true,
+      searchMode: smode,
       minSalary: savedFilters.min_salary,
       forceRefresh: true,
     });
@@ -250,20 +228,20 @@ function SearchBar({
 
   return (
     <>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3.5 mb-6">
-        {/* Mode Indicator Banner */}
+      <form onSubmit={handleSubmit} className={`flex flex-col gap-3.5 ${layout === "landing" ? "w-full max-w-3xl mx-auto" : "mb-6"}`}>
+        {/* Top Controls */}
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
           <div className="flex items-center flex-wrap gap-2">
-            {isGenerated ? (
-              <Badge variant="accent" className="flex items-center gap-1 font-bold text-xs py-1 px-3">
-                <Sparkles size={13} /> Auto-Generated from Resume & Preferences
-              </Badge>
-            ) : (
-              <Badge variant="primary" className="flex items-center gap-1 font-bold text-xs py-1 px-3">
-                <SlidersHorizontal size={13} /> Manual Override Active
-              </Badge>
-            )}
-            {appliedQuery && (
+            <label className="flex items-center gap-2 text-sm text-text font-bold cursor-pointer select-none bg-surface-elevated px-3 py-1.5 rounded-full border border-border hover:border-primary/40 transition-colors">
+              <input
+                type="checkbox"
+                checked={searchMode === "SMART"}
+                onChange={(e) => setSearchMode(e.target.checked ? "SMART" : "NORMAL")}
+                className="h-4 w-4 rounded border-border bg-surface text-primary focus:ring-primary/40 cursor-pointer"
+              />
+              ✨ Search using my Resume
+            </label>
+            {layout === "header" && appliedQuery && (
               <span className="text-text-muted hidden sm:inline">
                 Active query: <strong className="text-text font-semibold">"{appliedQuery}"</strong>
                 {appliedLocation ? <span className="ml-1 font-normal">in <strong>"{appliedLocation}"</strong></span> : null}
@@ -291,17 +269,6 @@ function SearchBar({
             >
               <RefreshCw size={12} className={isLoading ? "animate-spin text-primary" : ""} /> Force Refresh
             </button>
-
-            {/* Reset to Auto CTA */}
-            {(!isGenerated || query || location || minSalary || remoteOnly || selectedSources.length > 0) && (
-              <button
-                type="button"
-                onClick={handleReset}
-                className="text-xs text-primary font-bold hover:underline flex items-center gap-1 cursor-pointer transition-colors"
-              >
-                <RotateCcw size={12} /> Reset to Resume Defaults
-              </button>
-            )}
           </div>
         </div>
 
@@ -313,6 +280,8 @@ function SearchBar({
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search title, skills, or company (e.g. Python Engineer)..."
               icon={<Search size={18} />}
+              disabled={searchMode === "SMART"}
+              className={searchMode === "SMART" ? "opacity-50 cursor-not-allowed" : ""}
             />
           </div>
 
@@ -350,7 +319,7 @@ function SearchBar({
         </div>
 
         {/* Saved Searches Row */}
-        {savedSearches.length > 0 && (
+        {savedSearches.length > 0 && layout === "header" && (
           <div className="flex items-center flex-wrap gap-2 pt-1 text-xs">
             <span className="text-text-muted font-bold flex items-center gap-1">
               <Bookmark size={13} className="text-primary" /> Saved Searches:
@@ -379,7 +348,7 @@ function SearchBar({
         )}
 
         {/* Suggested Search Query Chips */}
-        {suggestedQueries.length > 0 && (
+        {suggestedQueries.length > 0 && layout === "header" && (
           <div className="flex items-center flex-wrap gap-2 pt-1 text-xs">
             <span className="text-text-muted font-bold flex items-center gap-1">
               <Sparkles size={13} className="text-accent" /> Resume Suggestions:
@@ -408,7 +377,7 @@ function SearchBar({
 
         {/* Expandable Filter Panel */}
         {showFilters && (
-          <div className="p-5 glass-card rounded-xl flex flex-col sm:flex-row flex-wrap items-start sm:items-center justify-between gap-6 animate-in fade-in duration-200">
+          <div className="p-5 glass-card rounded-xl flex flex-col sm:flex-row flex-wrap items-start sm:items-center justify-between gap-6 animate-in fade-in duration-200 mt-2">
             {/* Min Salary Input */}
             <div className="w-full sm:w-48">
               <label className="block text-xs font-bold text-text mb-1">
@@ -489,6 +458,7 @@ function SearchBar({
             <div className="font-bold text-text mb-1 flex items-center gap-1.5">
               <Bookmark size={14} className="text-primary" /> Active Rule Payload Summary:
             </div>
+            <div><strong className="text-text">Mode:</strong> {searchMode}</div>
             <div><strong className="text-text">Query:</strong> {query.trim() || "(None)"}</div>
             <div><strong className="text-text">Location:</strong> {location.trim() || "(Any)"}</div>
             <div><strong className="text-text">Remote Only:</strong> {remoteOnly ? "Yes" : "No"}</div>

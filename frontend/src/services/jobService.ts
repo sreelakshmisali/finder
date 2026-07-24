@@ -18,7 +18,7 @@ export async function searchJobs(params: JobSearchQueryParams): Promise<JobListR
       location: params.location,
       remote_only: params.remote_only,
       sources: params.sources,
-      manual_search: params.manual_search,
+      search_mode: params.search_mode,
       min_salary: params.min_salary,
       force_refresh: params.force_refresh,
       limit: params.limit || 50,

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Header from "../components/layout/Header";
 import PageWrapper from "../components/layout/PageWrapper";
 import JobCard from "../components/shared/JobCard";
@@ -9,12 +9,13 @@ import { Badge, Spinner, Modal, Button } from "../components/ui";
 import { useNavigate } from "react-router-dom";
 import { useJobSearch, useProviders, useMatchJob, useSuggestedQueries } from "../hooks/useJobs";
 import { useOnboardingStatus } from "../hooks/useOnboarding";
-import type { Job, JobSearchQueryParams } from "../types/job";
+import type { Job, JobSearchQueryParams, SearchMode } from "../types/job";
 import type { MatchResult } from "../types/match";
 import { Search, Layers, Sparkles, FileText, AlertTriangle } from "lucide-react";
 
 function JobsPage() {
   const navigate = useNavigate();
+  const [hasSearched, setHasSearched] = useState(false);
   const [queryParams, setQueryParams] = useState<JobSearchQueryParams>({
     query: "",
     location: "",
@@ -30,7 +31,18 @@ function JobsPage() {
   const [sortByMatch, setSortByMatch] = useState(false);
 
   const { data: providersData } = useProviders();
-  const { data: searchData, isLoading, isError, refetch } = useJobSearch(queryParams);
+  const { data: searchData, isLoading, isError, refetch } = useJobSearch(
+    hasSearched ? queryParams : { ...queryParams, limit: 0 } // Don't trigger full search until hasSearched
+  );
+  
+  // When component mounts, check if we have URL params or state to pre-fill search
+  useEffect(() => {
+    // Prevent auto-searching on mount unless we have active query params injected
+    if (queryParams.query || queryParams.search_mode === "SMART") {
+      setHasSearched(true);
+    }
+  }, [queryParams]);
+
   const { data: onboarding } = useOnboardingStatus();
   const { data: suggestedQueriesData } = useSuggestedQueries();
   const matchMutation = useMatchJob();
@@ -45,29 +57,19 @@ function JobsPage() {
     location: string;
     remoteOnly: boolean;
     sources: string[];
-    manualSearch: boolean;
+    searchMode: SearchMode;
     minSalary?: number;
     forceRefresh?: boolean;
   }) => {
+    setHasSearched(true);
     setQueryParams({
       query: filters.query,
       location: filters.location,
       remote_only: filters.remoteOnly,
       sources: filters.sources,
-      manual_search: filters.manualSearch,
+      search_mode: filters.searchMode,
       min_salary: filters.minSalary,
       force_refresh: filters.forceRefresh,
-      limit: 50,
-    });
-  };
-
-  const handleResetToAuto = () => {
-    setQueryParams({
-      query: "",
-      location: "",
-      remote_only: false,
-      sources: [],
-      manual_search: false,
       limit: 50,
     });
   };
@@ -118,31 +120,34 @@ function JobsPage() {
 
   return (
     <>
-      <Header
-        title="Jobs Discovery & AI Matcher"
-        subtitle="Search tech opportunities aggregated concurrently across ATS platforms and rank by resume fit"
-        actions={
-          providersData && (
-            <div className="flex flex-wrap items-center gap-2 mt-4 sm:mt-0">
-              <span className="text-sm text-text-secondary flex items-center gap-1.5 font-medium">
-                <Layers size={16} /> Active Sources:
-              </span>
-              <div className="flex flex-wrap gap-2">
-                {providersData.map((p) => (
-                  <Badge key={p.name} variant="default" className="text-xs px-2.5 py-1 bg-surface-elevated">
-                    {p.display_name}
-                  </Badge>
-                ))}
+      {hasSearched && (
+        <Header
+          title="Jobs Discovery & AI Matcher"
+          subtitle="Search tech opportunities aggregated concurrently across ATS platforms and rank by resume fit"
+          actions={
+            providersData && (
+              <div className="flex flex-wrap items-center gap-2 mt-4 sm:mt-0">
+                <span className="text-sm text-text-secondary flex items-center gap-1.5 font-medium">
+                  <Layers size={16} /> Active Sources:
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {providersData.map((p) => (
+                    <Badge key={p.name} variant="default" className="text-xs px-2.5 py-1 bg-surface-elevated">
+                      {p.display_name}
+                    </Badge>
+                  ))}
+                </div>
               </div>
-            </div>
-          )
-        }
-      />
+            )
+          }
+        />
+      )}
 
       <PageWrapper>
-        <div className="max-w-7xl mx-auto p-6 lg:p-12 space-y-8">
+        <div className={`max-w-7xl mx-auto p-6 lg:p-12 space-y-8 min-h-[80vh] flex flex-col ${!hasSearched ? 'justify-center' : ''}`}>
+          
           {/* Missing Resume Warning Banner */}
-          {!hasActiveResume && (
+          {!hasActiveResume && hasSearched && (
             <div className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm animate-in fade-in duration-200">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-xl bg-amber-500/20 text-amber-500 flex items-center justify-center shrink-0">
@@ -165,113 +170,127 @@ function JobsPage() {
             </div>
           )}
 
-          {/* Search & Filter Bar */}
-          <section className="bg-surface border border-border shadow-sm p-4 sm:p-6 rounded-2xl">
-            <SearchBar
-              onSearch={handleSearch}
-              onResetToAuto={handleResetToAuto}
-              isLoading={isLoading}
-              providers={providersData}
-              suggestedQueries={suggestedQueries}
-              isGenerated={searchData?.is_generated}
-              appliedQuery={searchData?.applied_query}
-              appliedLocation={searchData?.applied_location}
-            />
-          </section>
-
-          {/* Results Toolbar */}
-          <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-2">
-            <div className="text-sm text-text-secondary">
-              {isLoading ? (
-                <span className="flex items-center gap-2 font-medium">
-                  <Spinner size="sm" /> Searching across job providers...
-                </span>
-              ) : (
-                <span>
-                  Found <strong className="text-text font-bold">{totalJobs}</strong> matching positions
-                  {providersSearched.length > 0 && (
-                    <span className="text-text-muted ml-1">
-                      from {providersSearched.join(", ")}
-                    </span>
-                  )}
-                </span>
-              )}
-            </div>
-
-            {rawJobs.length > 0 && (
-              <Button
-                variant={sortByMatch ? "primary" : "secondary"}
-                size="md"
-                onClick={() => {
-                  if (!hasActiveResume) {
-                    setIsResumeWarningModalOpen(true);
-                  } else {
-                    setSortByMatch(!sortByMatch);
-                  }
-                }}
-                icon={<Sparkles size={16} className={sortByMatch ? "text-white" : "text-primary"} />}
-                className="text-sm font-semibold whitespace-nowrap shadow-sm"
-              >
-                {sortByMatch ? "Sorted by AI Fit" : "Sort by AI Fit"}
-              </Button>
+          {/* Search Area */}
+          <div className={`transition-all duration-700 ease-in-out ${hasSearched ? "translate-y-0" : "-translate-y-12"}`}>
+            {!hasSearched && (
+              <div className="text-center mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700 fade-out slide-out-to-top-4">
+                <h1 className="text-4xl md:text-5xl font-bold text-text mb-4 tracking-tight">What job are you looking for?</h1>
+                <p className="text-text-secondary text-lg max-w-2xl mx-auto">Search exactly what you want, or let your resume do the work to find the perfect role.</p>
+              </div>
             )}
-          </section>
-
-          {/* Loading Skeletons */}
-          {isLoading && (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="h-72 bg-surface-elevated animate-pulse rounded-2xl border border-border" />
-              ))}
-            </div>
-          )}
-
-          {/* Error State */}
-          {isError && !isLoading && (
-            <div className="p-8 md:p-12 border border-border border-dashed rounded-2xl bg-surface text-center shadow-sm">
-              <EmptyState
-                icon={<Search size={48} className="mx-auto mb-4 text-error/50" />}
-                title="Search failed"
-                description="Unable to query job providers at this time. Please ensure the backend service is active and try again."
-                action={
-                  <Button
-                    onClick={() => refetch()}
-                    variant="primary"
-                    className="mt-6"
-                  >
-                    Retry Search
-                  </Button>
-                }
+            
+            <section className={`transition-all duration-700 ease-in-out ${hasSearched ? "bg-surface border border-border shadow-sm p-4 sm:p-6 rounded-2xl sticky top-4 z-10" : ""}`}>
+              <SearchBar
+                onSearch={handleSearch}
+                isLoading={isLoading && hasSearched}
+                providers={providersData}
+                suggestedQueries={suggestedQueries}
+                appliedQuery={searchData?.applied_query}
+                appliedLocation={searchData?.applied_location}
+                layout={hasSearched ? "header" : "landing"}
               />
-            </div>
-          )}
+            </section>
+          </div>
 
-          {/* Empty State */}
-          {!isLoading && !isError && displayedJobs.length === 0 && (
-            <div className="p-8 md:p-12 border border-border border-dashed rounded-2xl bg-surface text-center shadow-sm">
-              <EmptyState
-                icon={<Search size={48} className="mx-auto mb-4 text-text-muted" />}
-                title="No jobs found"
-                description="Try adjusting your search keywords or location filters to discover open positions."
-              />
-            </div>
-          )}
+          <div className={`transition-all duration-700 ease-in-out flex-1 ${hasSearched ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12 h-0 overflow-hidden"}`}>
+            {hasSearched && (
+              <>
+                {/* Results Toolbar */}
+                <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-2 mt-2">
+                  <div className="text-sm text-text-secondary">
+                    {isLoading ? (
+                      <span className="flex items-center gap-2 font-medium">
+                        <Spinner size="sm" /> Searching across job providers...
+                      </span>
+                    ) : (
+                      <span>
+                        Found <strong className="text-text font-bold">{totalJobs}</strong> matching positions
+                        {providersSearched.length > 0 && (
+                          <span className="text-text-muted ml-1">
+                            from {providersSearched.join(", ")}
+                          </span>
+                        )}
+                      </span>
+                    )}
+                  </div>
 
-          {/* Jobs Grid */}
-          {!isLoading && !isError && displayedJobs.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 auto-rows-fr">
-              {displayedJobs.map((job) => (
-                <JobCard
-                  key={job.id}
-                  job={job}
-                  match={matchesCache[job.id]}
-                  onApply={handleApply}
-                  onSkip={handleSkip}
-                  onMatch={handleMatchClick}
-                />
-              ))}
-            </div>
-          )}
+                  {rawJobs.length > 0 && (
+                    <Button
+                      variant={sortByMatch ? "primary" : "secondary"}
+                      size="md"
+                      onClick={() => {
+                        if (!hasActiveResume) {
+                          setIsResumeWarningModalOpen(true);
+                        } else {
+                          setSortByMatch(!sortByMatch);
+                        }
+                      }}
+                      icon={<Sparkles size={16} className={sortByMatch ? "text-white" : "text-primary"} />}
+                      className="text-sm font-semibold whitespace-nowrap shadow-sm"
+                    >
+                      {sortByMatch ? "Sorted by AI Fit" : "Sort by AI Fit"}
+                    </Button>
+                  )}
+                </section>
+
+                {/* Loading Skeletons */}
+                {isLoading && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-4">
+                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                      <div key={i} className="h-72 bg-surface-elevated animate-pulse rounded-2xl border border-border" />
+                    ))}
+                  </div>
+                )}
+
+                {/* Error State */}
+                {isError && !isLoading && (
+                  <div className="p-8 md:p-12 border border-border border-dashed rounded-2xl bg-surface text-center shadow-sm mt-4">
+                    <EmptyState
+                      icon={<Search size={48} className="mx-auto mb-4 text-error/50" />}
+                      title="Search failed"
+                      description="Unable to query job providers at this time. Please ensure the backend service is active and try again."
+                      action={
+                        <Button
+                          onClick={() => refetch()}
+                          variant="primary"
+                          className="mt-6"
+                        >
+                          Retry Search
+                        </Button>
+                      }
+                    />
+                  </div>
+                )}
+
+                {/* Empty State */}
+                {!isLoading && !isError && displayedJobs.length === 0 && (
+                  <div className="p-8 md:p-12 border border-border border-dashed rounded-2xl bg-surface text-center shadow-sm mt-4">
+                    <EmptyState
+                      icon={<Search size={48} className="mx-auto mb-4 text-text-muted" />}
+                      title="No jobs found"
+                      description="Try adjusting your search keywords or location filters to discover open positions."
+                    />
+                  </div>
+                )}
+
+                {/* Jobs Grid */}
+                {!isLoading && !isError && displayedJobs.length > 0 && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 auto-rows-fr mt-4">
+                    {displayedJobs.map((job) => (
+                      <JobCard
+                        key={job.id}
+                        job={job}
+                        match={matchesCache[job.id]}
+                        onApply={handleApply}
+                        onSkip={handleSkip}
+                        onMatch={handleMatchClick}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
 
           {/* AI Match Explanation Modal */}
           <Modal

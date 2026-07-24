@@ -17,7 +17,7 @@ from app.repositories.job_repository import JobRepository
 from app.repositories.resume_repository import ResumeRepository
 from app.repositories.preference_repository import PreferenceRepository
 from app.services.search_query_generator import SearchQueryGenerator
-from app.schemas.job import JobSearchQuery, JobListResponse, JobResponse, NormalizedJob
+from app.schemas.job import JobSearchQuery, JobListResponse, JobResponse, NormalizedJob, SearchMode
 from app.services.cache_service import search_cache, make_cache_key
 
 logger = logging.getLogger(__name__)
@@ -48,41 +48,33 @@ class JobService:
         user_id: Optional[uuid.UUID] = None
     ) -> JobListResponse:
         """
-        Executes job search, incorporating active resume & preference signals if query keywords are omitted.
+        Executes job search based on specified SearchMode.
         """
         suggested_queries: List[str] = []
         is_generated = False
-        was_query_provided = bool(query.query and query.query.strip())
+        profile_version = "none"
 
-        # 1. Candidate-aware query generation
-        if user_id:
+        # If SMART mode, generate queries
+        if user_id and query.search_mode == SearchMode.SMART:
             try:
                 active_resume = await self.resume_repo.get_active(user_id)
                 preference = await self.pref_repo.get_preference(user_id)
+                
+                # Profile version for caching
+                if active_resume:
+                    profile_version = str(active_resume.id)
+
                 suggested_queries = SearchQueryGenerator.generate_queries(active_resume, preference)
 
-                # Search priority logic:
-                # If manual_search flag is set -> is_generated = False.
-                # If user did NOT explicitly supply query and manual_search is False -> auto-generate.
-                if not query.manual_search and not was_query_provided:
-                    if suggested_queries:
-                        query.query = suggested_queries[0]
-                        is_generated = True
-                        logger.info(f"Auto-applied resume search query: '{query.query}' for user '{user_id}'")
-
-                # Refine location and remote preference from user goals if not explicitly specified
-                if preference and not query.manual_search:
-                    if not query.location and preference.preferred_locations:
-                        query.location = preference.preferred_locations[0]
-                    if not query.remote_only and preference.work_type == "remote":
-                        query.remote_only = True
+                # Only use generated queries, ignore explicit user query if SMART is forced (or we could just use the first generated)
+                # But the prompt says "Smart Search must only generate search queries. It must not silently inject profile preferences"
+                if suggested_queries:
+                    query.query = suggested_queries[0]
+                    is_generated = True
+                    logger.info(f"Generated SMART search query: '{query.query}' for user '{user_id}'")
 
             except Exception as exc:
                 logger.warning(f"Failed to generate candidate query signals for user '{user_id}': {exc}")
-
-        # If user explicitly marked search as manual or supplied custom search parameters
-        if query.manual_search or was_query_provided:
-            is_generated = False
 
         applied_query = query.query
         applied_location = query.location
@@ -94,7 +86,9 @@ class JobService:
             remote_only=query.remote_only,
             providers=query.providers,
             min_salary=query.min_salary,
-            limit=query.limit
+            limit=query.limit,
+            search_mode=query.search_mode.value,
+            profile_version=profile_version
         )
 
         # 2. Check Cache
@@ -142,7 +136,7 @@ class JobService:
                     jobs=[JobResponse.model_validate(j) for j in stored_jobs],
                     providers_searched=[],
                     suggested_queries=suggested_queries,
-                    is_generated=is_generated,
+                    search_mode=query.search_mode,
                     applied_query=applied_query,
                     applied_location=applied_location
                 )
@@ -194,7 +188,7 @@ class JobService:
                 jobs=job_responses[:query.limit],
                 providers_searched=searched_provider_names,
                 suggested_queries=suggested_queries,
-                is_generated=is_generated,
+                search_mode=query.search_mode,
                 applied_query=applied_query,
                 applied_location=applied_location
             )

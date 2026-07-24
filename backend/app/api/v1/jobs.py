@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import get_db, get_current_user
 from app.models.user import User
 from app.providers.registry import registry
-from app.schemas.job import JobSearchQuery, JobListResponse, JobResponse, ProviderInfo
+from app.schemas.job import JobSearchQuery, JobListResponse, JobResponse, ProviderInfo, SearchMode
 from app.schemas.match import MatchRequest, MatchResult, BatchMatchRequest, BatchMatchResult
 from app.services.job_service import JobService
 from app.services.matching_service import MatchingService
@@ -32,7 +32,7 @@ async def search_jobs(
     location: Optional[str] = Query(None, description="Location (e.g. 'San Francisco', 'Remote')"),
     remote_only: bool = Query(False, description="Filter for remote roles only"),
     sources: Optional[List[str]] = Query(None, description="Provider filter (e.g. ['greenhouse', 'lever'])"),
-    manual_search: bool = Query(False, description="Flag indicating explicit user manual override search"),
+    search_mode: SearchMode = Query(SearchMode.NORMAL, description="Search mode to use (NORMAL or SMART)"),
     min_salary: Optional[int] = Query(None, description="Minimum salary threshold filter"),
     force_refresh: bool = Query(False, description="Bypass search cache and force fresh provider search"),
     limit: int = Query(50, ge=1, le=200, description="Max results to return"),
@@ -47,7 +47,7 @@ async def search_jobs(
         location=location,
         remote_only=remote_only,
         providers=sources,
-        manual_search=manual_search,
+        search_mode=search_mode,
         min_salary=min_salary,
         force_refresh=force_refresh,
         limit=limit

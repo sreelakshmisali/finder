@@ -8,7 +8,13 @@ and API response payloads.
 from datetime import datetime
 import uuid
 from typing import Optional, List
+from enum import Enum
 from pydantic import BaseModel, Field, HttpUrl
+
+class SearchMode(str, Enum):
+    NORMAL = "NORMAL"
+    SMART = "SMART"
+
 
 
 class JobSearchQuery(BaseModel):
@@ -22,7 +28,7 @@ class JobSearchQuery(BaseModel):
     remote_only: bool = Field(False, description="Filter to remote positions only")
     providers: Optional[List[str]] = Field(None, description="Specific providers to query (e.g. ['greenhouse', 'lever'])")
     limit: int = Field(50, ge=1, le=200, description="Maximum number of results to return")
-    manual_search: bool = Field(False, description="Whether user explicitly supplied search overrides")
+    search_mode: SearchMode = Field(default=SearchMode.NORMAL, description="The search mode to execute (NORMAL or SMART)")
     min_salary: Optional[int] = Field(None, description="Minimum salary filter")
     force_refresh: bool = Field(False, description="Bypass search cache and force fresh provider query")
 
@@ -78,7 +84,7 @@ class JobListResponse(BaseModel):
     jobs: List[JobResponse] = Field(..., description="List of normalized jobs")
     providers_searched: List[str] = Field(..., description="List of providers queried")
     suggested_queries: List[str] = Field(default=[], description="Generated candidate-aware search suggestions")
-    is_generated: bool = Field(False, description="Whether search query was auto-generated from resume")
+    search_mode: SearchMode = Field(default=SearchMode.NORMAL, description="The search mode that was executed")
     applied_query: Optional[str] = Field(None, description="The actual search query string executed")
     applied_location: Optional[str] = Field(None, description="The actual location parameter executed")
 

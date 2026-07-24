@@ -61,6 +61,14 @@ class SavedSearch(Base):
         comment="Filter rules dictionary (location, remote_only, sources, min_salary, etc.)"
     )
 
+    mode: Mapped[str] = mapped_column(
+        String(20),
+        default="NORMAL",
+        nullable=False,
+        comment="Search mode used for this saved search (NORMAL or SMART)"
+    )
+
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=datetime.utcnow,

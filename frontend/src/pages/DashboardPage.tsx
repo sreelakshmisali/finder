@@ -320,12 +320,15 @@ function DashboardPage() {
               <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 xl:gap-12">
                 {/* Left Column: Recent Postings */}
                 <div className="xl:col-span-2 space-y-6">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-xl font-bold text-text flex items-center gap-2">
-                      <Briefcase size={20} className="text-primary" /> Discovered Positions
-                    </h3>
-                    <Link to="/jobs" className="text-sm font-semibold text-primary hover:underline flex items-center gap-1">
-                      Explore All Jobs <ArrowRight size={16} />
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="text-xl font-bold text-text flex items-center gap-2">
+                        <Sparkles size={20} className="text-primary" /> Recommended Jobs
+                      </h3>
+                      <p className="text-sm text-text-secondary mt-1 font-medium">Based on your profile</p>
+                    </div>
+                    <Link to="/jobs?search_mode=SMART" className="text-sm font-semibold text-primary hover:underline flex items-center gap-1 mt-1">
+                      Explore Recommendations <ArrowRight size={16} />
                     </Link>
                   </div>
 
