@@ -13,6 +13,7 @@ interface ResumeCardProps {
   resume: Resume;
   onSetActive?: (resumeId: string) => void;
   onParse?: (resumeId: string) => void;
+  onViewActivePdf?: () => void;
   onDelete?: (resume: Resume) => void;
   isSettingActive?: boolean;
   isDeleting?: boolean;
@@ -22,6 +23,7 @@ function ResumeCard({
   resume,
   onSetActive,
   onParse,
+  onViewActivePdf,
   onDelete,
   isSettingActive,
   isDeleting,
@@ -62,6 +64,17 @@ function ResumeCard({
       </div>
 
       <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+        {onViewActivePdf && (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={onViewActivePdf}
+            icon={<FileText size={14} />}
+          >
+            View PDF
+          </Button>
+        )}
+        
         {onParse && (
           <Button
             variant="secondary"

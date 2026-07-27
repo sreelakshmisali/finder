@@ -84,3 +84,14 @@ export async function fetchJobSpecificSuggestions(
   return response.data;
 }
 
+/**
+ * Fetch the active resume PDF as a Blob.
+ */
+export async function fetchActiveResumePdf(): Promise<Blob> {
+  const response = await api.get("/profile/resume/view", {
+    responseType: "blob",
+  });
+  return response.data;
+}
+
+

@@ -12,6 +12,7 @@ import {
   deleteResume,
   analyzeResumeQuality,
   fetchJobSpecificSuggestions,
+  fetchActiveResumePdf,
 } from "../services/resumeService";
 import type { JobSpecificSuggestionsRequest } from "../types/resume";
 
@@ -121,4 +122,14 @@ export function useJobSpecificSuggestions() {
     }) => fetchJobSpecificSuggestions(resumeId, payload),
   });
 }
+
+/**
+ * Fetch active resume PDF blob.
+ */
+export function useViewActiveResumePdf() {
+  return useMutation({
+    mutationFn: () => fetchActiveResumePdf(),
+  });
+}
+
 

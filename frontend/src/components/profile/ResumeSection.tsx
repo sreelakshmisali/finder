@@ -11,6 +11,7 @@ import ResumeUploader from "../shared/ResumeUploader";
 import ResumeCard from "../shared/ResumeCard";
 import ParsedResumeView from "../shared/ParsedResumeView";
 import EmptyState from "../shared/EmptyState";
+import ResumeViewerModal from "./ResumeViewerModal";
 import { Card, CardHeader, CardTitle, Modal, Spinner, Button, Badge } from "../ui";
 import {
   useResumes,
@@ -39,6 +40,7 @@ interface ResumeSectionProps {
 export default function ResumeSection({ summary }: ResumeSectionProps) {
   const [selectedResumeForView, setSelectedResumeForView] = useState<Resume | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isPdfViewerOpen, setIsPdfViewerOpen] = useState(false);
   const [resumeToDelete, setResumeToDelete] = useState<Resume | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
@@ -122,7 +124,17 @@ export default function ResumeSection({ summary }: ResumeSectionProps) {
                 <CheckCircle2 size={18} />
                 <span>Extracted Resume Insights</span>
               </div>
-              <span className="text-xs text-text-muted">{summary.filename}</span>
+              <div className="flex items-center gap-4">
+                <span className="text-xs text-text-muted">{summary.filename}</span>
+                <Button 
+                  variant="secondary" 
+                  size="sm" 
+                  onClick={() => setIsPdfViewerOpen(true)}
+                  icon={<FileText size={14} />}
+                >
+                  View Active Resume
+                </Button>
+              </div>
             </div>
 
             {/* Extracted Details Grid */}
@@ -238,6 +250,7 @@ export default function ResumeSection({ summary }: ResumeSectionProps) {
                     resume={resume}
                     onSetActive={handleSetActive}
                     onParse={handleParseOrCreateView}
+                    onViewActivePdf={resume.is_active ? () => setIsPdfViewerOpen(true) : undefined}
                     onDelete={(r) => {
                       setDeleteError(null);
                       setResumeToDelete(r);
@@ -324,6 +337,13 @@ export default function ResumeSection({ summary }: ResumeSectionProps) {
           </div>
         </div>
       </Modal>
+
+      {/* PDF Viewer Modal */}
+      <ResumeViewerModal 
+        isOpen={isPdfViewerOpen} 
+        onClose={() => setIsPdfViewerOpen(false)} 
+        filename={summary?.filename || "Active Resume"}
+      />
     </div>
   );
 }
