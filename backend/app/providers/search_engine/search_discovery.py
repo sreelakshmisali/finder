@@ -115,179 +115,226 @@ class SearchDiscoveryProvider(SearchEngineProvider):
         location = context.query.location
         limit = context.query.limit
 
-        # ----------------------------------------------------------------
-        # Metrics Tracking Initialization
-        # ----------------------------------------------------------------
-        from app.schemas.search_metrics import SearchMetrics
-        metrics = SearchMetrics()
+        from app.utils.pipeline_tracker import current_tracker
+        tracker = current_tracker.get()
+        token = None
+        if not tracker:
+            tracker = context.metadata.get("tracker")
+            if tracker:
+                token = current_tracker.set(tracker)
 
-        # ----------------------------------------------------------------
-        # Stage 1 — Query enrichment
-        # ----------------------------------------------------------------
-        enriched_queries = SearchQueryGenerator.generate_search_engine_queries(
-            raw_query=raw_query,
-            location=location,
-            max_queries=15,
-        )
-        metrics.search_queries_generated = len(enriched_queries)
-        
-        logger.info(
-            f"[SearchDiscovery] Enriched '{raw_query}' into "
-            f"{len(enriched_queries)} queries: {enriched_queries}"
-        )
-        print(
-            f"\n[DEBUG - SearchDiscovery] Stage 1 complete — enriched queries:\n"
-            + "\n".join(f"  • {q}" for q in enriched_queries)
-        )
+        try:
+            # ----------------------------------------------------------------
+            # Metrics Tracking Initialization
+            # ----------------------------------------------------------------
+            from app.schemas.search_metrics import SearchMetrics
+            metrics = SearchMetrics()
 
-        # ----------------------------------------------------------------
-        # Stage 2 — Multi-engine search aggregation
-        # ----------------------------------------------------------------
-        candidate_results = await self.aggregator.aggregate_multi_query(
-            queries=enriched_queries,
-            limit_per_query=10,
-            total_limit=limit,
-        )
-        candidate_urls = [r.url for r in candidate_results]
-        metrics.search_results_received = len(candidate_urls)
+            if tracker:
+                tracker.start_stage("Stage 1 - Search Engine Discovery")
 
-        print(
-            f"[DEBUG - SearchDiscovery] Stage 2 complete — "
-            f"{len(candidate_urls)} candidate URLs from search engines."
-        )
-        for u in candidate_urls:
-            print(f"  • {u}")
-
-        if not candidate_urls:
-            logger.warning("[SearchDiscovery] No candidate URLs from search engines.")
-            return []
-
-        # ----------------------------------------------------------------
-        # Stage 3 — CrawlScheduler: classify + drill down
-        # ----------------------------------------------------------------
-        global_dedup = URLDeduplicator()
-        job_posting_urls = await self.scheduler.schedule(
-            candidate_urls=candidate_urls,
-            global_dedup=global_dedup,
-            target_role=raw_query,
-        )
-        metrics.candidate_urls_scored = len(candidate_urls)
-        metrics.pages_processed = len(job_posting_urls)
-
-        print(
-            f"\n[DEBUG - SearchDiscovery] Stage 3 complete — "
-            f"{len(job_posting_urls)} individual job posting URLs discovered."
-        )
-        for u in job_posting_urls:
-            print(f"  • {u}")
-
-        if not job_posting_urls:
-            logger.warning("[SearchDiscovery] CrawlScheduler found no individual job posting URLs.")
-            return []
-
-        # ----------------------------------------------------------------
-        # Stage 4 -- Job extraction (existing pipeline, now receives correct URLs)
-        # ----------------------------------------------------------------
-        # Build a lookup so we can pass SearchResult context to the extractor
-        url_to_result = {r.url: r for r in candidate_results}
-
-        print(f"\n[SearchDiscovery] Stage 4: Extracting jobs from {len(job_posting_urls[:limit])} URLs...")
-
-        extraction_tasks = [
-            self.job_extractor.extract_from_url(
-                url=url,
-                search_result=url_to_result.get(url),
-                skip_classification=True,  # CrawlScheduler already vetted these URLs
+            # ----------------------------------------------------------------
+            # Stage 1 — Query enrichment
+            # ----------------------------------------------------------------
+            enriched_queries = SearchQueryGenerator.generate_search_engine_queries(
+                raw_query=raw_query,
+                location=location,
+                max_queries=15,
             )
-            for url in job_posting_urls[:limit]
-        ]
-        extracted = await asyncio.gather(*extraction_tasks, return_exceptions=True)
-        
-        metrics.crawl_attempts = len(extraction_tasks)
-        
-        normalized_jobs: List[NormalizedJob] = []
-        failures = 0
-        errors = 0
-        for i, result in enumerate(extracted):
-            if isinstance(result, NormalizedJob):
-                normalized_jobs.append(result)
-            elif isinstance(result, Exception):
-                errors += 1
-                print(f"[SearchDiscovery]   EXCEPTION extracting '{job_posting_urls[i]}': {result}")
-            else:
-                failures += 1
-
-        metrics.jobs_found = len(normalized_jobs)
-        metrics.jobs_invalid = failures + errors
-        metrics.crawl_failures = failures + errors
-
-        print(
-            f"\n[SearchDiscovery] Stage 4 complete: "
-            f"{len(normalized_jobs)} jobs extracted, "
-            f"{failures} returned None, "
-            f"{errors} raised exceptions."
-        )
-
-        # ----------------------------------------------------------------
-        # Stage 5 -- Post-Extraction Ranking & Filtering
-        # ----------------------------------------------------------------
-        from app.services.search.relevance_ranking import RelevanceRankingService
-        ranker_service = RelevanceRankingService()
-        
-        # Shadow mode: set min_score=0 to not drop anything yet, but calculate scores
-        # Enable enforcement by changing min_score to 50
-        accepted_jobs, rejected_jobs = ranker_service.rank_and_filter(
-            jobs=normalized_jobs, 
-            query=raw_query, 
-            location=location or "",
-            min_score=0 # Shadow mode
-        )
-        
-        metrics.calculate_aggregates(
-            total_extracted=len(normalized_jobs),
-            total_filtered=len(rejected_jobs),
-            total_score=sum(j.relevance_score or 0 for j in accepted_jobs)
-        )
-        
-        # Attach metrics to context metadata for logging
-        context.metadata['search_metrics'] = metrics.model_dump()
-        
-        # ----------------------------------------------------------------
-        # Stage 6 -- Company Limiting & Deduplication
-        # ----------------------------------------------------------------
-        max_jobs_per_company = 5
-        company_groups = {}
-        
-        for job in accepted_jobs:
-            c_name = job.company.strip().lower()
-            if c_name not in company_groups:
-                company_groups[c_name] = []
-            company_groups[c_name].append(job)
+            metrics.search_queries_generated = len(enriched_queries)
             
-        final_jobs = []
-        seen_fingerprints = set()
-        
-        for c_name, c_jobs in company_groups.items():
-            # Jobs are already sorted by relevance (highest first) from rank_and_filter
-            limited = c_jobs[:max_jobs_per_company]
+            logger.info(
+                f"[SearchDiscovery] Enriched '{raw_query}' into "
+                f"{len(enriched_queries)} queries: {enriched_queries}"
+            )
+            print(
+                f"\n[DEBUG - SearchDiscovery] Stage 1 complete — enriched queries:\n"
+                + "\n".join(f"  • {q}" for q in enriched_queries)
+            )
+
+            # ----------------------------------------------------------------
+            # Stage 2 — Multi-engine search aggregation
+            # ----------------------------------------------------------------
+            candidate_results = await self.aggregator.aggregate_multi_query(
+                queries=enriched_queries,
+                limit_per_query=10,
+                total_limit=limit,
+            )
+            candidate_urls = [r.url for r in candidate_results]
+            metrics.search_results_received = len(candidate_urls)
+
+            if tracker:
+                tracker.end_stage("Stage 1 - Search Engine Discovery")
+                tracker.start_stage("Stage 2 - Candidate Summary")
+
+            print(
+                f"[DEBUG - SearchDiscovery] Stage 2 complete — "
+                f"{len(candidate_urls)} candidate URLs from search engines."
+            )
+            for u in candidate_urls:
+                print(f"  • {u}")
+
+            if tracker:
+                tracker.end_stage("Stage 2 - Candidate Summary")
+
+            if not candidate_urls:
+                logger.warning("[SearchDiscovery] No candidate URLs from search engines.")
+                return []
+
+            # ----------------------------------------------------------------
+            # Stage 3 — CrawlScheduler: classify + drill down
+            # ----------------------------------------------------------------
+            global_dedup = URLDeduplicator()
+            job_posting_urls = await self.scheduler.schedule(
+                candidate_urls=candidate_urls,
+                global_dedup=global_dedup,
+                target_role=raw_query,
+            )
+            metrics.candidate_urls_scored = len(candidate_urls)
+            metrics.pages_processed = len(job_posting_urls)
+
+            print(
+                f"\n[DEBUG - SearchDiscovery] Stage 3 complete — "
+                f"{len(job_posting_urls)} individual job posting URLs discovered."
+            )
+            for u in job_posting_urls:
+                print(f"  • {u}")
+
+            if not job_posting_urls:
+                logger.warning("[SearchDiscovery] CrawlScheduler found no individual job posting URLs.")
+                return []
+
+            # ----------------------------------------------------------------
+            # Stage 4 -- Job extraction (existing pipeline, now receives correct URLs)
+            # ----------------------------------------------------------------
+            # Build a lookup so we can pass SearchResult context to the extractor
+            url_to_result = {r.url: r for r in candidate_results}
+
+            print(f"\n[SearchDiscovery] Stage 4: Extracting jobs from {len(job_posting_urls[:limit])} URLs...")
+
+            if tracker:
+                tracker.start_stage("Stage 4 - Crawl/Fetching")
+                tracker.start_stage("Stage 5 - Job Extraction")
+
+            extraction_tasks = [
+                self.job_extractor.extract_from_url(
+                    url=url,
+                    search_result=url_to_result.get(url),
+                    skip_classification=True,  # CrawlScheduler already vetted these URLs
+                )
+                for url in job_posting_urls[:limit]
+            ]
+            extracted = await asyncio.gather(*extraction_tasks, return_exceptions=True)
             
-            for job in limited:
-                # Deduplication fingerprint
-                title_clean = job.title.strip().lower()
-                loc_clean = job.location.strip().lower()
-                fingerprint = f"{c_name}|{title_clean}|{loc_clean}"
+            metrics.crawl_attempts = len(extraction_tasks)
+            
+            normalized_jobs: List[NormalizedJob] = []
+            failures = 0
+            errors = 0
+            for i, result in enumerate(extracted):
+                if isinstance(result, NormalizedJob):
+                    normalized_jobs.append(result)
+                elif isinstance(result, Exception):
+                    errors += 1
+                    print(f"[SearchDiscovery]   EXCEPTION extracting '{job_posting_urls[i]}': {result}")
+                else:
+                    failures += 1
+
+            metrics.jobs_found = len(normalized_jobs)
+            metrics.jobs_invalid = failures + errors
+            metrics.crawl_failures = failures + errors
+
+            if tracker:
+                tracker.end_stage("Stage 4 - Crawl/Fetching")
+                tracker.end_stage("Stage 5 - Job Extraction")
+                tracker.start_stage("Stage 6 - Deduplication")
+
+            print(
+                f"\n[SearchDiscovery] Stage 4 complete: "
+                f"{len(normalized_jobs)} jobs extracted, "
+                f"{failures} returned None, "
+                f"{errors} raised exceptions."
+            )
+
+            # ----------------------------------------------------------------
+            # Stage 5 -- Post-Extraction Ranking & Filtering
+            # ----------------------------------------------------------------
+            from app.services.search.relevance_ranking import RelevanceRankingService
+            ranker_service = RelevanceRankingService()
+            
+            # Shadow mode: set min_score=0 to not drop anything yet, but calculate scores
+            # Enable enforcement by changing min_score to 50
+            accepted_jobs, rejected_jobs = ranker_service.rank_and_filter(
+                jobs=normalized_jobs, 
+                query=raw_query, 
+                location=location or "",
+                min_score=0 # Shadow mode
+            )
+            
+            if tracker:
+                for job in accepted_jobs:
+                    tracker.record_filtering(job.url, job.title, job.company, job.location, accepted=True, reason="Passes ranking threshold", score=job.relevance_score)
+                for job in rejected_jobs:
+                    tracker.record_filtering(job.url, job.title, job.company, job.location, accepted=False, reason="Below ranking threshold", score=job.relevance_score)
+
+            metrics.calculate_aggregates(
+                total_extracted=len(normalized_jobs),
+                total_filtered=len(rejected_jobs),
+                total_score=sum(j.relevance_score or 0 for j in accepted_jobs)
+            )
+            
+            # Attach metrics to context metadata for logging
+            context.metadata['search_metrics'] = metrics.model_dump()
+            
+            # ----------------------------------------------------------------
+            # Stage 6 -- Company Limiting & Deduplication
+            # ----------------------------------------------------------------
+            max_jobs_per_company = 5
+            company_groups = {}
+            
+            for job in accepted_jobs:
+                c_name = job.company.strip().lower()
+                if c_name not in company_groups:
+                    company_groups[c_name] = []
+                company_groups[c_name].append(job)
                 
-                if fingerprint not in seen_fingerprints:
-                    seen_fingerprints.add(fingerprint)
-                    final_jobs.append(job)
+            final_jobs = []
+            seen_fingerprints = set()
+            
+            for c_name, c_jobs in company_groups.items():
+                # Jobs are already sorted by relevance (highest first) from rank_and_filter
+                limited = c_jobs[:max_jobs_per_company]
+                
+                for job in c_jobs[max_jobs_per_company:]:
+                    if tracker:
+                        tracker.record_filtering(job.url, job.title, job.company, job.location, accepted=False, reason="Company limit reached (>5 jobs)", score=job.relevance_score)
 
-        print(
-            f"\n[SearchDiscovery] Stage 5/6 complete: "
-            f"{len(accepted_jobs)} jobs accepted, {len(rejected_jobs)} rejected. "
-            f"After company limits & dedup: {len(final_jobs)} final jobs."
-        )
+                for job in limited:
+                    # Deduplication fingerprint
+                    title_clean = job.title.strip().lower()
+                    loc_clean = job.location.strip().lower()
+                    fingerprint = f"{c_name}|{title_clean}|{loc_clean}"
+                    
+                    if fingerprint not in seen_fingerprints:
+                        seen_fingerprints.add(fingerprint)
+                        final_jobs.append(job)
+                    else:
+                        if tracker:
+                            tracker.record_filtering(job.url, job.title, job.company, job.location, accepted=False, reason="Duplicate title/location fingerprint", score=job.relevance_score)
 
-        return final_jobs
+            if tracker:
+                tracker.end_stage("Stage 6 - Deduplication")
+
+            print(
+                f"\n[SearchDiscovery] Stage 5/6 complete: "
+                f"{len(accepted_jobs)} jobs accepted, {len(rejected_jobs)} rejected. "
+                f"After company limits & dedup: {len(final_jobs)} final jobs."
+            )
+
+            return final_jobs
+        finally:
+            if token:
+                current_tracker.reset(token)
 
     async def get_details(self, url: str) -> Optional[NormalizedJob]:
         """

@@ -192,54 +192,82 @@ class JobService:
             # Wrap execution parameter in rich DiscoveryContext
             from app.providers.base_discovery import DiscoveryContext
             context = DiscoveryContext(query=query, user_id=user_id)
+            tracker = context.metadata.get("tracker")
 
-            # Launch all provider discovery tasks concurrently with isolated error handling
-            tasks = [provider.discover(context) for provider in target_providers]
-            results_list = await asyncio.gather(*tasks, return_exceptions=True)
+            from app.utils.pipeline_tracker import current_tracker
+            import os
+            
+            token = current_tracker.set(tracker)
+            try:
+                # Launch all provider discovery tasks concurrently with isolated error handling
+                tasks = [provider.discover(context) for provider in target_providers]
+                results_list = await asyncio.gather(*tasks, return_exceptions=True)
 
-            raw_jobs: List[NormalizedJob] = []
-            for idx, result in enumerate(results_list):
-                p_name = target_providers[idx].source_name
-                if isinstance(result, Exception):
-                    logger.error(f"Discovery provider '{p_name}' failed with error: {result}")
-                elif isinstance(result, list):
-                    logger.info(f"Discovery provider '{p_name}' returned {len(result)} jobs")
-                    raw_jobs.extend(result)
+                raw_jobs: List[NormalizedJob] = []
+                for idx, result in enumerate(results_list):
+                    p_name = target_providers[idx].source_name
+                    if isinstance(result, Exception):
+                        logger.error(f"Discovery provider '{p_name}' failed with error: {result}")
+                    elif isinstance(result, list):
+                        logger.info(f"Discovery provider '{p_name}' returned {len(result)} jobs")
+                        raw_jobs.extend(result)
 
-            # Persist & deduplicate in Search Index
-            saved_db_jobs: List[Job] = []
-            for norm_job in raw_jobs:
-                try:
-                    db_job = await self.repo.save_normalized_job(norm_job)
-                    saved_db_jobs.append(db_job)
-                except Exception as exc:
-                    logger.warning(f"Error saving job '{norm_job.title}' at '{norm_job.company}': {exc}")
+                # Persist & deduplicate in Search Index
+                if tracker:
+                    tracker.start_stage("Stage 7 - Persistence")
+                saved_db_jobs: List[Job] = []
+                for norm_job in raw_jobs:
+                    try:
+                        db_job = await self.repo.save_normalized_job(norm_job)
+                        saved_db_jobs.append(db_job)
+                    except Exception as exc:
+                        logger.warning(f"Error saving job '{norm_job.title}' at '{norm_job.company}': {exc}")
+                if tracker:
+                    tracker.end_stage("Stage 7 - Persistence")
 
-            # If no new jobs were scraped (or network offline), query stored indexed jobs
-            if not saved_db_jobs:
-                stored = await self.repo.search_jobs(
-                    query=query.query,
-                    location=query.location,
-                    remote_only=query.remote_only,
-                    sources=query.providers,
-                    limit=query.limit,
-                    max_age_days=None # Fallback
+                # If no new jobs were scraped (or network offline), query stored indexed jobs
+                if not saved_db_jobs:
+                    stored = await self.repo.search_jobs(
+                        query=query.query,
+                        location=query.location,
+                        remote_only=query.remote_only,
+                        sources=query.providers,
+                        limit=query.limit,
+                        max_age_days=None # Fallback
+                    )
+                    saved_db_jobs = list(stored)
+
+                job_responses = [JobResponse.model_validate(j) for j in saved_db_jobs]
+
+                response = JobListResponse(
+                    total=len(job_responses),
+                    jobs=job_responses[:query.limit],
+                    providers_searched=searched_provider_names,
+                    suggested_queries=suggested_queries,
+                    search_mode=query.search_mode,
+                    applied_query=applied_query,
+                    applied_location=applied_location
                 )
-                saved_db_jobs = list(stored)
 
-            job_responses = [JobResponse.model_validate(j) for j in saved_db_jobs]
+                await search_cache.set(cache_key, response)
+            finally:
+                current_tracker.reset(token)
 
-            response = JobListResponse(
-                total=len(job_responses),
-                jobs=job_responses[:query.limit],
-                providers_searched=searched_provider_names,
-                suggested_queries=suggested_queries,
-                search_mode=query.search_mode,
-                applied_query=applied_query,
-                applied_location=applied_location
-            )
-
-            await search_cache.set(cache_key, response)
+            if tracker:
+                tracker.complete()
+                from app.utils.pipeline_report_generator import PipelineReportGenerator
+                # Save under logs directory in backend
+                base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                logs_dir = os.path.join(base_dir, "logs")
+                PipelineReportGenerator.write_reports(tracker, logs_dir)
+                
+                # Also save to conversation artifacts directory for visibility
+                artifacts_dir = r"C:\Users\codel\.gemini\antigravity\brain\00c5547d-eb3b-4b6e-9e36-b8c5556065e7"
+                if os.path.exists(artifacts_dir):
+                    try:
+                        PipelineReportGenerator.write_reports(tracker, artifacts_dir)
+                    except Exception as e:
+                        logger.warning(f"Failed to copy report to artifact dir: {e}")
 
         await search_cache.cleanup_key_lock(cache_key)
         return response

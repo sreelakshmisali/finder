@@ -66,6 +66,18 @@ class DuckDuckGoSearchProvider(SearchProvider):
                     
                     print(f"[DEBUG - DuckDuckGo] Received {len(matches)} raw matches from HTML.")
                     
+                    all_urls = []
+                    for m in matches:
+                        u = m[0].strip()
+                        if u.startswith("//"):
+                            u = "https:" + u
+                        all_urls.append(u)
+
+                    from app.utils.pipeline_tracker import current_tracker
+                    tracker = current_tracker.get()
+                    if tracker:
+                        tracker.record_discovery(query, self.name, all_urls)
+
                     for raw_url, raw_title in matches[:limit]:
                         clean_url = raw_url.strip()
                         clean_title = re.sub(r'<[^>]+>', '', raw_title).strip()
@@ -83,6 +95,10 @@ class DuckDuckGoSearchProvider(SearchProvider):
                             )
                         )
         except Exception as exc:
+            from app.utils.pipeline_tracker import current_tracker
+            tracker = current_tracker.get()
+            if tracker:
+                tracker._add_event("search_provider_failed", {"engine": self.name, "query": query, "error": str(exc)})
             logger.warning(f"DuckDuckGo Search Provider error: {exc}")
 
         print(f"[DEBUG - DuckDuckGo] Returning {len(results)} finalized results.\n")

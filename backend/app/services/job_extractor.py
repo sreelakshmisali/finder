@@ -68,6 +68,11 @@ class JobExtractor:
             print(f"[JobExtractor] SKIP: Invalid URL '{url}'")
             return None
 
+        import time
+        from app.utils.pipeline_tracker import current_tracker
+        tracker = current_tracker.get()
+        start = time.time()
+
         # 1. Fetch HTML content
         try:
             html = await self.fetcher.fetch(url)
@@ -77,6 +82,8 @@ class JobExtractor:
 
         if not html:
             print(f"[JobExtractor] SKIP: Failed to fetch HTML for '{url}'")
+            if tracker:
+                tracker.record_extraction(url, success=False, extractor=None, duration=time.time() - start, error="Failed to fetch HTML")
             return None
 
         print(f"[JobExtractor] Fetched {len(html)} chars for: {url}")
@@ -93,17 +100,21 @@ class JobExtractor:
                 )
                 logger.info(f"Page '{url}' rejected by classifier: {classification.rejected_reason} "
                             f"(Type: {classification.page_type.value}, Conf: {classification.confidence:.2f})")
+                if tracker:
+                    tracker.record_extraction(url, success=False, extractor=None, duration=time.time() - start, error=f"Classifier rejected: {classification.rejected_reason}")
                 return None
         else:
             print(f"[JobExtractor] Skipping gatekeeper (pre-vetted by CrawlScheduler): {url}")
 
         # 3. Execute Extractor Pipeline to extract core fields
         base_job: Optional[NormalizedJob] = None
+        succeeded_extractor = None
         for extractor in self.extractors:
             try:
                 job = await extractor.extract(url=url, html=html, search_result=search_result)
                 if job:
                     base_job = job
+                    succeeded_extractor = extractor.name
                     print(f"[JobExtractor] Extractor '{extractor.name}' succeeded for: {url}")
                     break
             except Exception as exc:
@@ -111,15 +122,20 @@ class JobExtractor:
 
         if not base_job and not search_result:
             print(f"[JobExtractor] SKIP: All extractors failed and no search_result fallback for: {url}")
+            if tracker:
+                tracker.record_extraction(url, success=False, extractor=None, duration=time.time() - start, error="All extractors failed and no fallback")
             return None
 
         # Fallback if pipeline returned None but search_result exists
         if not base_job and search_result:
             print(f"[JobExtractor] Trying HeuristicExtractor fallback with search_result for: {url}")
             base_job = await HeuristicExtractor().extract(url=url, html=html, search_result=search_result)
+            succeeded_extractor = "HeuristicExtractorFallback"
 
         if not base_job:
             print(f"[JobExtractor] SKIP: HeuristicExtractor fallback also failed for: {url}")
+            if tracker:
+                tracker.record_extraction(url, success=False, extractor=None, duration=time.time() - start, error="Heuristic fallback failed")
             return None
 
         # 4. Enrich with Required Skills and direct Apply URL
@@ -131,6 +147,9 @@ class JobExtractor:
 
         base_job.required_skills = skills
         base_job.apply_url = apply_url or url
+
+        if tracker:
+            tracker.record_extraction(url, success=True, extractor=succeeded_extractor, duration=time.time() - start)
 
         print(f"[JobExtractor] SUCCESS: '{base_job.title}' at '{base_job.company}' -> {url}")
         return base_job

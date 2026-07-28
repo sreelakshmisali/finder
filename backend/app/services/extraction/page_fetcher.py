@@ -23,13 +23,23 @@ class HttpFetcher:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Finder/1.0",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
         }
+        import time
+        from app.utils.pipeline_tracker import current_tracker
+        tracker = current_tracker.get()
+        start = time.time()
         try:
             async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
                 response = await client.get(url, headers=headers)
+                dur = time.time() - start
+                if tracker:
+                    tracker.record_fetch(url, status_code=response.status_code, duration=dur)
                 if response.status_code == 200:
                     return response.text
                 logger.warning(f"HttpFetcher got HTTP {response.status_code} for URL: {url}")
         except Exception as exc:
+            dur = time.time() - start
+            if tracker:
+                tracker.record_fetch(url, status_code=None, duration=dur, error=str(exc))
             logger.warning(f"HttpFetcher failed for '{url}': {exc}")
 
         return None
@@ -42,6 +52,10 @@ class PlaywrightFetcher:
     """
 
     async def fetch(self, url: str, timeout: float = 15.0) -> Optional[str]:
+        import time
+        from app.utils.pipeline_tracker import current_tracker
+        tracker = current_tracker.get()
+        start = time.time()
         try:
             from playwright.async_api import async_playwright
             async with async_playwright() as p:
@@ -54,8 +68,14 @@ class PlaywrightFetcher:
                 await page.wait_for_timeout(1000)
                 html = await page.content()
                 await browser.close()
+                dur = time.time() - start
+                if tracker:
+                    tracker.record_fetch(url, status_code=200, duration=dur, playwright_used=True)
                 return html
         except Exception as exc:
+            dur = time.time() - start
+            if tracker:
+                tracker.record_fetch(url, status_code=None, duration=dur, error=f"Playwright failed: {exc}", playwright_used=True)
             logger.warning(f"PlaywrightFetcher failed for '{url}': {exc}")
 
         return None

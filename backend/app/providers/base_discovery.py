@@ -37,6 +37,14 @@ class DiscoveryContext:
     user_id: Optional[uuid.UUID] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
 
+    def __post_init__(self):
+        if self.metadata is None:
+            self.metadata = {}
+        from app.utils.pipeline_tracker import PipelineTracker
+        if "tracker" not in self.metadata:
+            self.metadata["tracker"] = PipelineTracker()
+
+
 
 class JobDiscoveryProvider(ABC):
     """

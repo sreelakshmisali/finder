@@ -82,9 +82,11 @@ class CrawlScheduler:
             
         from app.services.search.candidate_scorer import CandidateScorer
         from urllib.parse import urlparse
+        import time
         
         # 1. Score candidate URLs
         scored_candidates = CandidateScorer.score_urls(candidate_urls, target_role)
+        url_to_score = {url: score for url, score in scored_candidates}
         
         # 2. Group by domain for diversity (Round-Robin)
         domain_groups = {}
@@ -97,15 +99,38 @@ class CrawlScheduler:
         # Round-robin selection to enforce diversity
         diverse_urls = []
         max_candidate_limit = 50  # Prevent crawling too many candidates overall
+        skipped_candidates = {}
+        
         iters = max([len(g) for g in domain_groups.values()]) if domain_groups else 0
         for i in range(iters):
             for netloc in list(domain_groups.keys()):
                 if i < len(domain_groups[netloc]):
-                    diverse_urls.append(domain_groups[netloc][i])
-            if len(diverse_urls) >= max_candidate_limit:
-                break
-                
+                    url = domain_groups[netloc][i]
+                    if len(diverse_urls) < max_candidate_limit:
+                        if url not in diverse_urls:
+                            diverse_urls.append(url)
+                        else:
+                            skipped_candidates[url] = "Duplicate URL"
+                    else:
+                        skipped_candidates[url] = "Candidate limit reached"
+                        
         candidate_urls_to_process = diverse_urls[:max_candidate_limit]
+
+        # Record Stage 2 & 3 in tracker
+        from app.utils.pipeline_tracker import current_tracker
+        tracker = current_tracker.get()
+        if tracker:
+            tracker.start_stage("Stage 3 - Crawl Scheduler")
+            for url in candidate_urls:
+                tracker.record_candidate(url)
+            for url, score in scored_candidates:
+                pos = candidate_urls.index(url) + 1
+                if url in skipped_candidates:
+                    tracker.record_scheduler_decision(url, score, pos, scheduled=False, reason=skipped_candidates[url])
+                elif url not in candidate_urls_to_process:
+                    tracker.record_scheduler_decision(url, score, pos, scheduled=False, reason="Candidate limit reached")
+                else:
+                    tracker.record_scheduler_decision(url, score, pos, scheduled=True, reason="Scheduled for crawl")
 
         dedup = global_dedup or URLDeduplicator()
         semaphore = asyncio.Semaphore(self.max_concurrent)
@@ -138,6 +163,8 @@ class CrawlScheduler:
             f"[CrawlScheduler] Scheduled {len(candidate_urls_to_process)} candidates -> "
             f"{len(job_posting_urls)} job posting URLs extracted."
         )
+        if tracker:
+            tracker.end_stage("Stage 3 - Crawl Scheduler")
         return job_posting_urls
 
     async def _process_candidate(
@@ -149,6 +176,8 @@ class CrawlScheduler:
         Classifies a single candidate URL and routes it to the correct handler.
         """
         print(f"\n[CrawlScheduler] Processing candidate: {url}")
+        from app.utils.pipeline_tracker import current_tracker
+        tracker = current_tracker.get()
 
         # Step 1: URL-only pre-classification (no HTTP fetch yet)
         pre_result = self.classifier.classify(url=url, html="")
@@ -156,16 +185,26 @@ class CrawlScheduler:
             f"[CrawlScheduler]   Pre-classify (URL-only): {pre_result.page_type.value} "
             f"conf={pre_result.confidence:.2f} sub={pre_result.sub_type or '-'}"
         )
+        if tracker:
+            tracker.record_classification(url, pre_result.page_type.value, pre_result.confidence, pre_result.matched_signals, pre_result.rejected_reason)
 
         # Fast-path discard without fetching
         if pre_result.page_type in _DISCARD_TYPES and pre_result.confidence >= 0.85:
             print(f"[CrawlScheduler]   DISCARD (pre-classify): {pre_result.page_type.value} -> {url}")
+            if tracker and url in tracker.stage3_scheduler:
+                tracker.stage3_scheduler[url]["scheduled"] = False
+                tracker.stage3_scheduler[url]["reason"] = f"Pre-classify discard: {pre_result.page_type.value}"
             return []
 
         # Step 2: Fetch HTML
         html = await self._fetch(url)
         if not html:
             print(f"[CrawlScheduler]   SKIP: Failed to fetch HTML for: {url}")
+            if tracker and url in tracker.stage3_scheduler:
+                tracker.stage3_scheduler[url]["scheduled"] = False
+                fetch_info = tracker.stage4_fetches.get(url, {})
+                err_msg = fetch_info.get("error") or f"HTTP status {fetch_info.get('status_code')}"
+                tracker.stage3_scheduler[url]["reason"] = f"Fetch failed: {err_msg}"
             return []
         print(f"[CrawlScheduler]   Fetched HTML: {len(html)} chars")
 
@@ -176,6 +215,8 @@ class CrawlScheduler:
             f"conf={result.confidence:.2f} sub={result.sub_type or '-'} "
             f"signals={result.matched_signals}"
         )
+        if tracker:
+            tracker.record_classification(url, result.page_type.value, result.confidence, result.matched_signals, result.rejected_reason)
 
         # Step 4: Route based on PageType
         if result.page_type == PageType.JOB_POSTING:
@@ -185,6 +226,9 @@ class CrawlScheduler:
                 print(f"[CrawlScheduler]   -> Direct JOB_POSTING: {clean}")
                 return [clean]
             print(f"[CrawlScheduler]   -> JOB_POSTING but already seen or invalid: {url}")
+            if tracker and url in tracker.stage3_scheduler:
+                tracker.stage3_scheduler[url]["scheduled"] = False
+                tracker.stage3_scheduler[url]["reason"] = "Already crawled or duplicate URL"
             return []
 
         if result.page_type in _DRILL_DOWN_TYPES:
@@ -193,6 +237,9 @@ class CrawlScheduler:
         # Everything else -- discard
         reason = result.rejected_reason or result.page_type.value
         print(f"[CrawlScheduler]   DISCARD: {reason} -> {url}")
+        if tracker and url in tracker.stage3_scheduler:
+            tracker.stage3_scheduler[url]["scheduled"] = False
+            tracker.stage3_scheduler[url]["reason"] = f"Classified as {reason}"
         return []
 
     async def _drill_down(
@@ -204,12 +251,10 @@ class CrawlScheduler:
     ) -> List[str]:
         """
         Extracts individual job posting URLs from a listing/ATS/career page.
-
-        IMPORTANT: We do NOT pass the shared dedup into the extractors.
-        The extractors use their own internal dedup for within-page filtering.
-        We only use the shared dedup HERE to avoid returning the same URL
-        from different source pages (cross-source deduplication).
         """
+        from app.utils.pipeline_tracker import current_tracker
+        tracker = current_tracker.get()
+
         # Try ATS-specific extractor first (more precise)
         ats_extractor = get_ats_extractor(page_url)
         if ats_extractor:
@@ -217,12 +262,9 @@ class CrawlScheduler:
                 f"[CrawlScheduler]   -> Using ATS extractor: '{ats_extractor.ats_name}' "
                 f"for: {page_url}"
             )
-            # NOTE: Do NOT pass the shared dedup — use None so the extractor
-            # creates its own local dedup for within-page filtering only
             raw_links = ats_extractor.extract_job_links(html, page_url, deduplicator=None)
         else:
             print(f"[CrawlScheduler]   -> Using generic JobLinkExtractor for: {page_url}")
-            # NOTE: Do NOT pass the shared dedup — same reason
             raw_links = self.job_link_extractor.extract(
                 html, page_url, deduplicator=None,
                 max_links=self.max_job_urls_per_source
@@ -234,12 +276,21 @@ class CrawlScheduler:
         if len(raw_links) > 5:
             print(f"[CrawlScheduler]      ... and {len(raw_links) - 5} more")
 
+        if tracker:
+            tracker.record_drill_down(page_url, raw_links)
+
         # Now apply shared dedup for cross-source deduplication
         extracted_urls: List[str] = []
         for link in raw_links[:self.max_job_urls_per_source]:
             clean = URLNormalizer.normalize(link)
-            if clean and dedup.is_new(clean):
-                extracted_urls.append(clean)
+            if clean:
+                if dedup.is_new(clean):
+                    extracted_urls.append(clean)
+                    if tracker:
+                        tracker.record_scheduler_decision(clean, priority=1.0, position=0, scheduled=True, reason=f"Extracted from {page_url}")
+                else:
+                    if tracker:
+                        tracker.record_scheduler_decision(clean, priority=1.0, position=0, scheduled=False, reason="Duplicate URL (drill-down)")
 
         print(
             f"[CrawlScheduler]   -> After dedup: {len(extracted_urls)} unique job URLs "
@@ -258,11 +309,18 @@ class CrawlScheduler:
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.9",
         }
+        import time
+        from app.utils.pipeline_tracker import current_tracker
+        tracker = current_tracker.get()
+        start_time = time.time()
         try:
             async with httpx.AsyncClient(
                 timeout=self.fetch_timeout, follow_redirects=True
             ) as client:
                 resp = await client.get(url, headers=headers)
+                dur = time.time() - start_time
+                if tracker:
+                    tracker.record_fetch(url, status_code=resp.status_code, duration=dur)
                 if resp.status_code == 200:
                     return resp.text
                 print(f"[CrawlScheduler]   HTTP {resp.status_code} for: {url}")
@@ -270,7 +328,11 @@ class CrawlScheduler:
                     f"[CrawlScheduler] HTTP {resp.status_code} for: {url}"
                 )
         except Exception as exc:
+            dur = time.time() - start_time
+            if tracker:
+                tracker.record_fetch(url, status_code=None, duration=dur, error=str(exc))
             print(f"[CrawlScheduler]   Fetch error: {exc}")
             logger.warning(f"[CrawlScheduler] Fetch error for '{url}': {exc}")
         return None
+
 

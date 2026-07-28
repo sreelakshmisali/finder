@@ -54,15 +54,21 @@ class JobRepository:
         Returns existing merged record if a duplicate is found using intelligent detection.
         """
         content_hash = generate_content_hash(norm_job.company, norm_job.title, norm_job.location)
+        from app.utils.pipeline_tracker import current_tracker
+        tracker = current_tracker.get()
 
         # 1. Exact URL match (fast path)
         existing_url = await self.get_by_url(norm_job.url)
         if existing_url:
+            if tracker:
+                tracker.record_persistence(norm_job.url, status="merged", duplicate_of_url=existing_url.url, details="Exact URL match")
             return await self._merge_job(existing_url, norm_job)
 
         # 2. Exact content hash match (legacy fast path)
         existing_hash = await self.get_by_content_hash(content_hash)
         if existing_hash:
+            if tracker:
+                tracker.record_persistence(norm_job.url, status="merged", duplicate_of_url=existing_hash.url, details="Exact title/company/location content hash match")
             return await self._merge_job(existing_hash, norm_job)
 
         # 3. Intelligent Duplicate Detection
@@ -81,6 +87,8 @@ class JobRepository:
         if dup_result.is_duplicate and dup_result.duplicate_of_id:
             existing_dup = await self.get_by_id(dup_result.duplicate_of_id)
             if existing_dup:
+                if tracker:
+                    tracker.record_persistence(norm_job.url, status="merged", duplicate_of_url=existing_dup.url, details=f"Similarity duplicate match (score={dup_result.score:.2f})")
                 return await self._merge_job(existing_dup, norm_job)
 
         # 4. No duplicate found, create new record
@@ -101,6 +109,8 @@ class JobRepository:
         self.db.add(db_job)
         await self.db.commit()
         await self.db.refresh(db_job)
+        if tracker:
+            tracker.record_persistence(norm_job.url, status="new", details="Unique job saved successfully")
         return db_job
 
     async def _merge_job(self, existing: Job, norm_job: NormalizedJob) -> Job:
