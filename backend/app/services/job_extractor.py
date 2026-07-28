@@ -48,7 +48,8 @@ class JobExtractor:
     async def extract_from_url(
         self,
         url: str,
-        search_result: Optional[SearchResult] = None
+        search_result: Optional[SearchResult] = None,
+        skip_classification: bool = False,
     ) -> Optional[NormalizedJob]:
         """
         Extracts structured job details from a career page URL.
@@ -56,11 +57,15 @@ class JobExtractor:
         Args:
             url: Target career page web URL.
             search_result: Optional SearchResult context metadata.
+            skip_classification: If True, bypass the gatekeeper classifier.
+                Used when the CrawlScheduler has already classified this URL
+                as a JOB_POSTING with high confidence.
 
         Returns:
             `NormalizedJob` if extraction succeeds, or `None` if page unparseable or rejected by classifier.
         """
         if not url or not isinstance(url, str):
+            print(f"[JobExtractor] SKIP: Invalid URL '{url}'")
             return None
 
         # 1. Fetch HTML content
@@ -71,14 +76,26 @@ class JobExtractor:
             html = ""
 
         if not html:
+            print(f"[JobExtractor] SKIP: Failed to fetch HTML for '{url}'")
             return None
 
+        print(f"[JobExtractor] Fetched {len(html)} chars for: {url}")
+
         # 2. Classify Page (Gatekeeper)
-        classification = self.classifier.classify(url, html)
-        if not classification.is_valid_job:
-            logger.info(f"Page '{url}' rejected by classifier: {classification.rejected_reason} "
-                        f"(Type: {classification.page_type.value}, Conf: {classification.confidence:.2f})")
-            return None
+        # Skip classification for URLs already pre-vetted by the CrawlScheduler pipeline
+        if not skip_classification:
+            classification = self.classifier.classify(url, html)
+            if not classification.is_valid_job:
+                print(
+                    f"[JobExtractor] REJECTED by classifier: {classification.rejected_reason} "
+                    f"(type={classification.page_type.value}, conf={classification.confidence:.2f}) "
+                    f"-> {url}"
+                )
+                logger.info(f"Page '{url}' rejected by classifier: {classification.rejected_reason} "
+                            f"(Type: {classification.page_type.value}, Conf: {classification.confidence:.2f})")
+                return None
+        else:
+            print(f"[JobExtractor] Skipping gatekeeper (pre-vetted by CrawlScheduler): {url}")
 
         # 3. Execute Extractor Pipeline to extract core fields
         base_job: Optional[NormalizedJob] = None
@@ -87,18 +104,22 @@ class JobExtractor:
                 job = await extractor.extract(url=url, html=html, search_result=search_result)
                 if job:
                     base_job = job
+                    print(f"[JobExtractor] Extractor '{extractor.name}' succeeded for: {url}")
                     break
             except Exception as exc:
                 logger.warning(f"Extractor '{extractor.name}' failed for '{url}': {exc}")
 
         if not base_job and not search_result:
+            print(f"[JobExtractor] SKIP: All extractors failed and no search_result fallback for: {url}")
             return None
 
         # Fallback if pipeline returned None but search_result exists
         if not base_job and search_result:
+            print(f"[JobExtractor] Trying HeuristicExtractor fallback with search_result for: {url}")
             base_job = await HeuristicExtractor().extract(url=url, html=html, search_result=search_result)
 
         if not base_job:
+            print(f"[JobExtractor] SKIP: HeuristicExtractor fallback also failed for: {url}")
             return None
 
         # 4. Enrich with Required Skills and direct Apply URL
@@ -111,4 +132,6 @@ class JobExtractor:
         base_job.required_skills = skills
         base_job.apply_url = apply_url or url
 
+        print(f"[JobExtractor] SUCCESS: '{base_job.title}' at '{base_job.company}' -> {url}")
         return base_job
+

@@ -43,24 +43,37 @@ class DuckDuckGoSearchProvider(SearchProvider):
             return []
 
         results: List[SearchResult] = []
-        url = "https://html.duckduckgo.com/html/"
+        url = "https://lite.duckduckgo.com/lite/"
         data = {"q": query}
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Finder/1.0"
         }
+
+        print(f"duckduckgo-------------------------- Preparing to search...")
+        print(f"duck duck go url--------------: {url}")
+        print(f"duck duck go data---------------------------------------: {data}")
 
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 resp = await client.post(url, data=data, headers=headers)
                 if resp.status_code == 200:
                     import re
-                    pattern = r'<a[^>]+class=["\']result__url["\'][^>]+href=["\']([^"\']+)["\'][^>]*>(.*?)</a>'
-                    matches = re.findall(pattern, resp.text, re.IGNORECASE)
+                    matches = []
+                    for m in re.finditer(r'<a[^>]+href=[\'"]([^\'"]+)[\'"][^>]+class=[\'"]result-link[\'"][^>]*>(.*?)</a>', resp.text, re.IGNORECASE):
+                        matches.append((m.group(1), m.group(2)))
+                    for m in re.finditer(r'<a[^>]+class=[\'"]result-link[\'"][^>]+href=[\'"]([^\'"]+)[\'"][^>]*>(.*?)</a>', resp.text, re.IGNORECASE):
+                        matches.append((m.group(1), m.group(2)))
+                    
+                    print(f"[DEBUG - DuckDuckGo] Received {len(matches)} raw matches from HTML.")
+                    
                     for raw_url, raw_title in matches[:limit]:
                         clean_url = raw_url.strip()
                         clean_title = re.sub(r'<[^>]+>', '', raw_title).strip()
                         if clean_url.startswith("//"):
                             clean_url = "https:" + clean_url
+                            
+                        print(f"[DEBUG - DuckDuckGo] Extracted URL: {clean_url}")
+                        
                         results.append(
                             SearchResult(
                                 title=clean_title or "Job Result",
@@ -72,4 +85,5 @@ class DuckDuckGoSearchProvider(SearchProvider):
         except Exception as exc:
             logger.warning(f"DuckDuckGo Search Provider error: {exc}")
 
+        print(f"[DEBUG - DuckDuckGo] Returning {len(results)} finalized results.\n")
         return results

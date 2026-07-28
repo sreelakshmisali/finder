@@ -122,7 +122,7 @@ class ProviderRegistry:
 
 # Singleton registry instance initialized with default discovery providers
 registry = ProviderRegistry()
-registry.register_provider(GreenhouseProvider(), priority=10)
-registry.register_provider(LeverProvider(), priority=20)
-registry.register_provider(AshbyProvider(), priority=30)
+# registry.register_provider(GreenhouseProvider(), priority=10)
+# registry.register_provider(LeverProvider(), priority=20)
+# registry.register_provider(AshbyProvider(), priority=30)
 registry.register_provider(SearchDiscoveryProvider(), priority=40)

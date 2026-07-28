@@ -195,3 +195,70 @@ class SearchQueryGenerator:
             else:
                 normalized.append(w_clean)
         return normalized
+
+    @staticmethod
+    def generate_search_engine_queries(
+        raw_query: str, 
+        location: Optional[str] = None, 
+        max_queries: int = 15
+    ) -> List[str]:
+        """
+        Expands a raw user query into multiple targeted job-search engine queries.
+        Uses RoleSynonymRegistry for synonym expansion and injects location constraints.
+        """
+        from app.services.search.synonyms import RoleSynonymRegistry
+        
+        q = raw_query.strip()
+        if not q:
+            return ["software developer jobs", "software engineer jobs"]
+
+        # Expand synonyms
+        synonyms = RoleSynonymRegistry.expand_role(q)
+        
+        queries = []
+        role_keywords = {"developer", "engineer", "designer", "manager", "architect", "analyst", "intern"}
+        
+        # Build base queries from synonyms
+        base_queries = []
+        for syn in synonyms:
+            syn_lower = syn.lower()
+            has_role = any(kw in syn_lower for kw in role_keywords)
+            if has_role:
+                base_queries.extend([f"{syn} jobs", f"{syn} hiring"])
+            else:
+                base_queries.extend([f"{syn} developer jobs", f"{syn} engineer jobs"])
+                
+        # If location is provided, inject it heavily
+        if location and location.strip() and location.lower() != "remote":
+            loc = location.strip()
+            loc_queries = []
+            for bq in base_queries:
+                loc_queries.append(f"{bq} {loc}")
+            
+            # ATS queries with location
+            loc_queries.extend([
+                f"site:boards.greenhouse.io {synonyms[0]} {loc}",
+                f"site:jobs.lever.co {synonyms[0]} {loc}",
+                f"site:jobs.ashbyhq.com {synonyms[0]} {loc}",
+            ])
+            # Add back some non-location remote queries just in case
+            loc_queries.extend(base_queries[:2])
+            queries = loc_queries
+        else:
+            # Remote or no location
+            queries.extend(base_queries)
+            remote_kw = "remote " if location and location.lower() == "remote" else ""
+            queries.extend([
+                f"site:boards.greenhouse.io {remote_kw}{synonyms[0]}",
+                f"site:jobs.lever.co {remote_kw}{synonyms[0]}",
+                f"site:jobs.ashbyhq.com {remote_kw}{synonyms[0]}",
+                f"site:myworkdayjobs.com {remote_kw}{synonyms[0]}",
+                f"site:jobs.smartrecruiters.com {remote_kw}{synonyms[0]}",
+            ])
+
+        # Deduplicate while preserving order
+        unique_queries = list(dict.fromkeys(queries))
+        return unique_queries[:max_queries]
+
+
+

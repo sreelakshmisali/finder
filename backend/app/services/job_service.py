@@ -109,6 +109,8 @@ class JobService:
         if not query.force_refresh:
             cached_res = await search_cache.get(cache_key)
             if cached_res:
+                print(f"\n[DEBUG - JobService] 🛑 SKIPPING WEB SEARCH! Found exact match in Fast Cache (Redis/Memory).")
+                print(f"[DEBUG - JobService] If you want to force a web search, pass ?force_refresh=true to the API.\n")
                 logger.info(f"Cache HIT for search key: '{cache_key}'")
                 return cached_res
 
@@ -138,6 +140,8 @@ class JobService:
 
             # Evaluate Quantity & Freshness
             if len(stored_jobs) >= settings.SEARCH_INDEX_MIN_RESULTS:
+                print(f"\n[DEBUG - JobService] 🛑 SKIPPING WEB SEARCH! Found {len(stored_jobs)} fresh jobs in the local database for '{query.query}'.")
+                print(f"[DEBUG - JobService] If you want to force a web search, pass ?force_refresh=true to the API.\n")
                 logger.info(f"Search Index HIT: Found {len(stored_jobs)} fresh indexed jobs for query '{query.query}'. Skipping external discovery.")
                 response = JobListResponse(
                     total=len(stored_jobs),
