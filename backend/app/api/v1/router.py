@@ -13,7 +13,6 @@ from app.api.v1.auth import router as auth_router
 from app.api.v1.onboarding import router as onboarding_router
 from app.api.v1.profile import router as profile_router
 from app.api.v1.saved_searches import router as saved_searches_router
-from app.api.v1.notifications import router as notifications_router
 from app.api.v1.companies import router as companies_router
 
 api_router = APIRouter()
@@ -35,5 +34,4 @@ api_router.include_router(auth_router)
 api_router.include_router(onboarding_router)
 api_router.include_router(profile_router)
 api_router.include_router(saved_searches_router)
-api_router.include_router(notifications_router)
 api_router.include_router(companies_router)

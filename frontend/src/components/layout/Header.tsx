@@ -6,7 +6,7 @@
 
 import type { ReactNode } from "react";
 import { Menu } from "lucide-react";
-import NotificationBell from "../shared/NotificationBell";
+
 
 interface HeaderProps {
   title: string;
@@ -39,7 +39,6 @@ function Header({ title, subtitle, actions, onMenuClick }: HeaderProps) {
         </div>
 
         <div className="flex items-center gap-3">
-          <NotificationBell />
           {actions}
         </div>
       </div>
