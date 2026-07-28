@@ -80,16 +80,8 @@ class User(Base):
         back_populates="user",
         passive_deletes=True
     )
-    if TYPE_CHECKING:
-        from app.models.saved_search import SavedSearch
-
     applications: Mapped[List["Application"]] = relationship(
         "Application",
-        back_populates="user",
-        passive_deletes=True
-    )
-    saved_searches: Mapped[List["SavedSearch"]] = relationship(
-        "SavedSearch",
         back_populates="user",
         passive_deletes=True
     )
