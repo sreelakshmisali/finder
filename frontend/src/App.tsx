@@ -42,7 +42,6 @@ function App() {
                 <Route path="jobs" element={<JobsPage />} />
                 <Route path="profile" element={<ProfilePage />} />
                 <Route path="resume" element={<Navigate to="/profile" replace />} />
-                <Route path="preferences" element={<Navigate to="/profile" replace />} />
                 <Route path="tracker" element={<TrackerPage />} />
               </Route>
             </Route>

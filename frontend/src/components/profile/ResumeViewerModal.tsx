@@ -67,7 +67,7 @@ export default function ResumeViewerModal({ isOpen, onClose, filename = "Active 
       isOpen={isOpen}
       onClose={handleClose}
       title={`Viewing: ${filename}`}
-      size="xl"
+      size="lg"
     >
       <div className="flex flex-col h-[70vh] sm:h-[80vh] w-full">
         {viewPdfMutation.isPending && (

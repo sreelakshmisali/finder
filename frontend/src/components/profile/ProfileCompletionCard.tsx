@@ -1,11 +1,11 @@
 /**
  * ProfileCompletionCard Component
  *
- * Displays overall candidate profile setup status with separate badges for
- * Resume (Required Capability) and Job Preferences (Optional Goals).
+ * Displays overall candidate profile setup status based on
+ * Resume upload and analysis.
  */
 
-import { CheckCircle2, AlertCircle, FileText, SlidersHorizontal, Sparkles } from "lucide-react";
+import { CheckCircle2, AlertCircle, FileText, Sparkles } from "lucide-react";
 import type { ProfileSetupData } from "../../types/profile";
 import { Badge } from "../ui";
 
@@ -15,8 +15,7 @@ interface ProfileCompletionCardProps {
 
 export default function ProfileCompletionCard({ data }: ProfileCompletionCardProps) {
   const resumeCompleted = data?.resume_completed ?? false;
-  const preferencesCompleted = data?.preferences_completed ?? false;
-  const percentage = data?.profile_completion_percentage ?? 20;
+  const percentage = data?.profile_completion_percentage ?? 34;
 
   return (
     <div className="relative overflow-hidden p-6 sm:p-8 rounded-3xl bg-surface border border-border shadow-md space-y-6">
@@ -33,7 +32,7 @@ export default function ProfileCompletionCard({ data }: ProfileCompletionCardPro
             Candidate <span className="text-primary">Profile Setup</span>
           </h2>
           <p className="text-sm text-text-secondary">
-            Resume defines your candidate capabilities. Preferences specify your target career goals.
+            Your resume defines your candidate capabilities and is used as the single source of truth for matching.
           </p>
         </div>
 
@@ -57,7 +56,7 @@ export default function ProfileCompletionCard({ data }: ProfileCompletionCardPro
       </div>
 
       {/* Status Badges Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 relative z-10 pt-2">
+      <div className="relative z-10 pt-2">
         {/* Resume Status Card */}
         <a
           href="#resume-section"
@@ -75,7 +74,7 @@ export default function ProfileCompletionCard({ data }: ProfileCompletionCardPro
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-sm text-text">1. PDF Resume</span>
+                <span className="font-bold text-sm text-text">PDF Resume</span>
                 <Badge variant="error" className="text-[10px] uppercase font-bold px-2 py-0.5">
                   Required
                 </Badge>
@@ -88,42 +87,6 @@ export default function ProfileCompletionCard({ data }: ProfileCompletionCardPro
             </div>
           </div>
           <FileText size={18} className="text-text-muted group-hover:text-primary transition-colors" />
-        </a>
-
-        {/* Preferences Status Card */}
-        <a
-          href="#preferences-section"
-          className="p-4 rounded-2xl bg-surface-elevated/40 border border-border hover:border-accent/40 transition-all flex items-center justify-between group"
-        >
-          <div className="flex items-center gap-3">
-            <div
-              className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${
-                preferencesCompleted
-                  ? "bg-success/15 text-success"
-                  : "bg-primary/10 text-primary"
-              }`}
-            >
-              {preferencesCompleted ? (
-                <CheckCircle2 size={20} />
-              ) : (
-                <SlidersHorizontal size={20} />
-              )}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-sm text-text">2. Job Preferences</span>
-                <Badge variant="default" className="text-[10px] uppercase font-bold px-2 py-0.5 bg-surface-elevated">
-                  Optional
-                </Badge>
-              </div>
-              <p className="text-xs text-text-secondary mt-0.5">
-                {preferencesCompleted
-                  ? "Configured target roles, locations & salary"
-                  : "Optional: Skip or configure target fit criteria"}
-              </p>
-            </div>
-          </div>
-          <SlidersHorizontal size={18} className="text-text-muted group-hover:text-accent transition-colors" />
         </a>
       </div>
     </div>

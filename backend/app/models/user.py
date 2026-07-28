@@ -16,7 +16,6 @@ from app.database.base import Base
 
 if TYPE_CHECKING:
     from app.models.resume import Resume
-    from app.models.preference import Preference
     from app.models.application import Application
 
 
@@ -80,12 +79,6 @@ class User(Base):
         "Resume",
         back_populates="user",
         passive_deletes=True
-    )
-    preferences: Mapped[Optional["Preference"]] = relationship(
-        "Preference",
-        back_populates="user",
-        passive_deletes=True,
-        uselist=False
     )
     if TYPE_CHECKING:
         from app.models.saved_search import SavedSearch

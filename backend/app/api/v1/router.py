@@ -8,7 +8,6 @@ from fastapi import APIRouter
 from app.api.v1.jobs import router as jobs_router
 from app.api.v1.dashboard import router as dashboard_router
 from app.api.v1.resume import router as resume_router
-from app.api.v1.preferences import router as preferences_router
 from app.api.v1.applications import router as applications_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.onboarding import router as onboarding_router
@@ -31,7 +30,6 @@ async def health_check():
 api_router.include_router(jobs_router)
 api_router.include_router(dashboard_router)
 api_router.include_router(resume_router)
-api_router.include_router(preferences_router)
 api_router.include_router(applications_router)
 api_router.include_router(auth_router)
 api_router.include_router(onboarding_router)

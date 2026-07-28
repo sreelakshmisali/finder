@@ -1,7 +1,7 @@
 """
 Search Query Generator Service
 
-Consumes a `ResumeSearchProfile` and optional candidate `Preference` object to build
+Consumes a `ResumeSearchProfile` to build
 deterministic, ranked, and semantically deduplicated search queries for job discovery engines.
 """
 
@@ -9,7 +9,6 @@ import logging
 from typing import List, Dict, Any, Optional, Set
 
 from app.models.resume import Resume
-from app.models.preference import Preference
 from app.schemas.search_profile import ResumeSearchProfile, GeneratedQuery
 from app.services.resume_signal_extractor import ResumeSignalExtractor
 
@@ -25,7 +24,6 @@ class SearchQueryGenerator:
     def generate_rich_queries(
         cls,
         profile: ResumeSearchProfile,
-        preference: Optional[Preference] = None,
         max_queries: int = 5
     ) -> List[GeneratedQuery]:
         """
@@ -33,7 +31,6 @@ class SearchQueryGenerator:
 
         Args:
             profile: `ResumeSearchProfile` instance.
-            preference: Optional candidate search preferences entity.
             max_queries: Maximum number of query objects to return.
 
         Returns:
@@ -48,24 +45,6 @@ class SearchQueryGenerator:
         primary_domain = profile.domains[0] if profile.domains else "Software"
         frameworks = profile.frameworks[:3]
         roles = profile.roles
-
-        # Preference overrides / boosts
-        pref_roles: List[str] = preference.preferred_roles if preference and preference.preferred_roles else []
-
-        # Strategy 0: Preference Boost (if explicit preferred roles specified)
-        for pref_role in pref_roles:
-            if primary_lang:
-                candidates.append(GeneratedQuery(
-                    query=f"{primary_lang} {pref_role}".strip(),
-                    priority=110,
-                    strategy="preference_boost"
-                ))
-            else:
-                candidates.append(GeneratedQuery(
-                    query=pref_role.strip(),
-                    priority=105,
-                    strategy="preference_boost"
-                ))
 
         # Strategy 1: Tech + Domain + Role (e.g. "Python Backend Engineer")
         if primary_lang and primary_domain:
@@ -155,7 +134,6 @@ class SearchQueryGenerator:
     def generate_queries(
         cls,
         resume: Optional[Resume] = None,
-        preference: Optional[Preference] = None,
         max_queries: int = 5
     ) -> List[str]:
         """
@@ -163,7 +141,6 @@ class SearchQueryGenerator:
 
         Args:
             resume: Optional active Resume entity with `parsed_data`.
-            preference: Optional Preference entity.
             max_queries: Maximum number of search query strings to return.
 
         Returns:
@@ -171,7 +148,7 @@ class SearchQueryGenerator:
         """
         parsed_data: Dict[str, Any] = (resume.parsed_data if resume else {}) or {}
         profile = ResumeSignalExtractor.extract_profile(parsed_data)
-        rich_queries = cls.generate_rich_queries(profile, preference=preference, max_queries=max_queries)
+        rich_queries = cls.generate_rich_queries(profile, max_queries=max_queries)
         return [q.query for q in rich_queries]
 
     @staticmethod

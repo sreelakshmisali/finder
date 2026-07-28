@@ -10,7 +10,6 @@ import Header from "../components/layout/Header";
 import PageWrapper from "../components/layout/PageWrapper";
 import ProfileCompletionCard from "../components/profile/ProfileCompletionCard";
 import ResumeSection from "../components/profile/ResumeSection";
-import PreferenceSection from "../components/profile/PreferenceSection";
 import { Spinner } from "../components/ui";
 import { useProfileSetup } from "../hooks/useProfile";
 
@@ -21,16 +20,16 @@ export default function ProfilePage() {
     <>
       <Header
         title="Profile Setup"
-        subtitle="Manage your PDF resume capabilities and target career preference goals in one place"
+        subtitle="Manage your PDF resume capabilities in one place"
       />
 
       <PageWrapper>
         <div className="max-w-7xl mx-auto space-y-8 w-full p-6 lg:p-12">
           {/* Loading Spinner */}
           {isLoading && (
-            <div className="flex justify-center py-24">
-              <Spinner size="lg" />
-            </div>
+             <div className="flex justify-center py-24">
+               <Spinner size="lg" />
+             </div>
           )}
 
           {/* Error State */}
@@ -47,9 +46,6 @@ export default function ProfilePage() {
 
               {/* Section 1: Resume Capabilities (Required) */}
               <ResumeSection summary={profileData?.resume_summary} />
-
-              {/* Section 2: Job Preferences (Optional) */}
-              <PreferenceSection initialPreferences={profileData?.preferences} />
             </>
           )}
         </div>

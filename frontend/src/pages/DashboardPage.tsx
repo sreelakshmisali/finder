@@ -11,7 +11,6 @@ import {
   CheckCircle2,
   FileText,
   Search,
-  SlidersHorizontal,
   ArrowRight,
   Briefcase,
   Bookmark,
@@ -31,14 +30,12 @@ function DashboardPage() {
 
   const hasResume = Boolean(onboarding?.resume_uploaded || onboarding?.has_active_resume);
   const isAnalyzed = Boolean(onboarding?.resume_analyzed);
-  const hasPreferences = Boolean(onboarding?.preferences_configured || onboarding?.has_preferences);
   const isAccountCreated = Boolean(onboarding?.account_created ?? true);
 
   const profileSteps = [
     { label: "Account created", completed: isAccountCreated, icon: CheckCircle2 },
     { label: "Resume uploaded", completed: hasResume, icon: FileText },
     { label: "Resume analyzed", completed: isAnalyzed, icon: Sparkles },
-    { label: "Preferences configured", completed: hasPreferences, icon: SlidersHorizontal },
   ];
 
   const totalJobs = stats?.total_jobs_found ?? 0;
@@ -85,7 +82,7 @@ function DashboardPage() {
                         Upload Candidate Resume
                       </h2>
                       <p className="text-sm lg:text-base text-text-secondary leading-relaxed">
-                        Upload a PDF resume to unlock AI skill matching, automated query generation, and 70/30 fit ranking across tech job listings.
+                        Upload a PDF resume to unlock AI skill matching, automated query generation, and 100% fit ranking across tech job listings.
                       </p>
                     </div>
                     <Button
@@ -96,30 +93,6 @@ function DashboardPage() {
                       className="relative z-10 font-bold px-8 shrink-0 shadow-sm"
                     >
                       Upload Resume
-                    </Button>
-                  </div>
-                ) : !hasPreferences ? (
-                  <div className="p-8 lg:p-10 rounded-2xl bg-surface border border-accent/30 shadow-sm relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    <div className="absolute inset-0 bg-gradient-to-r from-accent/10 via-primary/5 to-transparent pointer-events-none" />
-                    <div className="relative z-10 max-w-2xl space-y-2">
-                      <Badge variant="accent" className="text-xs font-bold px-3 py-1 mb-2 inline-flex items-center gap-1">
-                        <Zap size={13} /> Action Required • Step 2 of Journey
-                      </Badge>
-                      <h2 className="text-2xl lg:text-3xl font-extrabold text-text tracking-tight">
-                        Configure Target Search Preferences
-                      </h2>
-                      <p className="text-sm lg:text-base text-text-secondary leading-relaxed">
-                        Set your target job titles, preferred locations, work type (Remote/Hybrid), and salary range to optimize candidate-aware job discovery.
-                      </p>
-                    </div>
-                    <Button
-                      variant="primary"
-                      size="lg"
-                      icon={<SlidersHorizontal size={18} />}
-                      onClick={() => navigate("/profile")}
-                      className="relative z-10 font-bold px-8 shrink-0 shadow-sm"
-                    >
-                      Complete Preferences
                     </Button>
                   </div>
                 ) : (
@@ -289,17 +262,6 @@ function DashboardPage() {
                           className="w-full sm:w-auto text-xs"
                         >
                           Upload Resume
-                        </Button>
-                      )}
-                      {!hasPreferences && (
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => navigate("/profile")}
-                          icon={<SlidersHorizontal size={14} />}
-                          className="w-full sm:w-auto text-xs"
-                        >
-                          Complete Preferences
                         </Button>
                       )}
                       <Button

@@ -2,7 +2,7 @@
 Profile Service
 
 Business logic layer managing combined user profile setup diagnostics,
-merging Resume capability data and Preference goals into a single payload.
+focusing purely on Resume capability data.
 """
 
 import logging
@@ -11,8 +11,6 @@ from typing import List, Dict, Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories.resume_repository import ResumeRepository
-from app.repositories.preference_repository import PreferenceRepository
-from app.schemas.preference import PreferenceResponse
 from app.schemas.profile import ProfileSetupResponse, ResumeSummary
 
 logger = logging.getLogger(__name__)
@@ -26,7 +24,6 @@ class ProfileService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.resume_repo = ResumeRepository(db)
-        self.pref_repo = PreferenceRepository(db)
 
     def _extract_roles_from_parsed(self, parsed_data: Optional[Dict[str, Any]]) -> List[str]:
         """
@@ -77,32 +74,20 @@ class ProfileService:
                 uploaded_at=active_resume.uploaded_at
             )
 
-        # 2. Fetch search preferences
-        pref = await self.pref_repo.get_preference(user_id)
-        preferences_completed = False
-        pref_response: Optional[PreferenceResponse] = None
-
-        if pref:
-            pref_response = PreferenceResponse.model_validate(pref)
-            if pref.preferred_roles or pref.preferred_locations or pref.preferred_companies:
-                preferences_completed = True
-
-        # 3. Calculate completion score
-        percentage = 20.0  # Base registration
+        # 2. Calculate completion score
+        # - Account Created: 34%
+        # - Resume Uploaded: 33%
+        # - Resume Analyzed: 33%
+        percentage = 34.0
         if active_resume:
-            percentage += 30.0
+            percentage += 33.0
             if active_resume.parsed_data:
-                percentage += 30.0
-
-        if preferences_completed:
-            percentage += 20.0
+                percentage += 33.0
 
         percentage = min(percentage, 100.0)
 
         return ProfileSetupResponse(
             resume_completed=resume_completed,
-            preferences_completed=preferences_completed,
             profile_completion_percentage=percentage,
-            resume_summary=resume_summary,
-            preferences=pref_response
+            resume_summary=resume_summary
         )

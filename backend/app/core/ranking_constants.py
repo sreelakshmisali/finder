@@ -6,9 +6,9 @@ This allows tuning the ranking algorithm without modifying core business logic.
 """
 
 # Overall Weight Distributions
-WEIGHT_RESUME = 0.70        # 70% influence for Resume Compatibility
-WEIGHT_PREFERENCE = 0.20    # 20% influence for Preference Alignment
-WEIGHT_FRESHNESS = 0.10     # 10% influence for Job Freshness
+WEIGHT_RESUME = 1.00        # 100% influence for Resume Compatibility
+WEIGHT_PREFERENCE = 0.00    # Removed (0% influence)
+WEIGHT_FRESHNESS = 0.00     # Removed (0% influence)
 
 # Resume Sub-Weights (Total = 1.0)
 RESUME_SKILLS_WEIGHT = 0.35

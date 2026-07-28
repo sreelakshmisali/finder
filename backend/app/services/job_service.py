@@ -15,7 +15,6 @@ from app.models.job import Job
 from app.providers.registry import registry
 from app.repositories.job_repository import JobRepository
 from app.repositories.resume_repository import ResumeRepository
-from app.repositories.preference_repository import PreferenceRepository
 from app.services.search_query_generator import SearchQueryGenerator
 from app.schemas.job import JobSearchQuery, JobListResponse, JobResponse, NormalizedJob, SearchMode
 from app.services.cache_service import search_cache, make_cache_key
@@ -32,15 +31,13 @@ class JobService:
         self.db = db
         self.repo = JobRepository(db)
         self.resume_repo = ResumeRepository(db)
-        self.pref_repo = PreferenceRepository(db)
 
     async def generate_suggested_queries(self, user_id: uuid.UUID) -> List[str]:
         """
-        Generates candidate search query suggestions based on active resume and preferences.
+        Generates candidate search query suggestions based on active resume.
         """
         active_resume = await self.resume_repo.get_active(user_id)
-        preference = await self.pref_repo.get_preference(user_id)
-        return SearchQueryGenerator.generate_queries(active_resume, preference)
+        return SearchQueryGenerator.generate_queries(active_resume)
 
     async def search_jobs(
         self,
@@ -58,13 +55,12 @@ class JobService:
         if user_id and query.search_mode == SearchMode.SMART:
             try:
                 active_resume = await self.resume_repo.get_active(user_id)
-                preference = await self.pref_repo.get_preference(user_id)
                 
                 # Profile version for caching
                 if active_resume:
                     profile_version = str(active_resume.id)
 
-                suggested_queries = SearchQueryGenerator.generate_queries(active_resume, preference)
+                suggested_queries = SearchQueryGenerator.generate_queries(active_resume)
 
                 # Only use generated queries, ignore explicit user query if SMART is forced (or we could just use the first generated)
                 # But the prompt says "Smart Search must only generate search queries. It must not silently inject profile preferences"
