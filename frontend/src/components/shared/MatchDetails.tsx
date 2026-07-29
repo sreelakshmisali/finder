@@ -128,9 +128,17 @@ function MatchDetails({ job, match, onApply }: MatchDetailsProps) {
           View Original Listing <ExternalLink size={16} />
         </a>
 
-        {onApply && (
+        {onApply && job.can_apply && (
           <Button variant="primary" size="lg" onClick={() => onApply(job)} icon={<Zap size={18} />} className="w-full sm:w-auto font-bold px-8 shadow-sm">
             Approve & Apply
+          </Button>
+        )}
+        
+        {onApply && !job.can_apply && (
+          <Button variant="secondary" size="lg" onClick={() => {
+              window.open(job.url, "_blank"); 
+          }} className="w-full sm:w-auto font-bold px-8 shadow-sm">
+            View Source
           </Button>
         )}
       </div>

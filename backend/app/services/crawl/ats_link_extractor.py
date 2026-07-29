@@ -112,7 +112,7 @@ class GreenhouseATSExtractor(BaseATSExtractor):
                     results.append(clean)
                     logger.debug(f"[Greenhouse] Found job link: {clean}")
 
-        logger.info(f"[Greenhouse] Extracted {len(results)} job links from '{page_url}'")
+        logger.debug(f"[Greenhouse] Extracted {len(results)} job links from '{page_url}'")
         return results
 
 
@@ -161,7 +161,7 @@ class LeverATSExtractor(BaseATSExtractor):
                     results.append(clean)
                     logger.debug(f"[Lever] Found job link: {clean}")
 
-        logger.info(f"[Lever] Extracted {len(results)} job links from '{page_url}'")
+        logger.debug(f"[Lever] Extracted {len(results)} job links from '{page_url}'")
         return results
 
 
@@ -203,7 +203,7 @@ class AshbyATSExtractor(BaseATSExtractor):
                     results.append(clean)
                     logger.debug(f"[Ashby] Found job link: {clean}")
 
-        logger.info(f"[Ashby] Extracted {len(results)} job links from '{page_url}'")
+        logger.debug(f"[Ashby] Extracted {len(results)} job links from '{page_url}'")
         return results
 
 
@@ -244,7 +244,7 @@ class WorkdayATSExtractor(BaseATSExtractor):
                     results.append(clean)
                     logger.debug(f"[Workday] Found job link: {clean}")
 
-        logger.info(f"[Workday] Extracted {len(results)} job links from '{page_url}'")
+        logger.debug(f"[Workday] Extracted {len(results)} job links from '{page_url}'")
         return results
 
 
@@ -284,7 +284,7 @@ class SmartRecruitersATSExtractor(BaseATSExtractor):
                     results.append(clean)
                     logger.debug(f"[SmartRecruiters] Found job link: {clean}")
 
-        logger.info(f"[SmartRecruiters] Extracted {len(results)} job links from '{page_url}'")
+        logger.debug(f"[SmartRecruiters] Extracted {len(results)} job links from '{page_url}'")
         return results
 
 
@@ -323,7 +323,7 @@ class JobviteATSExtractor(BaseATSExtractor):
                     results.append(clean)
                     logger.debug(f"[Jobvite] Found job link: {clean}")
 
-        logger.info(f"[Jobvite] Extracted {len(results)} job links from '{page_url}'")
+        logger.debug(f"[Jobvite] Extracted {len(results)} job links from '{page_url}'")
         return results
 
 
@@ -362,7 +362,7 @@ class BambooHRATSExtractor(BaseATSExtractor):
                     results.append(clean)
                     logger.debug(f"[BambooHR] Found job link: {clean}")
 
-        logger.info(f"[BambooHR] Extracted {len(results)} job links from '{page_url}'")
+        logger.debug(f"[BambooHR] Extracted {len(results)} job links from '{page_url}'")
         return results
 
 

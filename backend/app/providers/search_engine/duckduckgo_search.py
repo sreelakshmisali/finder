@@ -49,9 +49,6 @@ class DuckDuckGoSearchProvider(SearchProvider):
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Finder/1.0"
         }
 
-        print(f"duckduckgo-------------------------- Preparing to search...")
-        print(f"duck duck go url--------------: {url}")
-        print(f"duck duck go data---------------------------------------: {data}")
 
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
@@ -64,7 +61,6 @@ class DuckDuckGoSearchProvider(SearchProvider):
                     for m in re.finditer(r'<a[^>]+class=[\'"]result-link[\'"][^>]+href=[\'"]([^\'"]+)[\'"][^>]*>(.*?)</a>', resp.text, re.IGNORECASE):
                         matches.append((m.group(1), m.group(2)))
                     
-                    print(f"[DEBUG - DuckDuckGo] Received {len(matches)} raw matches from HTML.")
                     
                     all_urls = []
                     for m in matches:
@@ -84,7 +80,6 @@ class DuckDuckGoSearchProvider(SearchProvider):
                         if clean_url.startswith("//"):
                             clean_url = "https:" + clean_url
                             
-                        print(f"[DEBUG - DuckDuckGo] Extracted URL: {clean_url}")
                         
                         results.append(
                             SearchResult(
@@ -101,5 +96,4 @@ class DuckDuckGoSearchProvider(SearchProvider):
                 tracker._add_event("search_provider_failed", {"engine": self.name, "query": query, "error": str(exc)})
             logger.warning(f"DuckDuckGo Search Provider error: {exc}")
 
-        print(f"[DEBUG - DuckDuckGo] Returning {len(results)} finalized results.\n")
         return results

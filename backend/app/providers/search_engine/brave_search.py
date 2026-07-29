@@ -33,14 +33,14 @@ class BraveSearchProvider(SearchProvider):
 
     @property
     def is_available(self) -> bool:
-        return bool(self.api_key)
+        return True
 
     async def search(self, query: str, limit: int = 10) -> List[SearchResult]:
         """
         Executes Brave Search API query.
         """
-        if not self.is_available:
-            logger.warning("BraveSearchProvider called but is_available is False (missing API credential).")
+        if not self.api_key:
+            logger.warning("BraveSearchProvider called but credentials are missing.")
             return []
 
         results: List[SearchResult] = []
@@ -55,8 +55,11 @@ class BraveSearchProvider(SearchProvider):
             async with httpx.AsyncClient(timeout=10.0) as client:
                 resp = await client.get(url, headers=headers, params=params)
                 if resp.status_code != 200:
-                    logger.error(f"Brave Search API returned status code {resp.status_code}: {resp.text}")
-                    return []
+                    raise httpx.HTTPStatusError(
+                        f"API returned status code {resp.status_code}",
+                        request=resp.request,
+                        response=resp
+                    )
 
                 data = resp.json()
                 web_results = data.get("web", {}).get("results", [])
@@ -70,6 +73,7 @@ class BraveSearchProvider(SearchProvider):
                         )
                     )
         except Exception as exc:
-            logger.error(f"Brave Search Provider error: {exc}")
+            # Re-raise so that SearchAggregator catches it as provider failure
+            raise exc
 
         return results

@@ -52,7 +52,6 @@ async def search_jobs(
         force_refresh=force_refresh,
         limit=limit
     )
-    print("query============================================:", query)
 
     service = JobService(db)
     return await service.search_jobs(query, user_id=current_user.id)

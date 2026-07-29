@@ -26,6 +26,7 @@ function JobCard({
   onApply,
   isSaving = false,
 }: JobCardProps) {
+
   const matchScore = match?.score ?? job.match_score;
   const isRemote = job.remote ?? false;
 
@@ -107,7 +108,7 @@ function JobCard({
             </Button>
           )}
 
-          {onApply && (
+          {onApply && job.can_apply && (
             <Button
               variant="primary"
               size="sm"
@@ -115,6 +116,19 @@ function JobCard({
               className="text-sm font-medium px-4 shadow-sm"
             >
               Apply
+            </Button>
+          )}
+
+          {onApply && !job.can_apply && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                window.open(job.url, "_blank"); 
+              }}
+              className="text-sm font-medium px-4 shadow-sm"
+            >
+              View Source
             </Button>
           )}
           

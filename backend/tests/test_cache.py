@@ -7,11 +7,14 @@ import time
 import uuid
 import sys
 import os
+import pytest
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.services.cache_service import SearchCache, make_cache_key
 
 
+@pytest.mark.asyncio
 async def test_make_cache_key():
     user_id = uuid.uuid4()
     key1 = make_cache_key(user_id, "Python", "San Francisco", True, ["greenhouse"], 100000, 50)
@@ -20,9 +23,9 @@ async def test_make_cache_key():
 
     key3 = make_cache_key(user_id, "Java", "San Francisco", True, ["greenhouse"], 100000, 50)
     assert key1 != key3, "Different queries should produce different cache keys"
-    print("test_make_cache_key: PASSED")
 
 
+@pytest.mark.asyncio
 async def test_cache_set_and_get():
     cache = SearchCache(default_ttl_seconds=2)
     key = "test_key_1"
@@ -31,9 +34,9 @@ async def test_cache_set_and_get():
     await cache.set(key, data)
     retrieved = await cache.get(key)
     assert retrieved == data, "Retrieved cache data should match stored payload"
-    print("test_cache_set_and_get: PASSED")
 
 
+@pytest.mark.asyncio
 async def test_cache_expiration():
     cache = SearchCache(default_ttl_seconds=1)
     key = "expiring_key"
@@ -44,9 +47,9 @@ async def test_cache_expiration():
 
     await asyncio.sleep(1.1)
     assert await cache.get(key) is None, "Should miss cache after expiration"
-    print("test_cache_expiration: PASSED")
 
 
+@pytest.mark.asyncio
 async def test_invalidate_user():
     cache = SearchCache(default_ttl_seconds=300)
     user_id = uuid.uuid4()
@@ -66,16 +69,3 @@ async def test_invalidate_user():
     assert await cache.get(key1) is None
     assert await cache.get(key2) is None
     assert await cache.get(key3) == "user2_data", "Other user cache entries must remain intact"
-    print("test_invalidate_user: PASSED")
-
-
-async def run_all():
-    await test_make_cache_key()
-    await test_cache_set_and_get()
-    await test_cache_expiration()
-    await test_invalidate_user()
-    print("\nAll SearchCache unit tests PASSED successfully!")
-
-
-if __name__ == "__main__":
-    asyncio.run(run_all())

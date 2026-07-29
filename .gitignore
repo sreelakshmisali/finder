@@ -16,6 +16,9 @@ logs/
 # Backend (FastAPI / Python)
 # ==========================================
 __pycache__/
+backend/app/api/v1/__pycache__/
+backend/app/providers/search_engine/__pycache__/
+
 *.py[cod]
 venv/
 .venv/

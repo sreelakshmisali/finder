@@ -96,6 +96,14 @@ class SmartPageFetcher:
 
         # Tier 2: Check if static HTML is a JavaScript SPA shell
         if self._is_js_spa_shell(html):
+            # Explicitly prevent Playwright on LinkedIn to avoid blocks and save resources
+            from urllib.parse import urlparse
+            parsed_url = urlparse(url)
+            netloc = parsed_url.netloc.lower()
+            if "linkedin.com" in netloc:
+                logger.info(f"Skipping Playwright for LinkedIn URL to prevent blocks: '{url}'")
+                return html
+
             logger.info(f"JS Single Page App detected for '{url}'. Triggering Playwright rendering...")
             rendered_html = await self.playwright_fetcher.fetch(url)
             if rendered_html and len(rendered_html) > len(html or ""):

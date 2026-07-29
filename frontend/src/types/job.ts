@@ -16,6 +16,8 @@ export interface Job {
   description: string;
   url: string;
   source: string;
+  apply_url?: string | null;
+  can_apply: boolean;
   posted_date: string;
   fetched_at: string;
   content_hash: string;

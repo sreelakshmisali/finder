@@ -34,14 +34,14 @@ class GoogleSearchProvider(SearchProvider):
 
     @property
     def is_available(self) -> bool:
-        return bool(self.api_key and self.cx)
+        return True
 
     async def search(self, query: str, limit: int = 10) -> List[SearchResult]:
         """
         Executes Google Custom Search API query.
         """
-        if not self.is_available:
-            logger.warning("GoogleSearchProvider called but is_available is False (missing API credentials).")
+        if not self.api_key or not self.cx:
+            logger.warning("GoogleSearchProvider called but credentials are missing.")
             return []
 
         results: List[SearchResult] = []
@@ -57,8 +57,11 @@ class GoogleSearchProvider(SearchProvider):
             async with httpx.AsyncClient(timeout=10.0) as client:
                 resp = await client.get(url, params=params)
                 if resp.status_code != 200:
-                    logger.error(f"Google Search API returned status code {resp.status_code}: {resp.text}")
-                    return []
+                    raise httpx.HTTPStatusError(
+                        f"API returned status code {resp.status_code}",
+                        request=resp.request,
+                        response=resp
+                    )
 
                 data = resp.json()
                 items = data.get("items", [])
@@ -73,6 +76,7 @@ class GoogleSearchProvider(SearchProvider):
                         )
                     )
         except Exception as exc:
-            logger.error(f"Google Search Provider error: {exc}")
+            # Re-raise so that SearchAggregator catches it as provider failure
+            raise exc
 
         return results

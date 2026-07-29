@@ -33,14 +33,14 @@ class BingSearchProvider(SearchProvider):
 
     @property
     def is_available(self) -> bool:
-        return bool(self.api_key)
+        return True
 
     async def search(self, query: str, limit: int = 10) -> List[SearchResult]:
         """
         Executes Bing Web Search API query.
         """
-        if not self.is_available:
-            logger.warning("BingSearchProvider called but is_available is False (missing API credential).")
+        if not self.api_key:
+            logger.warning("BingSearchProvider called but credentials are missing.")
             return []
 
         results: List[SearchResult] = []
@@ -52,8 +52,11 @@ class BingSearchProvider(SearchProvider):
             async with httpx.AsyncClient(timeout=10.0) as client:
                 resp = await client.get(endpoint, headers=headers, params=params)
                 if resp.status_code != 200:
-                    logger.error(f"Bing Search API returned status code {resp.status_code}: {resp.text}")
-                    return []
+                    raise httpx.HTTPStatusError(
+                        f"API returned status code {resp.status_code}",
+                        request=resp.request,
+                        response=resp
+                    )
 
                 data = resp.json()
                 web_pages = data.get("webPages", {}).get("value", [])
@@ -67,6 +70,7 @@ class BingSearchProvider(SearchProvider):
                         )
                     )
         except Exception as exc:
-            logger.error(f"Bing Search Provider error: {exc}")
+            # Re-raise so that SearchAggregator catches it as provider failure
+            raise exc
 
         return results

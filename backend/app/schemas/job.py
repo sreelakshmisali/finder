@@ -51,6 +51,7 @@ class NormalizedJob(BaseModel):
     posted_date: Optional[datetime] = Field(default_factory=datetime.utcnow, description="Original posting date")
     required_skills: List[str] = Field(default_factory=list, description="Extracted required technical skills")
     apply_url: Optional[str] = Field(None, description="Direct application form link")
+    can_apply: bool = Field(False, description="True if the job has an external application URL")
     last_verified_date: Optional[datetime] = Field(default_factory=datetime.utcnow, description="When this job was last verified as active")
     relevance_score: Optional[int] = Field(None, description="Score assigned by RelevanceRankingService")
     match_reasons: List[str] = Field(default_factory=list, description="Reasons for the relevance score")
@@ -69,6 +70,8 @@ class JobResponse(BaseModel):
     description: str
     url: str
     source: str
+    apply_url: Optional[str] = None
+    can_apply: bool = False
     posted_date: datetime
     fetched_at: datetime
     last_verified_date: datetime

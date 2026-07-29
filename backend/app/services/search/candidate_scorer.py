@@ -4,8 +4,12 @@ Candidate URL Scorer
 Scores candidate URLs before crawling to prioritize high-quality sources and ensure diversity.
 """
 
-from typing import List, Dict, Tuple
+from typing import List, Tuple, Optional
 from urllib.parse import urlparse
+
+from app.core.scheduler_config import SchedulerConfig
+from app.services.crawl.provider_classifier import ProviderClassifier
+
 
 class CandidateScorer:
     """
@@ -13,33 +17,33 @@ class CandidateScorer:
     """
     
     @staticmethod
-    def score_urls(candidate_urls: List[str], target_role: str = "") -> List[Tuple[str, int]]:
+    def score_urls(
+        candidate_urls: List[str], 
+        target_role: str = "",
+        config: Optional[SchedulerConfig] = None
+    ) -> List[Tuple[str, int, str]]:
         """
         Scores a list of candidate URLs and returns them sorted by score descending.
-        Takes into account the original position in the list (assuming they came from a search engine,
-        so earlier is higher ranked).
+        Returns a list of tuples: (url, score, provider_tag).
         """
+        cfg = config or SchedulerConfig.from_env()
         scored = []
+
         for idx, url in enumerate(candidate_urls):
             score = 50  # Base score
             
+            prov_tag = ProviderClassifier.classify(url)
+            prov_cfg = cfg.provider_priorities.get(prov_tag, cfg.provider_priorities["generic_board"])
+
+            # 1. ATS / Provider Priority Bonus from SchedulerConfig
+            priority_bonus = (10 - prov_cfg.priority) * 10
+            score += priority_bonus
+                
+            # 2. URL Structure Signals
             parsed = urlparse(url.lower())
             netloc = parsed.netloc
             path = parsed.path
-            
-            # 1. ATS Provider Priority
-            if "greenhouse.io" in netloc:
-                score += 30
-            elif "lever.co" in netloc:
-                score += 25
-            elif "ashbyhq.com" in netloc:
-                score += 25
-            elif "workdayjobs.com" in netloc or "smartrecruiters.com" in netloc:
-                score += 20
-            else:
-                score += 5 # Unknown provider
-                
-            # 2. URL Structure
+
             if "/jobs" in path or "/job/" in path or "jobs." in netloc:
                 score += 20
             elif "/careers" in path or "/career" in path or "careers." in netloc:
@@ -49,7 +53,7 @@ class CandidateScorer:
             elif "/docs" in path or "/help" in path or "/support" in path:
                 score -= 50
                 
-            # 3. Search Engine Rank
+            # 3. Search Engine Rank Bonus
             if idx == 0:
                 score += 20
             elif 1 <= idx <= 4:
@@ -57,13 +61,13 @@ class CandidateScorer:
             elif 5 <= idx <= 9:
                 score += 5
                 
-            # 4. Query Similarity (simple keyword check in URL)
+            # 4. Query Similarity
             if target_role:
                 keywords = target_role.lower().split()
                 if any(kw in url.lower() for kw in keywords if len(kw) > 3):
                     score += 10
                     
-            scored.append((url, score))
+            scored.append((url, score, prov_tag))
             
         # Sort by score descending
         return sorted(scored, key=lambda x: x[1], reverse=True)

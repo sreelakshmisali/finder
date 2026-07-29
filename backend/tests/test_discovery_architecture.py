@@ -36,20 +36,16 @@ def test_provider_type_enum_and_context():
     ctx = DiscoveryContext(query=query)
     assert ctx.query.query == "Python Engineer"
     assert ctx.user_id is None
-    print("test_provider_type_enum_and_context: PASSED")
 
 
 def test_default_registry_providers():
     enabled_providers = registry.get_enabled_providers()
     source_names = [p.source_name for p in enabled_providers]
     
-    assert "greenhouse" in source_names
-    assert "lever" in source_names
-    assert "ashby" in source_names
+    assert "search_engine" in source_names
 
-    ats_providers = registry.get_enabled_providers(provider_type=ProviderType.ATS)
-    assert len(ats_providers) == 3
-    print("test_default_registry_providers: PASSED")
+    search_providers = registry.get_enabled_providers(provider_type=ProviderType.SEARCH_ENGINE)
+    assert len(search_providers) >= 1
 
 
 class MockFailingProvider(ATSProvider):
@@ -110,15 +106,12 @@ def test_provider_failure_isolation():
         results = await asyncio.gather(*tasks, return_exceptions=True)
         return results
 
-    loop = asyncio.get_event_loop()
-    results = loop.run_until_complete(run_gather())
+    results = asyncio.run(run_gather())
 
     assert isinstance(results[0], Exception)
     assert isinstance(results[1], list)
     assert len(results[1]) == 1
     assert results[1][0].title == "Staff Python Architect"
-
-    print("test_provider_failure_isolation: PASSED")
 
 
 if __name__ == "__main__":

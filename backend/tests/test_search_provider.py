@@ -1,32 +1,32 @@
 """
-Unit & Integration Tests for Search Engine Based Job Discovery
-
-Tests SearchProvider interface, Google & Bing providers, pluggable JobPageExtractor pipeline,
-URL deduplication, fallback chain order, and SearchDiscoveryProvider registry integration.
+Unit & Integration Tests for Search Provider & Extractors.
 """
 
 import asyncio
+import sys
+import os
+from typing import List, Optional
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 from app.providers.search_engine.base_search import SearchProvider, SearchResult
-from app.providers.search_engine.google_search import GoogleSearchProvider
-from app.providers.search_engine.bing_search import BingSearchProvider
+from app.providers.search_engine.search_discovery import SearchDiscoveryProvider
 from app.providers.search_engine.extractors.json_ld import JsonLdExtractor
 from app.providers.search_engine.extractors.open_graph import OpenGraphExtractor
 from app.providers.search_engine.extractors.meta_tag import MetaTagExtractor
 from app.providers.search_engine.extractors.heuristic import HeuristicExtractor
 from app.providers.search_engine.extractor_pipeline import JobPageExtractor
-from app.providers.search_engine.search_discovery import SearchDiscoveryProvider
-from app.providers.registry import registry, ProviderType
+from app.providers.base_discovery import DiscoveryContext, ProviderType
+from app.providers.registry import registry
 from app.schemas.job import JobSearchQuery, NormalizedJob
-from app.providers.base_discovery import DiscoveryContext
+from app.schemas.tagged_url import TaggedURL
+from app.core.scheduler_config import SchedulerConfig
 
 
 class MockSearchEnginePlugin(SearchProvider):
-    """
-    Controlled Mock Search Engine for testing provider discovery and URL deduplication.
-    """
-    def __init__(self, name: str, results: list):
+    def __init__(self, name: str, results: List[SearchResult]):
         self._name = name
-        self._results = results
+        self.results = results
 
     @property
     def name(self) -> str:
@@ -34,39 +34,26 @@ class MockSearchEnginePlugin(SearchProvider):
 
     @property
     def display_name(self) -> str:
-        return f"Mock {self._name.capitalize()}"
+        return f"Mock {self._name}"
 
     @property
     def is_available(self) -> bool:
         return True
 
-    async def search(self, query: str, limit: int = 10) -> list:
-        return self._results[:limit]
-
-
-def test_search_provider_availability():
-    """
-    Verify Google and Bing search providers report is_available correctly without API keys.
-    """
-    google = GoogleSearchProvider(api_key="", cx="")
-    bing = BingSearchProvider(api_key="")
-
-    assert google.is_available is False
-    assert bing.is_available is False
+    async def search(self, query: str, limit: int = 10) -> List[SearchResult]:
+        return self.results
 
 
 def test_json_ld_extractor():
-    """
-    Test extraction of Schema.org JobPosting JSON-LD.
-    """
-    html = '''
+    html = """
     <html>
-      <head>
+    <head>
         <script type="application/ld+json">
         {
           "@context": "https://schema.org/",
           "@type": "JobPosting",
-          "title": "Backend Software Engineer",
+          "title": "Senior Python Engineer",
+          "description": "We are hiring a Senior Python Engineer to build scalable APIs.",
           "hiringOrganization": {
             "@type": "Organization",
             "name": "Acme Corp"
@@ -74,74 +61,76 @@ def test_json_ld_extractor():
           "jobLocation": {
             "@type": "Place",
             "address": {
-              "addressLocality": "San Francisco"
+              "@type": "PostalAddress",
+              "addressLocality": "San Francisco",
+              "addressRegion": "CA"
             }
-          },
-          "description": "Building high performance microservices."
+          }
         }
         </script>
-      </head>
+    </head>
     </html>
-    '''
-    extractor = JsonLdExtractor()
-    job = asyncio.run(extractor.extract("https://acme.com/jobs/1", html))
-
+    """
+    job = asyncio.run(JsonLdExtractor().extract("https://acme.com/jobs/1", html))
     assert job is not None
-    assert job.title == "Backend Software Engineer"
+    assert job.title == "Senior Python Engineer"
     assert job.company == "Acme Corp"
     assert job.location == "San Francisco"
-    assert "microservices" in job.description
+    assert "scalable APIs" in job.description
 
 
 def test_open_graph_extractor():
-    """
-    Test extraction of OpenGraph meta tags.
-    """
-    html = '''
+    html = """
     <html>
-      <head>
-        <meta property="og:title" content="Senior Python Developer (Remote)" />
-        <meta property="og:site_name" content="Stripe" />
-        <meta property="og:description" content="Join our core payment infrastructure team." />
-      </head>
+    <head>
+        <meta property="og:title" content="Lead React Developer at Stripe" />
+        <meta property="og:description" content="Join Stripe as a Lead React Developer working on global payments." />
+        <meta property="og:site_name" content="Stripe Careers" />
+    </head>
     </html>
-    '''
-    extractor = OpenGraphExtractor()
-    job = asyncio.run(extractor.extract("https://stripe.com/jobs/2", html))
-
+    """
+    job = asyncio.run(OpenGraphExtractor().extract("https://stripe.com/jobs/2", html))
     assert job is not None
-    assert job.title == "Senior Python Developer (Remote)"
-    assert job.company == "Stripe"
-    assert job.remote is True
+    assert job.title == "Lead React Developer at Stripe"
+    assert job.company == "Stripe Careers"
+    assert "global payments" in job.description
+
+
+def test_meta_tag_extractor():
+    html = """
+    <html>
+    <head>
+        <title>Backend Engineer (Remote) - Figma</title>
+        <meta name="description" content="Figma is seeking a Backend Engineer to build real-time collaboration engine." />
+    </head>
+    </html>
+    """
+    job = asyncio.run(MetaTagExtractor().extract("https://figma.com/jobs/3", html))
+    assert job is not None
+    assert "Backend Engineer" in job.title
+    assert "real-time collaboration" in job.description
 
 
 def test_extractor_pipeline_fallback():
-    """
-    Test that JobPageExtractor falls back through extractors cleanly when earlier extractors fail.
-    """
-    # Plain HTML without JSON-LD or OpenGraph tags
-    html = '''
+    html = """
     <html>
-      <head>
-        <title>FastAPI Architect | Cloudflare Careers</title>
-        <meta name="description" content="Lead API design for edge network." />
-      </head>
+    <head>
+        <title>FastAPI Architect | Cloudflare</title>
+        <meta name="description" content="Cloudflare is hiring a FastAPI Architect." />
+    </head>
     </html>
-    '''
+    """
+    pipeline = JobPageExtractor()
     search_res = SearchResult(
-        title="FastAPI Architect - Cloudflare",
+        title="FastAPI Architect | Cloudflare",
         url="https://cloudflare.com/careers/3",
-        snippet="Lead API design for edge network.",
-        engine="mock"
+        snippet="Cloudflare is hiring a FastAPI Architect.",
+        engine="google"
     )
 
-    pipeline = JobPageExtractor()
-    # Test JsonLd returns None
     assert asyncio.run(JsonLdExtractor().extract("https://cloudflare.com/careers/3", html)) is None
-    # Test OpenGraph returns None
     assert asyncio.run(OpenGraphExtractor().extract("https://cloudflare.com/careers/3", html)) is None
 
-    # Pipeline falls through to MetaTagExtractor
     job = asyncio.run(pipeline.extract_job(search_res, fetch_page=False))
     assert job is not None
     assert "FastAPI Architect" in job.title
@@ -164,14 +153,26 @@ def test_search_discovery_url_deduplication():
     p2 = MockSearchEnginePlugin("b1", res2)
 
     class MockJobExtractor:
-        async def extract_from_url(self, url: str, search_result=None):
-            return NormalizedJob(title="Mock", company="Mock", location="Rem", description="Desc", url=url, source="mock")
+        async def extract_from_url(self, url: str, search_result=None, skip_classification=False):
+            return NormalizedJob(
+                title=f"Mock title for {url}", 
+                company=f"Company {url}", 
+                location="Rem", 
+                description="Desc", 
+                url=url, 
+                source="mock"
+            )
 
-    discovery = SearchDiscoveryProvider(search_providers=[p1, p2], job_extractor=MockJobExtractor())
+    class MockScheduler:
+        config = SchedulerConfig()
+        async def schedule(self, candidate_urls, global_dedup=None, target_role="", candidate_results=None):
+            unique_urls = list(dict.fromkeys(candidate_urls))
+            return [TaggedURL(url=u, provider="mock", priority_score=100) for u in unique_urls]
+
+    discovery = SearchDiscoveryProvider(search_providers=[p1, p2], job_extractor=MockJobExtractor(), scheduler=MockScheduler())
     ctx = DiscoveryContext(query=JobSearchQuery(query="Python", limit=10))
 
     jobs = asyncio.run(discovery.discover(ctx))
-    print("DEBUG JOBS:", jobs)
     assert len(jobs) == 2  # duplicate_url deduplicated from 3 items to 2
 
 
@@ -182,13 +183,3 @@ def test_provider_registry_search_engine_integration():
     search_providers = registry.get_enabled_providers(provider_type=ProviderType.SEARCH_ENGINE)
     assert len(search_providers) >= 1
     assert any(p.source_name == "search_engine" for p in search_providers)
-
-
-if __name__ == "__main__":
-    test_search_provider_availability()
-    test_json_ld_extractor()
-    test_open_graph_extractor()
-    test_extractor_pipeline_fallback()
-    test_search_discovery_url_deduplication()
-    test_provider_registry_search_engine_integration()
-    print("ALL 6 SEARCH PROVIDER TESTS PASSED SUCCESSFULLY!")

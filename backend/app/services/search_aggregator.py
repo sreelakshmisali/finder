@@ -49,7 +49,7 @@ class SearchAggregator:
     async def aggregate_multi_query(
         self,
         queries: List[str],
-        limit_per_query: int = 10,
+        limit_per_query: int = 30,
         total_limit: int = 50,
     ) -> List["SearchResult"]:
         """
@@ -140,10 +140,10 @@ class SearchAggregator:
                     timeout=self.provider_timeout
                 )
             except asyncio.TimeoutError:
-                logger.warning(f"Search provider '{provider.name}' timed out after {self.provider_timeout}s.")
+                logger.warning(f"Provider failed: {provider.display_name}")
                 return []
             except Exception as exc:
-                logger.warning(f"Search provider '{provider.name}' failed with error: {exc}")
+                logger.warning(f"Provider failed: {provider.display_name}")
                 return []
 
         tasks = [run_single_provider(p) for p in active_providers]

@@ -102,6 +102,8 @@ class JobRepository:
             description=norm_job.description,
             url=norm_job.url,
             source=norm_job.source,
+            apply_url=norm_job.apply_url,
+            can_apply=norm_job.can_apply,
             content_hash=content_hash,
             posted_date=norm_job.posted_date,
         )
@@ -134,6 +136,16 @@ class JobRepository:
             existing.source = f"{existing.source},{norm_job.source}"
             changed = True
             
+        # Merge apply_url and can_apply if existing is missing it
+        if not existing.apply_url and norm_job.apply_url:
+            existing.apply_url = norm_job.apply_url
+            existing.can_apply = norm_job.can_apply
+            changed = True
+            
+        # Keep URL if we want to prefer LinkedIn, but since search_discovery already handles logic, just inherit apply_url
+        if existing.source == "linkedin" and existing.apply_url:
+            existing.can_apply = True
+
         if changed:
             await self.db.commit()
             await self.db.refresh(existing)
@@ -172,6 +184,18 @@ class JobRepository:
 
         if sources and len(sources) > 0:
             stmt = stmt.where(Job.source.in_(sources))
+
+        # Enforce linkedin_mode config filter in database searches
+        from app.core.scheduler_config import SchedulerConfig
+        config = SchedulerConfig.from_env()
+        if config.linkedin_mode == "external_only":
+            stmt = stmt.where(
+                or_(
+                    Job.source.is_(None),
+                    ~Job.source.ilike("%linkedin%"),
+                    Job.can_apply.is_(True)
+                )
+            )
 
         if max_age_days is not None:
             from datetime import datetime, timedelta, timezone

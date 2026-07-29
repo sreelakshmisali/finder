@@ -1,8 +1,11 @@
 import json
 import os
+import logging
 from typing import Dict, Any, List
 from urllib.parse import urlparse
 from app.utils.pipeline_tracker import PipelineTracker
+
+logger = logging.getLogger(__name__)
 
 class PipelineReportGenerator:
     @staticmethod
@@ -263,7 +266,7 @@ class PipelineReportGenerator:
         report = PipelineReportGenerator.generate_report(tracker)
         with open(txt_path, "w", encoding="utf-8") as f:
             f.write(report)
-        print(f"\n[PipelineReportGenerator] Wrote text report to: {txt_path}\n")
+        logger.info(f"Wrote text report to: {txt_path}")
 
         # JSON Event stream
         json_path = os.path.join(output_dir, "pipeline_events.json")
@@ -273,4 +276,4 @@ class PipelineReportGenerator:
                 "total_duration": tracker.total_duration,
                 "events": tracker.events
             }, f, indent=2)
-        print(f"[PipelineReportGenerator] Wrote JSON events log to: {json_path}\n")
+        logger.info(f"Wrote JSON events log to: {json_path}")

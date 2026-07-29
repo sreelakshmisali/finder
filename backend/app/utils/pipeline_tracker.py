@@ -28,6 +28,8 @@ class PipelineTracker:
         # Stage 3: Crawl Scheduler Decisions
         # url -> { "provider": str, "priority": float, "position": int, "scheduled": bool, "reason": str }
         self.stage3_scheduler: Dict[str, Dict[str, Any]] = {}
+        # provider -> { "allocated": int, "skipped_company_cap": int, "overflow": int, "reason": str }
+        self.stage3_allocations: Dict[str, Dict[str, Any]] = {}
 
         # Stage 4: Crawl / Fetch outcomes
         # url -> { "status_code": int, "duration": float, "error": str, "playwright_used": bool }
@@ -80,7 +82,6 @@ class PipelineTracker:
         if "naukri.com" in domain:
             return "Naukri"
         
-        # Fallback to standard domain name
         parts = domain.split('.')
         if len(parts) >= 2:
             return parts[-2].capitalize()
@@ -160,6 +161,29 @@ class PipelineTracker:
             "position": position,
             "scheduled": scheduled,
             "reason": reason
+        })
+
+    def record_scheduler_allocation(
+        self, 
+        provider: str, 
+        allocated_count: int, 
+        skipped_count: int, 
+        overflow_count: int, 
+        reason: str
+    ):
+        """Records per-provider SWRR budget allocation metrics."""
+        self.stage3_allocations[provider] = {
+            "allocated": allocated_count,
+            "skipped_company_cap": skipped_count,
+            "overflow": overflow_count,
+            "reason": reason,
+        }
+        self._add_event("scheduler_allocation", {
+            "provider": provider,
+            "allocated": allocated_count,
+            "skipped_company_cap": skipped_count,
+            "overflow": overflow_count,
+            "reason": reason,
         })
 
     def record_fetch(self, url: str, status_code: Optional[int], duration: float, error: Optional[str] = None, playwright_used: bool = False):

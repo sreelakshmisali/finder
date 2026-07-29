@@ -95,11 +95,15 @@ function JobsPage() {
   };
 
   const handleApply = (job: Job) => {
-    window.open(job.url, "_blank");
+    if (job.can_apply && job.apply_url) {
+        window.open(job.apply_url, "_blank");
+    } else {
+        window.open(job.url, "_blank");
+    }
   };
 
   const handleSkip = (job: Job) => {
-    console.log("Skipped job:", job.id);
+
   };
 
   const rawJobs = searchData?.jobs || [];
