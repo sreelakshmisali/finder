@@ -22,6 +22,7 @@ class BraveSearchProvider(SearchProvider):
 
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or os.getenv("BRAVE_SEARCH_API_KEY", "")
+        self._warned_missing = False
 
     @property
     def name(self) -> str:
@@ -33,14 +34,16 @@ class BraveSearchProvider(SearchProvider):
 
     @property
     def is_available(self) -> bool:
-        return True
+        return bool(self.api_key)
 
     async def search(self, query: str, limit: int = 10) -> List[SearchResult]:
         """
         Executes Brave Search API query.
         """
-        if not self.api_key:
-            logger.warning("BraveSearchProvider called but credentials are missing.")
+        if not self.is_available:
+            if not self._warned_missing:
+                logger.warning("BraveSearchProvider called but credentials are missing.")
+                self._warned_missing = True
             return []
 
         results: List[SearchResult] = []

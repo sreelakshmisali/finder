@@ -23,6 +23,7 @@ class GoogleSearchProvider(SearchProvider):
     def __init__(self, api_key: Optional[str] = None, cx: Optional[str] = None):
         self.api_key = api_key or os.getenv("GOOGLE_SEARCH_API_KEY", "")
         self.cx = cx or os.getenv("GOOGLE_SEARCH_ENGINE_ID", "")
+        self._warned_missing = False
 
     @property
     def name(self) -> str:
@@ -34,14 +35,16 @@ class GoogleSearchProvider(SearchProvider):
 
     @property
     def is_available(self) -> bool:
-        return True
+        return bool(self.api_key and self.cx)
 
     async def search(self, query: str, limit: int = 10) -> List[SearchResult]:
         """
         Executes Google Custom Search API query.
         """
-        if not self.api_key or not self.cx:
-            logger.warning("GoogleSearchProvider called but credentials are missing.")
+        if not self.is_available:
+            if not self._warned_missing:
+                logger.warning("GoogleSearchProvider called but credentials are missing.")
+                self._warned_missing = True
             return []
 
         results: List[SearchResult] = []

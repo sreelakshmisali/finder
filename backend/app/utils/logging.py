@@ -19,6 +19,7 @@ def setup_logging():
         "playwright",
         "bs4",
         "sqlalchemy.engine",
+        "uvicorn.access",
     ]
     for logger_name in noisy_loggers:
         logging.getLogger(logger_name).setLevel(logging.WARNING)
