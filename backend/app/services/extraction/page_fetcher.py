@@ -94,8 +94,8 @@ class SmartPageFetcher:
         # Tier 1: Try static HTTP fetch
         html = await self.http_fetcher.fetch(url)
 
-        # Tier 2: Check if static HTML is a JavaScript SPA shell
-        if self._is_js_spa_shell(html):
+        # Tier 2: Check if static HTML is a JavaScript SPA shell (only when we got real HTML)
+        if html is not None and self._is_js_spa_shell(html):
             # Explicitly prevent Playwright on LinkedIn to avoid blocks and save resources
             from urllib.parse import urlparse
             parsed_url = urlparse(url)

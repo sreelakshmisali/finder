@@ -114,4 +114,4 @@ if __name__ == "__main__":
     test_tech_tag_extractor()
     test_company_discovery_deduplication_and_extraction()
     test_company_discovery_support_queries()
-    print("ALL 4 COMPANY DISCOVERY TESTS PASSED SUCCESSFULLY!")
+

@@ -139,4 +139,4 @@ if __name__ == "__main__":
     test_search_aggregator_multi_engine_merge_and_metadata()
     test_search_result_ranker_consensus_boost()
     test_failure_isolation_and_timeouts()
-    print("ALL 4 SEARCH AGGREGATOR TESTS PASSED SUCCESSFULLY!")
+

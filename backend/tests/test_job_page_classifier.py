@@ -129,4 +129,4 @@ if __name__ == "__main__":
     test_job_page_classifier_career_page()
     test_job_page_classifier_irrelevant()
     test_job_page_classifier_empty_html()
-    print("ALL 7 JOB PAGE CLASSIFIER TESTS PASSED SUCCESSFULLY!")
+

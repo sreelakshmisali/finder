@@ -33,7 +33,7 @@ class AshbyAutomator(ApplicationAutomator):
         """
         Fills Ashby standard fields (name, email, phone, resume).
         """
-        logger.info(f"AshbyAutomator starting for URL: {job_url}")
+        logger.debug(f"AshbyAutomator starting for URL: {job_url}")
         filled_summary: List[str] = []
 
         try:

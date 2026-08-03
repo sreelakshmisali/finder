@@ -58,8 +58,7 @@ def test_matching_calculations():
     assert 0 <= resume_res["weighted"] <= 100.0, "Resume match weighted score must be <= 100"
     assert resume_res["weighted"] > 80.0, f"Strong match candidate should score > 80%, got {resume_res['weighted']}"
 
-    print("test_matching_calculations: PASSED")
-    print(f"  Calculated Total Score: {resume_res['weighted']}%")
+
 
 
 if __name__ == "__main__":

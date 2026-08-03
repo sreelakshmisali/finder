@@ -161,5 +161,5 @@ class JobLinkExtractor:
             if len(job_urls) >= max_links:
                 break
 
-        logger.info(f"[JobLinkExtractor] Extracted {len(job_urls)} job links from '{base_url}'")
+        logger.debug(f"[JobLinkExtractor] Extracted {len(job_urls)} job links from '{base_url}'")
         return job_urls

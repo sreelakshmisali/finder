@@ -33,7 +33,7 @@ class LeverAutomator(ApplicationAutomator):
         """
         Fills Lever standard fields (name, email, phone, resume).
         """
-        logger.info(f"LeverAutomator starting for URL: {job_url}")
+        logger.debug(f"LeverAutomator starting for URL: {job_url}")
         filled_summary: List[str] = []
 
         try:

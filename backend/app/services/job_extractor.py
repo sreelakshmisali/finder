@@ -181,7 +181,7 @@ class JobExtractor:
                 base_job.apply_url = url
                 base_job.can_apply = True
             else:
-                logger.info(f"Rejecting job because apply_url is None and not a direct ATS provider: {url}")
+                logger.debug(f"Rejecting job because apply_url is None and not a direct ATS provider: {url}")
                 if tracker:
                     tracker.record_extraction(url, success=False, extractor=None, duration=time.time() - start, error="FAILED_EXTRACTION: apply_url is None and not direct ATS")
                 return None
@@ -190,14 +190,14 @@ class JobExtractor:
         from urllib.parse import urlparse as parse_url
         parsed_apply = parse_url(base_job.apply_url)
         if not parsed_apply.scheme or not parsed_apply.netloc:
-            logger.info(f"Rejecting job because apply_url is invalid: '{base_job.apply_url}' for source: {url}")
+            logger.debug(f"Rejecting job because apply_url is invalid: '{base_job.apply_url}' for source: {url}")
             if tracker:
                 tracker.record_extraction(url, success=False, extractor=None, duration=time.time() - start, error=f"FAILED_EXTRACTION: invalid apply_url format '{base_job.apply_url}'")
             return None
 
         # 3. Must not equal source page URL (url) unless allowed provider
         if base_job.apply_url == url and not is_direct_ats:
-            logger.info(f"Rejecting job because apply_url equals source page URL: {url}")
+            logger.debug(f"Rejecting job because apply_url equals source page URL: {url}")
             if tracker:
                 tracker.record_extraction(url, success=False, extractor=None, duration=time.time() - start, error="FAILED_EXTRACTION: apply_url equals source page URL")
             return None
@@ -207,13 +207,13 @@ class JobExtractor:
         config = SchedulerConfig.from_env()
 
         if "linkedin.com" in netloc and config.linkedin_mode == "external_only" and not base_job.can_apply:
-            logger.info(f"Rejecting LinkedIn Easy Apply / non-external job: {url}")
+            logger.debug(f"Rejecting LinkedIn Easy Apply / non-external job: {url}")
             if tracker:
                 tracker.record_extraction(url, success=False, extractor=None, duration=time.time() - start, error="FAILED_EXTRACTION: LinkedIn Easy Apply/Non-external posting rejected")
             return None
 
         if "linkedin.com" in parsed_apply.netloc.lower() and config.linkedin_mode == "external_only":
-            logger.info(f"Rejecting job because apply_url is a LinkedIn URL in external_only mode: {base_job.apply_url} for source: {url}")
+            logger.debug(f"Rejecting job because apply_url is a LinkedIn URL in external_only mode: {base_job.apply_url} for source: {url}")
             if tracker:
                 tracker.record_extraction(url, success=False, extractor=None, duration=time.time() - start, error="FAILED_EXTRACTION: apply_url is LinkedIn in external_only mode")
             return None

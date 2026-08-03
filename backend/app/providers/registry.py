@@ -64,7 +64,7 @@ class ProviderRegistry:
             capabilities=capabilities or []
         )
         self._entries[key] = meta
-        logger.info(f"Registered job discovery provider: '{key}' ({provider.display_name}) [Type: {provider.provider_type.value}]")
+        logger.debug(f"Registered job discovery provider: '{key}' ({provider.display_name}) [Type: {provider.provider_type.value}]")
 
     def set_provider_enabled(self, source_name: str, enabled: bool) -> bool:
         """

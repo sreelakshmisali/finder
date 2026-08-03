@@ -147,7 +147,7 @@ class CrawlScheduler:
             elif isinstance(res, list):
                 raw_tagged_urls.extend(res)
 
-        logger.info(
+        logger.debug(
             f"[CrawlScheduler] SUMMARY: {len(candidate_urls_to_process)} candidates -> "
             f"{len(raw_tagged_urls)} raw job posting URLs extracted before SWRR allocation."
         )

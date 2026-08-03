@@ -99,7 +99,7 @@ class DuplicateDetectionService:
         }
         
         if is_dup:
-            logger.info(f"Duplicate detected (Score: {total_score:.2f}): '{job_new.title}' at '{job_new.company}' matches ID {job_existing.id}")
+            logger.debug(f"Duplicate detected (Score: {total_score:.2f}): '{job_new.title}' at '{job_new.company}' matches ID {job_existing.id}")
 
         return DuplicateResult(
             is_duplicate=is_dup,

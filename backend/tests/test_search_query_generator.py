@@ -167,4 +167,4 @@ if __name__ == "__main__":
     test_no_experience_or_no_skills_fallback()
     test_unknown_technologies()
     test_multi_domain_resume()
-    print("ALL 8 SEARCH QUERY GENERATOR TESTS PASSED SUCCESSFULLY!")
+

@@ -187,4 +187,4 @@ if __name__ == "__main__":
     test_job_extractor_static_page()
     test_job_extractor_js_spa_fallback()
     test_job_extractor_error_tolerance()
-    print("ALL 5 JOB EXTRACTOR TESTS PASSED SUCCESSFULLY!")
+

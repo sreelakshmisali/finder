@@ -77,7 +77,7 @@ class JobService:
 
         # Enforce search-first architecture: Do not execute empty searches.
         # A valid search must either be SMART mode OR have a query, location, or source filter.
-        if query.search_mode == SearchMode.NORMAL and not query.query.strip() and not query.location.strip() and not query.providers:
+        if query.search_mode == SearchMode.NORMAL and not (query.query or "").strip() and not (query.location or "").strip() and not query.providers:
             logger.info("Rejected empty NORMAL search. Returning empty result set.")
             return JobListResponse(
                 total=0,

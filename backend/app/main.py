@@ -1,5 +1,13 @@
 """FastAPI application entry point."""
 
+import sys
+import asyncio
+
+# Playwright requires SelectorEventLoop on Windows (ProactorEventLoop does not
+# support create_subprocess_exec which Playwright uses to launch Chromium)
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
