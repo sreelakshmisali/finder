@@ -157,12 +157,11 @@ class JobRepository:
         query: Optional[str] = None,
         location: Optional[str] = None,
         remote_only: bool = False,
-        sources: Optional[List[str]] = None,
         limit: int = 50,
         max_age_days: Optional[int] = None
     ) -> Sequence[Job]:
         """
-        Search indexed jobs in PostgreSQL matching keywords, location, or source filters.
+        Search indexed jobs in PostgreSQL matching keywords or location filters.
         """
         stmt = select(Job)
 
@@ -181,9 +180,6 @@ class JobRepository:
 
         if remote_only:
             stmt = stmt.where(Job.remote.is_(True))
-
-        if sources and len(sources) > 0:
-            stmt = stmt.where(Job.source.in_(sources))
 
         # Enforce linkedin_mode config filter in database searches
         from app.core.scheduler_config import SchedulerConfig

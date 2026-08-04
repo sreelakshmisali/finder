@@ -29,7 +29,6 @@ export interface JobSearchQueryParams {
   query?: string;
   location?: string;
   remote_only?: boolean;
-  sources?: string[];
   search_mode?: SearchMode;
   min_salary?: number;
   force_refresh?: boolean;
@@ -39,16 +38,8 @@ export interface JobSearchQueryParams {
 export interface JobListResponse {
   total: number;
   jobs: Job[];
-  providers_searched: string[];
   suggested_queries?: string[];
   search_mode?: SearchMode;
   applied_query?: string;
   applied_location?: string;
-}
-
-export interface ProviderInfo {
-  name: string;
-  display_name: string;
-  description: string;
-  enabled: boolean;
 }

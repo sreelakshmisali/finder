@@ -12,8 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_db, get_current_user
 from app.models.user import User
-from app.providers.registry import registry
-from app.schemas.job import JobSearchQuery, JobListResponse, JobResponse, ProviderInfo, SearchMode
+from app.schemas.job import JobSearchQuery, JobListResponse, JobResponse, SearchMode
 from app.schemas.match import MatchRequest, MatchResult, BatchMatchRequest, BatchMatchResult
 from app.services.job_service import JobService
 from app.services.matching_service import MatchingService
@@ -24,14 +23,13 @@ router = APIRouter(prefix="/jobs", tags=["Jobs"])
 @router.get(
     "/search",
     response_model=JobListResponse,
-    summary="Search jobs across providers",
-    description="Executes concurrent searches across registered ATS providers (Greenhouse, Lever, Ashby)."
+    summary="Search jobs",
+    description="Executes concurrent searches across registered ATS providers."
 )
 async def search_jobs(
     q: Optional[str] = Query(None, description="Keywords (e.g. 'Software Engineer', 'Python')"),
     location: Optional[str] = Query(None, description="Location (e.g. 'San Francisco', 'Remote')"),
     remote_only: bool = Query(False, description="Filter for remote roles only"),
-    sources: Optional[List[str]] = Query(None, description="Provider filter (e.g. ['greenhouse', 'lever'])"),
     search_mode: SearchMode = Query(SearchMode.NORMAL, description="Search mode to use (NORMAL or SMART)"),
     min_salary: Optional[int] = Query(None, description="Minimum salary threshold filter"),
     force_refresh: bool = Query(False, description="Bypass search cache and force fresh provider search"),
@@ -46,7 +44,6 @@ async def search_jobs(
         query=q,
         location=location,
         remote_only=remote_only,
-        providers=sources,
         search_mode=search_mode,
         min_salary=min_salary,
         force_refresh=force_refresh,
@@ -72,20 +69,6 @@ async def get_suggested_queries(
     """
     service = JobService(db)
     return await service.generate_suggested_queries(user_id=current_user.id)
-
-
-
-@router.get(
-    "/providers",
-    response_model=List[ProviderInfo],
-    summary="List available job search providers",
-    description="Returns metadata for all registered job discovery engines."
-)
-async def list_providers(current_user: User = Depends(get_current_user)):
-    """
-    List providers endpoint (Authenticated).
-    """
-    return registry.list_providers_info()
 
 
 @router.get(

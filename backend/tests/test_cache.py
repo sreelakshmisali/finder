@@ -17,11 +17,11 @@ from app.services.cache_service import SearchCache, make_cache_key
 @pytest.mark.asyncio
 async def test_make_cache_key():
     user_id = uuid.uuid4()
-    key1 = make_cache_key(user_id, "Python", "San Francisco", True, ["greenhouse"], 100000, 50)
-    key2 = make_cache_key(user_id, "python ", " San Francisco ", True, ["GREENHOUSE"], 100000, 50)
+    key1 = make_cache_key(user_id, "Python", "San Francisco", True, 100000, 50)
+    key2 = make_cache_key(user_id, "python ", " San Francisco ", True, 100000, 50)
     assert key1 == key2, "Cache key generation should be normalized and case-insensitive"
 
-    key3 = make_cache_key(user_id, "Java", "San Francisco", True, ["greenhouse"], 100000, 50)
+    key3 = make_cache_key(user_id, "Java", "San Francisco", True, 100000, 50)
     assert key1 != key3, "Different queries should produce different cache keys"
 
 
@@ -55,9 +55,9 @@ async def test_invalidate_user():
     user_id = uuid.uuid4()
     other_user_id = uuid.uuid4()
 
-    key1 = make_cache_key(user_id, "Python", None, False, None, None, 50)
-    key2 = make_cache_key(user_id, "React", None, False, None, None, 50)
-    key3 = make_cache_key(other_user_id, "Python", None, False, None, None, 50)
+    key1 = make_cache_key(user_id, "Python", None, False, None, 50)
+    key2 = make_cache_key(user_id, "React", None, False, None, 50)
+    key3 = make_cache_key(other_user_id, "Python", None, False, None, 50)
 
     await cache.set(key1, "user1_data1")
     await cache.set(key2, "user1_data2")

@@ -11,7 +11,6 @@ import {
   Search,
   MapPin,
   SlidersHorizontal,
-  Check,
   Sparkles,
   DollarSign,
   RefreshCw,
@@ -24,13 +23,11 @@ interface SearchBarProps {
     query: string;
     location: string;
     remoteOnly: boolean;
-    sources: string[];
     searchMode: SearchMode;
     minSalary?: number;
     forceRefresh?: boolean;
   }) => void;
   isLoading?: boolean;
-  providers?: { name: string; display_name: string }[];
   suggestedQueries?: string[];
   appliedQuery?: string;
   appliedLocation?: string;
@@ -40,7 +37,6 @@ interface SearchBarProps {
 function SearchBar({
   onSearch,
   isLoading,
-  providers = [],
   suggestedQueries = [],
   appliedQuery,
   appliedLocation,
@@ -50,7 +46,6 @@ function SearchBar({
   const [location, setLocation] = useState("");
   const [minSalary, setMinSalary] = useState<string>("");
   const [remoteOnly, setRemoteOnly] = useState(false);
-  const [selectedSources, setSelectedSources] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [searchMode, setSearchMode] = useState<SearchMode>("NORMAL");
 
@@ -83,7 +78,7 @@ function SearchBar({
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [query, location, minSalary, remoteOnly, selectedSources, searchMode]);
+  }, [query, location, minSalary, remoteOnly, searchMode]);
 
   const executeSearch = (forceRefresh = false) => {
     if (debounceTimerRef.current) {
@@ -93,7 +88,6 @@ function SearchBar({
       query: query.trim(),
       location: location.trim(),
       remoteOnly,
-      sources: selectedSources,
       searchMode,
       minSalary: minSalary ? Number(minSalary) : undefined,
       forceRefresh,
@@ -105,7 +99,7 @@ function SearchBar({
     executeSearch(false);
   };
 
-    const handleChipClick = (suggested: string) => {
+  const handleChipClick = (suggested: string) => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
@@ -115,22 +109,11 @@ function SearchBar({
       query: suggested,
       location: location.trim(),
       remoteOnly,
-      sources: selectedSources,
       searchMode: "NORMAL",
       minSalary: minSalary ? Number(minSalary) : undefined,
       forceRefresh: false,
     });
   };
-
-  const toggleSource = (sourceName: string) => {
-    setSelectedSources((prev) =>
-      prev.includes(sourceName)
-        ? prev.filter((s) => s !== sourceName)
-        : [...prev, sourceName]
-    );
-  };
-
-
 
   return (
     <>
@@ -214,8 +197,6 @@ function SearchBar({
           </div>
         </div>
 
-
-
         {/* Suggested Search Query Chips */}
         {suggestedQueries.length > 0 && layout === "header" && (
           <div className="flex items-center flex-wrap gap-2 pt-1 text-xs">
@@ -273,38 +254,9 @@ function SearchBar({
                 Remote positions only
               </label>
             </div>
-
-            {/* Provider Selection Filter */}
-            {providers.length > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-text-muted font-medium">Sources:</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {providers.map((p) => {
-                    const isSelected = selectedSources.length === 0 || selectedSources.includes(p.name);
-                    return (
-                      <button
-                        key={p.name}
-                        type="button"
-                        onClick={() => toggleSource(p.name)}
-                        className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border transition-all cursor-pointer ${
-                          isSelected
-                            ? "bg-primary-muted text-primary border-primary/40"
-                            : "bg-surface-elevated text-text-muted border-border hover:text-text"
-                        }`}
-                      >
-                        {isSelected && <Check size={12} />}
-                        {p.display_name}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
           </div>
         )}
       </form>
-
-
     </>
   );
 }

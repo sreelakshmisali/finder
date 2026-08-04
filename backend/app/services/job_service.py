@@ -76,13 +76,11 @@ class JobService:
         applied_location = query.location
 
         # Enforce search-first architecture: Do not execute empty searches.
-        # A valid search must either be SMART mode OR have a query, location, or source filter.
-        if query.search_mode == SearchMode.NORMAL and not (query.query or "").strip() and not (query.location or "").strip() and not query.providers:
-            logger.info("Rejected empty NORMAL search. Returning empty result set.")
+        # A valid search must either be SMART mode OR have a query or location filter.
+        if query.search_mode == SearchMode.NORMAL and not (query.query or "").strip() and not (query.location or "").strip():
             return JobListResponse(
                 total=0,
                 jobs=[],
-                providers_searched=[],
                 suggested_queries=suggested_queries,
                 search_mode=query.search_mode,
                 applied_query=applied_query,
@@ -94,7 +92,6 @@ class JobService:
             query=applied_query,
             location=applied_location,
             remote_only=query.remote_only,
-            providers=query.providers,
             min_salary=query.min_salary,
             limit=query.limit,
             search_mode=query.search_mode.value,
@@ -118,8 +115,6 @@ class JobService:
                     logger.info(f"Cache HIT (coalesced) for search key: '{cache_key}'")
                     return cached_res
 
-            logger.info(f"Cache MISS for search key: '{cache_key}'. Querying Search Index...")
-
             from app.core.config import settings
 
             # 4. Check Search Index (Local Database)
@@ -127,7 +122,6 @@ class JobService:
                 query=query.query,
                 location=query.location,
                 remote_only=query.remote_only,
-                sources=query.providers,
                 limit=query.limit,
                 max_age_days=settings.SEARCH_INDEX_MAX_JOB_AGE_DAYS
             )
@@ -138,7 +132,6 @@ class JobService:
                 response = JobListResponse(
                     total=len(stored_jobs),
                     jobs=[JobResponse.model_validate(j) for j in stored_jobs],
-                    providers_searched=["Indexed Jobs"],
                     suggested_queries=suggested_queries,
                     search_mode=query.search_mode,
                     applied_query=applied_query,
@@ -148,19 +141,7 @@ class JobService:
                 await search_cache.cleanup_key_lock(cache_key)
                 return response
 
-            logger.info(f"Search Index MISS: Insufficient fresh jobs ({len(stored_jobs)}). Querying external providers...")
-
-            all_providers = registry.get_enabled_providers()
-
-            # Filter to requested providers if specified
-            if query.providers and len(query.providers) > 0:
-                target_providers = [
-                    p for p in all_providers if p.source_name in query.providers
-                ]
-            else:
-                target_providers = all_providers
-
-            searched_provider_names = [p.source_name for p in target_providers]
+            target_providers = registry.get_enabled_providers()
 
             if not target_providers:
                 # Fallback: return what we have in the Search Index, even if insufficient
@@ -168,14 +149,12 @@ class JobService:
                     query=query.query,
                     location=query.location,
                     remote_only=query.remote_only,
-                    sources=query.providers,
                     limit=query.limit,
                     max_age_days=None # Ignored for ultimate fallback
                 )
                 response = JobListResponse(
                     total=len(stored_jobs),
                     jobs=[JobResponse.model_validate(j) for j in stored_jobs],
-                    providers_searched=[],
                     suggested_queries=suggested_queries,
                     search_mode=query.search_mode,
                     applied_query=applied_query,
@@ -227,7 +206,6 @@ class JobService:
                         query=query.query,
                         location=query.location,
                         remote_only=query.remote_only,
-                        sources=query.providers,
                         limit=query.limit,
                         max_age_days=None # Fallback
                     )
@@ -238,7 +216,6 @@ class JobService:
                 response = JobListResponse(
                     total=len(job_responses),
                     jobs=job_responses[:query.limit],
-                    providers_searched=searched_provider_names,
                     suggested_queries=suggested_queries,
                     search_mode=query.search_mode,
                     applied_query=applied_query,

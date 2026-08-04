@@ -19,7 +19,6 @@ def make_cache_key(
     query: Optional[str],
     location: Optional[str],
     remote_only: bool,
-    providers: Optional[List[str]],
     min_salary: Optional[int],
     limit: int,
     search_mode: str = "NORMAL",
@@ -32,12 +31,11 @@ def make_cache_key(
     q_str = (query or "").strip().lower()
     loc_str = (location or "").strip().lower()
     remote_str = "remote" if remote_only else "all"
-    prov_str = "_".join(sorted([p.lower() for p in providers])) if providers else "all_providers"
     sal_str = str(min_salary) if min_salary else "any_sal"
     limit_str = str(limit)
     mode_str = search_mode.lower()
 
-    return f"search:{user_str}:{q_str}:{loc_str}:{remote_str}:{prov_str}:{sal_str}:{limit_str}:{mode_str}:{profile_version}"
+    return f"search:{user_str}:{q_str}:{loc_str}:{remote_str}:{sal_str}:{limit_str}:{mode_str}:{profile_version}"
 
 
 class SearchCache:
