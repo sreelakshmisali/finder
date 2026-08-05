@@ -1,14 +1,15 @@
 """
-Technology Taxonomy Data Dictionary
+Technology Taxonomy Data Module
 
-Defines canonical technology mappings and domain classifications.
-Pure data module decoupled from extraction and ranking logic.
+Provides pure taxonomy data mapping technologies to canonical terms and domain sets.
+Independent of extraction logic or ranking code.
 """
 
 from typing import Dict, Set
 
-# Mapping of technology names to their associated domain sets
+# Pure taxonomy mapping technologies to canonical names and domain sets
 TECH_TO_DOMAINS: Dict[str, Set[str]] = {
+    # Frontend
     "react": {"frontend"},
     "react.js": {"frontend"},
     "reactjs": {"frontend"},
@@ -21,24 +22,32 @@ TECH_TO_DOMAINS: Dict[str, Set[str]] = {
     "typescript": {"frontend", "backend"},
     "javascript": {"frontend", "backend"},
     "tailwind": {"frontend"},
+    "css": {"frontend"},
+    "html": {"frontend"},
 
+    # Mobile
     "react_native": {"mobile"},
     "react native": {"mobile"},
+    "reactnative": {"mobile"},
     "android": {"mobile"},
     "ios": {"mobile"},
     "swift": {"mobile"},
     "kotlin": {"mobile"},
     "flutter": {"mobile"},
 
+    # Game
     "unity": {"game"},
     "unreal": {"game"},
     "godot": {"game"},
     "three.js": {"game", "frontend"},
     "game": {"game"},
+    "graphics": {"game"},
 
+    # Backend
     "python": {"backend", "data"},
     "django": {"backend"},
     "fastapi": {"backend"},
+    "flask": {"backend"},
     "node": {"backend"},
     "node.js": {"backend"},
     "nodejs": {"backend"},
@@ -48,46 +57,54 @@ TECH_TO_DOMAINS: Dict[str, Set[str]] = {
     "golang": {"backend"},
     "ruby": {"backend"},
     "rails": {"backend"},
-    "rust": {"backend"},
     "c#": {"backend", "game"},
+    ".net": {"backend"},
+    "rust": {"backend"},
     "c++": {"backend", "game"},
 
-    "data": {"data"},
-    "machine learning": {"data"},
-    "ml": {"data"},
-    "ai": {"data"},
+    # Data / AI
+    "sql": {"data"},
+    "postgresql": {"data"},
+    "postgres": {"data"},
+    "mongodb": {"data"},
     "pytorch": {"data"},
     "tensorflow": {"data"},
-    "sql": {"data", "backend"},
-    "postgresql": {"data", "backend"},
+    "data": {"data"},
+    "ai": {"data"},
+    "ml": {"data"},
 
+    # DevOps
     "docker": {"devops"},
     "kubernetes": {"devops"},
+    "k8s": {"devops"},
     "terraform": {"devops"},
     "aws": {"devops"},
     "devops": {"devops"},
-    "sre": {"devops"},
-}
-
-# Domain keyword triggers in job titles
-DOMAIN_TITLE_TRIGGERS: Dict[str, Set[str]] = {
-    "frontend": {"frontend", "front-end", "ui", "ux", "web"},
-    "backend": {"backend", "back-end", "server", "api", "systems"},
-    "fullstack": {"fullstack", "full-stack", "full stack"},
-    "game": {"game", "gaming", "unity", "unreal", "graphics"},
-    "mobile": {"mobile", "android", "ios"},
-    "data": {"data", "machine learning", "ml", "ai", "analytics"},
-    "devops": {"devops", "sre", "infrastructure", "cloud"},
-    "product": {"product", "pm"},
-    "design": {"design", "product design"},
-    "admin": {"administrative", "admin", "business partner", "office"},
-    "sales": {"sales", "account manager", "account executive", "business development"}
+    "sre": {"devops"}
 }
 
 # Generic software engineering role titles
-GENERIC_ROLES = {"developer", "engineer", "software engineer", "programmer", "architect"}
+GENERIC_ROLES: Set[str] = {
+    "software engineer", "engineer", "developer", "programmer",
+    "software developer", "full stack engineer", "fullstack engineer",
+    "full stack developer", "fullstack developer", "member of technical staff"
+}
+
+# Domain keyword lookup
+DOMAIN_KEYWORDS: Dict[str, Set[str]] = {
+    "frontend": {"frontend", "front-end", "ui", "ux", "web", "client", "react", "vue", "angular"},
+    "backend": {"backend", "back-end", "server", "api", "systems", "python", "node", "java", "go", "ruby"},
+    "mobile": {"mobile", "android", "ios", "swift", "kotlin", "flutter", "react_native"},
+    "game": {"game", "gaming", "unity", "unreal", "graphics", "3d", "godot"},
+    "data": {"data", "machine learning", "ml", "ai", "analytics", "scientist", "pytorch", "tensorflow"},
+    "devops": {"devops", "sre", "infrastructure", "cloud", "platform", "kubernetes"},
+    "admin": {"administrative", "admin", "business partner", "office", "executive assistant"},
+    "sales": {"sales", "account manager", "account executive", "business development"},
+    "hr": {"hr", "recruiter", "talent", "human resources"}
+}
 
 
-def get_domains_for_tech(tech: str) -> Set[str]:
-    """Returns domain set associated with a technology term."""
-    return TECH_TO_DOMAINS.get(tech.lower(), set())
+def get_domains_for_tech(tech_name: str) -> Set[str]:
+    """Returns domain set for a given technology name."""
+    clean = tech_name.lower().strip()
+    return TECH_TO_DOMAINS.get(clean, set())

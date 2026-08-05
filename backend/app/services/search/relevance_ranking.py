@@ -2,9 +2,8 @@
 Relevance Ranking Service (Intent Matching Engine)
 
 Serves as the single source of truth for job search relevance across Finder.
-Evaluates NormalizedJobs against SearchContext by comparing SearchIntent against RoleIntent
-extracted via RoleIntentExtractor, computing multi-domain intersection, role similarity,
-and structured RoleExplanation diagnostics.
+Evaluates NormalizedJobs against SearchContext using intent-driven weighted scoring,
+multi-domain RoleIntent extraction, domain conflict detection, and structured RoleExplanation diagnostics.
 """
 
 import logging
@@ -16,8 +15,8 @@ from app.schemas.job import NormalizedJob
 from app.core.config import settings
 from app.services.search.query_intent_parser import SearchContext, SearchIntent, QueryIntentParser
 from app.services.search.text_normalizer import TextNormalizer
-from app.services.search.role_intent_extractor import RoleIntentExtractor, RoleIntent, is_tech_match
-from app.services.search.tech_taxonomy import DOMAIN_TITLE_TRIGGERS
+from app.services.search.role_intent_extractor import RoleIntentExtractor, RoleIntent
+from app.services.search.tech_taxonomy import DOMAIN_KEYWORDS, TECH_TO_DOMAINS
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +41,7 @@ class JobScore:
 
 @dataclass
 class RoleExplanation:
-    """Structured explainability object for ranking decisions."""
+    """Explainable diagnostic decision object for ranking decisions."""
     matched_domains: List[str] = field(default_factory=list)
     conflicting_domains: List[str] = field(default_factory=list)
     matched_technologies: List[str] = field(default_factory=list)
@@ -64,12 +63,15 @@ class RelevanceResult:
     reasons: List[str] = field(default_factory=list)
 
 
-NON_TECH_DOMAINS = {"admin", "sales", "hr", "finance"}
+# Domain mismatch penalty rules
+NON_TECH_DOMAINS = {"admin", "sales", "hr"}
+ENGINEERING_DOMAINS = {"frontend", "backend", "fullstack", "data", "devops", "mobile"}
 
 
 class RelevanceRankingService:
     """
-    Centralized Intent Matching Engine comparing SearchIntent against RoleIntent.
+    Centralized Intent Matching Engine.
+    Executes scoring, ranking, and filtering pipeline: score() → rank() → filter().
     """
 
     def __init__(
@@ -86,123 +88,141 @@ class RelevanceRankingService:
 
     def score_job(self, job: NormalizedJob, context: SearchContext) -> RelevanceResult:
         """
-        Scores a single NormalizedJob by comparing SearchContext intent against job RoleIntent.
+        Scores a single NormalizedJob against SearchContext using internal RoleIntent extraction and normalization.
         """
         raw_query = context.raw_query.strip()
         if not raw_query:
             score_obj = JobScore(total=50.0, confidence=1.0, breakdown=ScoreBreakdown(title=50.0))
-            exp = RoleExplanation(decision="accepted", confidence=1.0, role_similarity=1.0)
-            return RelevanceResult(score=score_obj, accepted=True, explanation=exp, reasons=["Empty query fallback match"])
+            explanation = RoleExplanation(decision="accepted", confidence=1.0, role_similarity=1.0)
+            return RelevanceResult(score=score_obj, accepted=True, explanation=explanation, reasons=["Empty query fallback match"])
 
         intent = context.intent
 
-        # 1. Extract RoleIntent for Candidate Job
-        role_intent: RoleIntent = RoleIntentExtractor.extract(job.title, job.description, job.required_skills)
+        # Extract Job RoleIntent
+        job_intent: RoleIntent = RoleIntentExtractor.extract(job.title, job.description, job.required_skills)
 
-        # 2. Text Normalization
+        # 1. Normalize job text internally
         norm_title = TextNormalizer.normalize(job.title)
         norm_desc = TextNormalizer.normalize(job.description or "")
-        title_tokens = set(re.findall(r'[\w\.\+\#]+', norm_title))
-        q_norm = TextNormalizer.normalize(raw_query)
-        q_tokens = set(re.findall(r'[\w\.\+\#]+', q_norm))
+        title_tokens = set(re.findall(r'[\w\.\+\#\_]+', norm_title))
+        q_tokens = set(re.findall(r'[\w\.\+\#\_]+', TextNormalizer.normalize(raw_query)))
 
         matched_terms: List[str] = []
         missing_terms: List[str] = []
         penalties: List[str] = []
         reasons: List[str] = []
 
-        query_domains = {d.name.lower() for d in intent.domains}
-        query_techs = {t.name.lower() for t in intent.technologies}
+        query_domains = set([d.name for d in intent.domains])
+        query_techs = set([t.name.lower() for t in intent.technologies])
 
-        # Multi-domain intersection
-        job_domains = role_intent.domains
-        matched_domains_set = query_domains.intersection(job_domains)
-        conflicting_domains_set = (job_domains - query_domains) if (query_domains and not matched_domains_set and not role_intent.is_generic) else set()
+        # Calculate domain intersection and conflicts
+        matched_domains = list(query_domains.intersection(job_intent.domains))
+        conflicting_domains = list(job_intent.domains - query_domains) if query_domains else []
 
-        matched_domains = sorted(list(matched_domains_set))
-        conflicting_domains = sorted(list(conflicting_domains_set))
+        # Determine Role Similarity Weight
+        role_similarity = 0.50
+        if query_domains and matched_domains:
+            role_similarity = 1.0 if (job_intent.specialization and job_intent.specialization.lower() in raw_query.lower()) else 0.85
+        elif job_intent.is_generic:
+            role_similarity = 0.70  # Generic Software Engineer
+        elif query_domains and conflicting_domains and not matched_domains:
+            # Domain conflict (e.g. Frontend vs Game or Admin)
+            if any(d in {"game", "admin", "sales", "hr"} for d in conflicting_domains):
+                role_similarity = 0.15
 
-        matched_techs: List[str] = []
-        missing_techs: List[str] = []
-
-        for q_tech in query_techs:
-            tech_norm = TextNormalizer.normalize(q_tech)
-            in_t = is_tech_match(tech_norm, norm_title)
-            in_d = is_tech_match(tech_norm, norm_desc)
-            in_s = any(is_tech_match(tech_norm, TextNormalizer.normalize(s)) for s in (job.required_skills or []))
-
-            if in_t or in_s or in_d:
-                matched_techs.append(q_tech)
-                matched_terms.append(q_tech)
-            else:
-                missing_techs.append(q_tech)
-
-        # --- ROLE SIMILARITY & TITLE SCORE ---
-        role_sim = 0.0
+        # --- FEATURE 1: TITLE SCORE (Weighted) ---
         title_pts = 0.0
 
-        if q_norm in norm_title:
-            role_sim = 1.0
-            title_pts = 100.0
+        # Exact title query match
+        if TextNormalizer.normalize(raw_query) in norm_title:
+            title_pts += 100.0
             reasons.append("+ Exact title query match: +100")
             matched_terms.append(raw_query)
-        elif matched_domains_set:
-            role_sim = 0.85
-            title_pts = 85.0
-            reasons.append(f"+ Domain intersection matched {matched_domains}: +85")
-        elif role_intent.is_generic and matched_techs:
-            role_sim = 0.70
-            title_pts = 70.0
-            reasons.append(f"+ Generic software title with matching technologies {matched_techs}: +70")
-        elif conflicting_domains_set:
-            role_sim = 0.15
-            title_pts = 15.0
-            reasons.append(f"- Conflicting specialization domains {conflicting_domains}: +15 baseline title score")
         else:
-            # Baseline token overlap
-            title_hits = q_tokens.intersection(title_tokens)
-            if title_hits:
-                role_sim = 0.40
-                title_pts = 40.0
-                matched_terms.extend(list(title_hits))
-                reasons.append(f"+ Token overlap in title {list(title_hits)}: +40")
+            # Technology matches in title
+            tech_matched = False
+            for tech_term in intent.technologies:
+                norm_t = TextNormalizer.normalize(tech_term.name)
+                if norm_t in norm_title or norm_t in title_tokens:
+                    title_pts += 45.0
+                    matched_terms.append(tech_term.name)
+                    reasons.append(f"+ Technology '{tech_term.name}' in title: +45")
+                    tech_matched = True
+
+            # Domain concept matches in title
+            if matched_domains:
+                title_pts += 35.0
+                reasons.append(f"+ Matched domains {matched_domains} in title: +35")
+
+            # Role word match in title
+            role_matched = False
+            for role_term in intent.roles:
+                if role_term.lower() in title_tokens:
+                    role_matched = True
+                    matched_terms.append(role_term.name)
+
+            if role_matched:
+                bonus = 30.0 * role_similarity
+                title_pts += bonus
+                reasons.append(f"+ Role matched in title (similarity {role_similarity:.2f}): +{bonus:.1f}")
 
         title_pts = min(title_pts, 100.0)
 
-        # --- FEATURE 2: SKILLS SCORE ---
+        # --- FEATURE 2: SKILLS SCORE (Weighted) ---
         skills_pts = 0.0
-        if matched_techs:
-            skills_pts = len(matched_techs) * 50.0
-            reasons.append(f"+ Tech skills matched {matched_techs}: +{skills_pts}")
+        job_skills = [TextNormalizer.normalize(s) for s in (job.required_skills or [])]
+        matched_techs = []
+        for tech_term in intent.technologies:
+            norm_t = TextNormalizer.normalize(tech_term.name)
+            if any(norm_t in sk for sk in job_skills):
+                skills_pts += 50.0
+                matched_terms.append(tech_term.name)
+                matched_techs.append(tech_term.name)
+                reasons.append(f"+ Required skill match for '{tech_term.name}': +50")
+
         skills_pts = min(skills_pts, 100.0)
 
-        # --- FEATURE 3: DESCRIPTION SCORE ---
+        # --- FEATURE 3: DESCRIPTION SCORE (Weighted) ---
         desc_pts = 0.0
         for q_tok in q_tokens:
-            if len(q_tok) > 1 and is_tech_match(q_tok, norm_desc):
+            if len(q_tok) > 1 and q_tok in norm_desc:
                 desc_pts += 20.0
                 if q_tok not in matched_terms:
                     matched_terms.append(q_tok)
+
         desc_pts = min(desc_pts, 100.0)
 
-        # --- FEATURE 4: LOCATION SCORE ---
+        # --- FEATURE 4: LOCATION SCORE (Weighted) ---
         loc_pts = 0.0
         if context.location and context.location.lower() != "remote":
             if context.location.lower() in job.location.lower():
-                loc_pts = 100.0
+                loc_pts += 100.0
                 reasons.append(f"+ Location match '{context.location}': +100")
         elif context.remote_only and job.remote:
-            loc_pts = 100.0
+            loc_pts += 100.0
             reasons.append("+ Remote work match: +100")
 
         # --- FEATURE 5: DOMAIN CONFLICT PENALTIES ---
         penalty_pts = 0.0
-        if conflicting_domains_set and not matched_domains_set and not role_intent.is_generic:
+
+        query_is_tech = any(d in ENGINEERING_DOMAINS for d in query_domains) or \
+                         any(t in q_tokens for t in ["developer", "engineer", "react", "python", "node", "java", "code"])
+
+        # Check non-tech role title penalty
+        if query_is_tech and any(d in NON_TECH_DOMAINS for d in job_intent.domains):
             penalty_pts -= 80.0
-            penalty_msg = f"- Domain conflict: Candidate specialization {conflicting_domains} conflicts with query {query_domains}"
+            penalty_msg = f"- Domain mismatch: Non-tech job domain '{job_intent.domains}' for tech query"
             penalties.append(penalty_msg)
             reasons.append(penalty_msg)
 
+        # Check domain conflict penalty (e.g. Game/Mobile/Admin/Sales vs Web Frontend)
+        if query_domains and conflicting_domains and not matched_domains and not job_intent.is_generic:
+            penalty_pts -= 70.0
+            penalty_msg = f"- Specialization conflict: Domain '{conflicting_domains}' conflicts with query domain '{query_domains}'"
+            penalties.append(penalty_msg)
+            reasons.append(penalty_msg)
+
+        # Compute weighted total score
         raw_total = (
             (title_pts * self.w_title) +
             (skills_pts * self.w_skills) +
@@ -227,20 +247,21 @@ class RelevanceRankingService:
             breakdown=breakdown
         )
 
-        # Acceptance Gate: positive score AND (no conflicting domains OR strong title match >= 0.85)
-        accepted = (raw_total > 0) and (not conflicting_domains_set or role_sim >= 0.85)
+        accepted = (raw_total > 0) and (penalty_pts >= 0 or title_pts > 40)
 
         for q_tok in q_tokens:
             if q_tok not in matched_terms and len(q_tok) > 2:
                 missing_terms.append(q_tok)
+
+        missing_techs = [t for t in query_techs if t not in matched_techs]
 
         explanation = RoleExplanation(
             matched_domains=matched_domains,
             conflicting_domains=conflicting_domains,
             matched_technologies=matched_techs,
             missing_technologies=missing_techs,
-            role_similarity=round(role_sim, 2),
-            confidence=round(confidence, 2),
+            role_similarity=round(role_similarity, 2),
+            confidence=score_obj.confidence,
             decision="accepted" if accepted else "rejected"
         )
 
@@ -271,7 +292,7 @@ class RelevanceRankingService:
 
     def filter(self, ranked_items: List[Tuple[NormalizedJob, RelevanceResult]]) -> Tuple[List[NormalizedJob], List[Tuple[NormalizedJob, RelevanceResult]]]:
         """
-        Step 3: Filter accepted vs rejected items.
+        Step 3: Filter accepted vs rejected items based on net evidence.
         """
         accepted: List[NormalizedJob] = []
         rejected: List[Tuple[NormalizedJob, RelevanceResult]] = []
@@ -281,11 +302,11 @@ class RelevanceRankingService:
                 accepted.append(job)
             else:
                 rejected.append((job, result))
-                exp = result.explanation
                 logger.info(
                     f"[IntentEngine] Title: '{job.title}' | Company: '{job.company}' | "
-                    f"Final Score: {result.score.total} | RoleSim: {exp.role_similarity} | "
-                    f"Matched Domains: {exp.matched_domains} | Conflicting Domains: {exp.conflicting_domains} → REJECTED"
+                    f"Final: {result.score.total} | Decision: {result.explanation.decision.upper()} | "
+                    f"Matched Domains: {result.explanation.matched_domains} | "
+                    f"Conflicting Domains: {result.explanation.conflicting_domains}"
                 )
 
         return accepted, rejected

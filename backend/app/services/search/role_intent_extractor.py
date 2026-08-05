@@ -1,18 +1,19 @@
 """
-Role Intent Extractor Service
+Role Intent Extractor Module
 
-Extracts structured RoleIntent (domains set, technologies set, specialization, is_generic)
-from job title, description, and required skills.
+Extracts a structured RoleIntent (domains: Set[str], technologies: Set[str], specialization, is_generic)
+from job titles, descriptions, and required skills.
+Decoupled from taxonomy data and scoring algorithms.
 """
 
 from dataclasses import dataclass, field
-from typing import Set, Optional, List
+from typing import Set, List, Optional
 import re
 
 from app.services.search.tech_taxonomy import (
     TECH_TO_DOMAINS,
-    DOMAIN_TITLE_TRIGGERS,
     GENERIC_ROLES,
+    DOMAIN_KEYWORDS,
     get_domains_for_tech
 )
 from app.services.search.text_normalizer import TextNormalizer
@@ -20,72 +21,70 @@ from app.services.search.text_normalizer import TextNormalizer
 
 @dataclass
 class RoleIntent:
-    """Structured intent representation of a job posting."""
+    """Structured representation of a job posting's role intent."""
     domains: Set[str] = field(default_factory=set)
     technologies: Set[str] = field(default_factory=set)
     specialization: Optional[str] = None
     is_generic: bool = False
 
 
-def is_tech_match(tech_norm: str, text: str) -> bool:
-    """Checks exact technology word match excluding word/underscore bounds."""
-    pattern = r'(?<![\w_])' + re.escape(tech_norm) + r'(?![\w_])'
-    return bool(re.search(pattern, text))
-
-
 class RoleIntentExtractor:
     """
-    Dedicated extractor transforming job titles, descriptions, and skills into structured RoleIntent.
+    Extracts RoleIntent from raw job details.
     """
 
     @classmethod
-    def extract(cls, title: str, desc: str = "", skills: Optional[List[str]] = None) -> RoleIntent:
-        """
-        Extracts RoleIntent from job posting content.
-        """
+    def extract(
+        cls,
+        title: str,
+        desc: str = "",
+        skills: Optional[List[str]] = None
+    ) -> RoleIntent:
         norm_title = TextNormalizer.normalize(title or "")
         norm_desc = TextNormalizer.normalize(desc or "")
         job_skills = [TextNormalizer.normalize(s) for s in (skills or [])]
+
+        title_tokens = set(re.findall(r'[\w\.\+\#\_]+', norm_title))
 
         domains: Set[str] = set()
         technologies: Set[str] = set()
         specialization: Optional[str] = None
 
-        # Sort technology terms by length descending to match multi-word techs (e.g. react_native) before single-word techs (react)
-        sorted_techs = sorted(TECH_TO_DOMAINS.keys(), key=lambda t: len(t), reverse=True)
-
-        # 1. Identify Technologies in title, skills, and description
-        for tech in sorted_techs:
-            tech_norm = TextNormalizer.normalize(tech)
-            in_title = is_tech_match(tech_norm, norm_title)
-            in_skills = any(is_tech_match(tech_norm, sk) for sk in job_skills)
-            in_desc = is_tech_match(tech_norm, norm_desc)
-
-            if in_title:
+        # 1. Check title for technologies and domains
+        for tech, tech_domains in TECH_TO_DOMAINS.items():
+            norm_tech = TextNormalizer.normalize(tech)
+            if norm_tech in norm_title or norm_tech in title_tokens:
                 technologies.add(tech)
-                domains.update(get_domains_for_tech(tech))
+                domains.update(tech_domains)
                 if not specialization:
                     specialization = tech
-            elif in_skills or in_desc:
-                technologies.add(tech)
-                domains.update(get_domains_for_tech(tech))
 
-        # 2. Identify Title Domain Triggers
-        for domain, triggers in DOMAIN_TITLE_TRIGGERS.items():
-            if any(is_tech_match(tr, norm_title) for tr in triggers):
+        # 2. Check title for domain keywords
+        for domain, keywords in DOMAIN_KEYWORDS.items():
+            if any(kw in norm_title for kw in keywords):
                 domains.add(domain)
-                if not specialization:
-                    specialization = domain
 
-        # Special check for Full Stack
-        if "fullstack" in norm_title or "full stack" in norm_title:
-            domains.update({"frontend", "backend"})
+        # 3. Check skills for technologies
+        for sk in job_skills:
+            if sk in TECH_TO_DOMAINS:
+                technologies.add(sk)
+                domains.update(TECH_TO_DOMAINS[sk])
 
-        # 3. Determine if Generic Software Engineering Title
-        title_techs = {t for t in TECH_TO_DOMAINS if is_tech_match(TextNormalizer.normalize(t), norm_title)}
-        title_domain_triggers = any(any(is_tech_match(tr, norm_title) for tr in triggers) for d, triggers in DOMAIN_TITLE_TRIGGERS.items() if d != "management")
+        # 4. If domains are empty, infer from description
+        if not domains:
+            for tech, tech_domains in TECH_TO_DOMAINS.items():
+                norm_tech = TextNormalizer.normalize(tech)
+                if norm_tech in norm_desc:
+                    technologies.add(tech)
+                    domains.update(tech_domains)
 
-        is_generic = not (bool(title_techs) or title_domain_triggers)
+        # Specialized non-generic domains
+        specialized_domains = {"game", "mobile", "admin", "sales", "hr", "devops"}
+        has_specialized_domain = bool(domains.intersection(specialized_domains))
+
+        # Check if title is generic software engineering role
+        is_generic_title_pattern = norm_title in GENERIC_ROLES or norm_title.strip() in {"developer", "engineer", "software engineer", "programmer"}
+        is_generic = is_generic_title_pattern and not has_specialized_domain
 
         return RoleIntent(
             domains=domains,

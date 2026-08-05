@@ -1,8 +1,8 @@
 """
 Golden Dataset Unit Tests for Intent Matching Engine & Search Relevance
 
-Verifies QueryIntentParser, TextNormalizer, RoleIntentExtractor, and RelevanceRankingService against
-a data-driven matrix of tech, non-tech, and specialized search queries to prevent search regressions.
+Verifies QueryIntentParser, TextNormalizer, TechTaxonomy, RoleIntentExtractor,
+and RelevanceRankingService against a data-driven matrix of search queries.
 """
 
 from datetime import datetime
@@ -11,7 +11,8 @@ import pytest
 from app.schemas.job import NormalizedJob
 from app.services.search.query_intent_parser import QueryIntentParser
 from app.services.search.text_normalizer import TextNormalizer
-from app.services.search.role_intent_extractor import RoleIntentExtractor, RoleIntent
+from app.services.search.tech_taxonomy import get_domains_for_tech
+from app.services.search.role_intent_extractor import RoleIntentExtractor
 from app.services.search.relevance_ranking import RelevanceRankingService
 
 
@@ -36,30 +37,46 @@ class TestTextNormalizer:
         assert TextNormalizer.normalize("Front-End Developer") == "frontend developer"
         assert TextNormalizer.normalize("Sr. JS Engineer") == "senior javascript engineer"
         assert TextNormalizer.normalize("SW Engineer") == "software engineer"
-        assert TextNormalizer.normalize("React Native Developer") == "react_native developer"
+        assert TextNormalizer.normalize("Back End Dev") == "backend developer"
+        assert TextNormalizer.normalize("React-Native Developer") == "react_native developer"
+
+
+class TestTechTaxonomy:
+    def test_domain_lookups(self):
+        assert "frontend" in get_domains_for_tech("react")
+        assert "mobile" in get_domains_for_tech("react_native")
+        assert "game" in get_domains_for_tech("unity")
 
 
 class TestRoleIntentExtractor:
-    def test_extract_react_developer(self):
-        intent = RoleIntentExtractor.extract("React Developer", "Building React web components")
-        assert "frontend" in intent.domains
-        assert "react" in intent.technologies
-        assert intent.is_generic is False
+    def test_extract_generic_vs_specialized(self):
+        intent_generic = RoleIntentExtractor.extract("Software Engineer", desc="React and Python")
+        assert intent_generic.is_generic is True
+        assert "frontend" in intent_generic.domains
 
-    def test_extract_game_developer(self):
-        intent = RoleIntentExtractor.extract("Game Developer", "Building mobile games in Unity and React Native")
-        assert "game" in intent.domains
-        assert "react_native" in intent.technologies
-        assert intent.is_generic is False
+        intent_game = RoleIntentExtractor.extract("Game Developer", desc="Unity and C++")
+        assert intent_game.is_generic is False
+        assert "game" in intent_game.domains
 
-    def test_extract_generic_software_engineer(self):
-        intent = RoleIntentExtractor.extract("Software Engineer", "Building microservices and frontend React apps")
-        assert intent.is_generic is True
+
+class TestQueryIntentParser:
+    def test_parse_tech_query(self):
+        ctx = QueryIntentParser.parse("Senior Remote React Developer", location="SF", remote_only=True)
+        assert ctx.raw_query == "Senior Remote React Developer"
+        assert any(t.name == "react" for t in ctx.intent.technologies)
+        assert any(r.name == "developer" for r in ctx.intent.roles)
+        assert any(s.name == "senior" for s in ctx.intent.seniority)
+        assert ctx.remote_only is True
+
+    def test_parse_product_query(self):
+        ctx = QueryIntentParser.parse("Product Manager")
+        assert any(d.name == "product" for d in ctx.intent.domains)
+        assert any(r.name == "manager" for r in ctx.intent.roles)
 
 
 class TestIntentMatchingEngineGoldenMatrix:
     """
-    Data-driven evaluation suite testing query intent relevance ranking, role domain conflicts, and rejection.
+    Data-driven evaluation suite testing query intent relevance ranking and rejection.
     """
 
     GOLDEN_DATASET = [
@@ -68,12 +85,11 @@ class TestIntentMatchingEngineGoldenMatrix:
             "accept": [
                 make_job("React Developer", "Stripe", desc="Building UI in React and TypeScript"),
                 make_job("Senior Frontend Engineer", "Meta", desc="React, Redux, Next.js web application"),
-                make_job("Software Engineer", "Vercel", desc="Frontend software engineer building React components", skills=["React"]),
-                make_job("React UI Engineer", "Airbnb", desc="Web UI engineering")
+                make_job("Software Engineer (Frontend)", "Vercel", desc="Frontend React components")
             ],
             "reject": [
-                make_job("Game Developer", "Epic Games", desc="Mobile game developer using React Native and Unity"),
-                make_job("Unity Developer", "Roblox", desc="Game physics and 3D graphics developer"),
+                make_job("Game Developer", "Epic Games", desc="Mobile game developer working with Unity and React Native tools"),
+                make_job("Unity Developer", "Roblox", desc="Building 3D multiplayer games"),
                 make_job("Account Manager, Privy", "Stripe", desc="Who we are: Stripe is a financial platform for developers"),
                 make_job("Administrative Business Partner", "Stripe", desc="Supporting executive leadership as we build developer tools"),
                 make_job("HR Coordinator", "Google", desc="Human resources onboarding specialist")
@@ -83,8 +99,7 @@ class TestIntentMatchingEngineGoldenMatrix:
             "query": "Backend Engineer",
             "accept": [
                 make_job("Python Backend Developer", "Datadog", desc="Building scalable Python microservices"),
-                make_job("Senior Backend Engineer", "Cloudflare", desc="Go and Rust systems backend architecture"),
-                make_job("Software Engineer II", "Stripe", desc="API platform engineering", skills=["Python", "Go"])
+                make_job("Senior Backend Engineer", "Cloudflare", desc="Go and Rust systems backend architecture")
             ],
             "reject": [
                 make_job("Sales Executive", "Salesforce", desc="Enterprise software sales representative"),

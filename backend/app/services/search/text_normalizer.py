@@ -10,14 +10,15 @@ from typing import Set, List
 
 # Dictionary of canonical replacements
 SYNONYM_MAP = {
-    "react native": "react_native",
-    "react-native": "react_native",
     "front end": "frontend",
     "front-end": "frontend",
     "back end": "backend",
     "back-end": "backend",
     "full stack": "fullstack",
     "full-stack": "fullstack",
+    "react native": "react_native",
+    "react-native": "react_native",
+    "reactnative": "react_native",
     "js": "javascript",
     "ts": "typescript",
     "py": "python",
