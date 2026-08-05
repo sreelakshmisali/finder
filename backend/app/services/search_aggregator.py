@@ -11,9 +11,6 @@ from typing import List, Optional, Dict, Set, Any
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
 from app.providers.search_engine.base_search import SearchProvider, SearchResult
-from app.providers.search_engine.google_search import GoogleSearchProvider
-from app.providers.search_engine.bing_search import BingSearchProvider
-from app.providers.search_engine.brave_search import BraveSearchProvider
 from app.providers.search_engine.duckduckgo_search import DuckDuckGoSearchProvider
 from app.services.search_ranking import SearchResultRanker
 
@@ -37,10 +34,7 @@ class SearchAggregator:
         ranker: Optional[SearchResultRanker] = None,
         provider_timeout: float = 10.0
     ):
-        self.search_providers = search_providers if search_providers is not None else [
-            GoogleSearchProvider(),
-            BingSearchProvider(),
-            BraveSearchProvider(),
+        self.search_providers = search_providers or [
             DuckDuckGoSearchProvider()
         ]
         self.ranker = ranker or SearchResultRanker()
@@ -156,6 +150,7 @@ class SearchAggregator:
             if isinstance(res_list, list):
                 for item in res_list:
                     norm_url = self.normalize_url(item.url)
+                    print("norm_url------------------------------", norm_url)
                     if not norm_url:
                         continue
 

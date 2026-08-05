@@ -12,8 +12,7 @@ from urllib.parse import urlparse
 
 from app.schemas.company import DiscoveredCompany, CompanySearchQuery
 from app.providers.search_engine.base_search import SearchProvider, SearchResult
-from app.providers.search_engine.google_search import GoogleSearchProvider
-from app.providers.search_engine.bing_search import BingSearchProvider
+from app.providers.search_engine.duckduckgo_search import DuckDuckGoSearchProvider
 from app.services.company_extraction.industry_classifier import RuleBasedIndustryClassifier, BaseIndustryClassifier
 from app.services.company_extraction.tech_tag_extractor import TechTagExtractor
 
@@ -30,9 +29,8 @@ class CompanyDiscoveryService:
         search_providers: Optional[List[SearchProvider]] = None,
         classifier: Optional[BaseIndustryClassifier] = None
     ):
-        self.search_providers = search_providers if search_providers is not None else [
-            GoogleSearchProvider(),
-            BingSearchProvider()
+        self.search_providers = search_providers or [
+            DuckDuckGoSearchProvider()
         ]
         self.classifier = classifier or RuleBasedIndustryClassifier()
 

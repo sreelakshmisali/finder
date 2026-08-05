@@ -5,6 +5,7 @@ Implements `JobProvider` for Lever ATS public postings API.
 Fetches public postings from Lever job boards and transforms them into `NormalizedJob`.
 """
 
+import asyncio
 import logging
 from typing import List, Optional
 from datetime import datetime
@@ -41,71 +42,76 @@ class LeverProvider(ATSProvider):
 
     async def discover(self, context: DiscoveryContext) -> List[NormalizedJob]:
         """
-        Executes discovery on Lever postings API matching DiscoveryContext.
+        Executes discovery on Lever board endpoints matching DiscoveryContext concurrently.
         """
         query = context.query
         results: List[NormalizedJob] = []
         search_kw = (query.query or "").lower()
         search_loc = (query.location or "").lower()
 
-        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
-            for company in SAMPLE_LEVER_COMPANIES:
-                try:
-                    url = f"https://api.lever.co/v0/postings/{company}?mode=json"
-                    resp = await client.get(url)
+        async def fetch_company(client: httpx.AsyncClient, company: str):
+            try:
+                url = f"https://api.lever.co/v0/postings/{company}?mode=json"
+                resp = await client.get(url)
+                if resp.status_code == 200:
+                    return company, resp.json()
+            except Exception as exc:
+                logger.warning(f"Lever fetch failed for company '{company}': {exc}")
+            return company, None
 
-                    if resp.status_code != 200:
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+            company_results = await asyncio.gather(*[fetch_company(client, c) for c in SAMPLE_LEVER_COMPANIES])
+
+        for company, postings in company_results:
+            if not postings or not isinstance(postings, list):
+                continue
+
+            company_name = company.capitalize()
+
+            for post in postings:
+                title = post.get("text", "")
+                categories = post.get("categories", {})
+                loc = categories.get("location", "Remote")
+                job_url = post.get("hostedUrl", "")
+                desc_text = post.get("descriptionPlain", "") or post.get("description", "")
+
+                # Filter keyword
+                if search_kw:
+                    query_terms = [t for t in search_kw.split() if len(t) > 1]
+                    text_to_check = f"{title} {desc_text}".lower()
+                    if query_terms and not any(t in text_to_check for t in query_terms):
                         continue
 
-                    postings = resp.json()
-                    company_name = company.capitalize()
+                # Filter location
+                if search_loc:
+                    if search_loc not in loc.lower():
+                        continue
 
-                    for post in postings:
-                        title = post.get("text", "")
-                        categories = post.get("categories", {})
-                        loc = categories.get("location", "Remote")
-                        job_url = post.get("hostedUrl", "")
-                        desc_text = post.get("descriptionPlain", "") or post.get("description", "")
-
-                        # Filter keyword
-                        if search_kw:
-                            if search_kw not in title.lower() and search_kw not in desc_text.lower():
-                                continue
-
-                        # Filter location
-                        if search_loc:
-                            if search_loc not in loc.lower():
-                                continue
-
-                        # Filter remote
-                        work_type = post.get("workplaceType", "").lower()
-                        is_remote = "remote" in loc.lower() or work_type == "remote" or "remote" in title.lower()
-                        if query.remote_only and not is_remote:
-                            continue
-
-                        results.append(
-                            NormalizedJob(
-                                company=company_name,
-                                title=title,
-                                location=loc,
-                                remote=is_remote,
-                                salary=None,
-                                description=desc_text or f"{title} position at {company_name}.",
-                                url=job_url,
-                                source=self.source_name,
-                                posted_date=datetime.utcnow()
-                            )
-                        )
-
-                        if len(results) >= query.limit:
-                            break
-
-                except Exception as exc:
-                    logger.warning(f"Lever fetch failed for company '{company}': {exc}")
+                # Filter remote
+                work_type = post.get("workplaceType", "").lower()
+                is_remote = "remote" in loc.lower() or work_type == "remote" or "remote" in title.lower()
+                if query.remote_only and not is_remote:
                     continue
+
+                results.append(
+                    NormalizedJob(
+                        company=company_name,
+                        title=title,
+                        location=loc,
+                        remote=is_remote,
+                        salary=None,
+                        description=desc_text or f"{title} position at {company_name}.",
+                        url=job_url,
+                        source=self.source_name,
+                        posted_date=datetime.utcnow()
+                    )
+                )
 
                 if len(results) >= query.limit:
                     break
+
+            if len(results) >= query.limit:
+                break
 
         return results
 

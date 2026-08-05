@@ -13,7 +13,6 @@ const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 15000,
 });
 
 api.interceptors.response.use(
@@ -35,8 +34,10 @@ api.interceptors.response.use(
       if (status >= 500) {
         console.error("Server error:", error.response.data);
       }
+    } else if (error.code === "ECONNABORTED" || error.message?.includes("timeout")) {
+      console.error("Request timed out — search job taking longer than 60 seconds.");
     } else if (error.request) {
-      console.error("Network error — is the backend running?");
+      console.error("Network error — unable to reach backend at " + API_BASE_URL);
     }
 
     return Promise.reject(error);

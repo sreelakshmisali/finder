@@ -7,17 +7,18 @@ Deduplicates discovered jobs using `JobRepository` before returning normalized r
 
 import asyncio
 import logging
+import time
 import uuid
 from typing import List, Sequence, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.job import Job
+from app.providers.base_discovery import DiscoveryContext
 from app.providers.registry import registry
 from app.repositories.job_repository import JobRepository
 from app.repositories.resume_repository import ResumeRepository
 from app.services.search_query_generator import SearchQueryGenerator
 from app.schemas.job import JobSearchQuery, JobListResponse, JobResponse, NormalizedJob, SearchMode
-from app.services.cache_service import search_cache, make_cache_key
 
 logger = logging.getLogger(__name__)
 
@@ -45,205 +46,81 @@ class JobService:
         user_id: Optional[uuid.UUID] = None
     ) -> JobListResponse:
         """
-        Executes job search based on specified SearchMode.
+        Executes job search across all enabled discovery providers concurrently.
         """
-        suggested_queries: List[str] = []
-        is_generated = False
-        profile_version = "none"
+        start_time = time.time()
+        applied_query = query.query or ""
+        applied_location = query.location or ""
 
-        # If SMART mode, generate queries
-        if user_id and query.search_mode == SearchMode.SMART:
-            try:
-                active_resume = await self.resume_repo.get_active(user_id)
-                
-                # Profile version for caching
-                if active_resume:
-                    profile_version = str(active_resume.id)
+        # logger.info(f"Search started: query='{applied_query}', location='{applied_location}'")
 
-                suggested_queries = SearchQueryGenerator.generate_queries(active_resume)
+        # 1. Obtain active providers
+        target_providers = registry.get_enabled_providers()
 
-                # Only use generated queries, ignore explicit user query if SMART is forced (or we could just use the first generated)
-                # But the prompt says "Smart Search must only generate search queries. It must not silently inject profile preferences"
-                if suggested_queries:
-                    query.query = suggested_queries[0]
-                    is_generated = True
-                    logger.info(f"Generated SMART search query: '{query.query}' for user '{user_id}'")
-
-            except Exception as exc:
-                logger.warning(f"Failed to generate candidate query signals for user '{user_id}': {exc}")
-
-        applied_query = query.query
-        applied_location = query.location
-
-        # Enforce search-first architecture: Do not execute empty searches.
-        # A valid search must either be SMART mode OR have a query or location filter.
-        if query.search_mode == SearchMode.NORMAL and not (query.query or "").strip() and not (query.location or "").strip():
+        if not target_providers:
+            logger.warning("No discovery providers enabled.")
+            stored_jobs = await self.repo.search_jobs(
+                query=applied_query,
+                location=applied_location,
+                remote_only=query.remote_only,
+                limit=query.limit
+            )
             return JobListResponse(
-                total=0,
-                jobs=[],
-                suggested_queries=suggested_queries,
+                total=len(stored_jobs),
+                jobs=[JobResponse.model_validate(j) for j in stored_jobs],
+                suggested_queries=[],
                 search_mode=query.search_mode,
                 applied_query=applied_query,
                 applied_location=applied_location
             )
 
-        cache_key = make_cache_key(
-            user_id=user_id,
-            query=applied_query,
-            location=applied_location,
-            remote_only=query.remote_only,
-            min_salary=query.min_salary,
-            limit=query.limit,
-            search_mode=query.search_mode.value,
-            profile_version=profile_version
-        )
+        # 2. Execute providers concurrently
+        context = DiscoveryContext(query=query, user_id=user_id)
+        tasks = [provider.discover(context) for provider in target_providers]
+        results_list = await asyncio.gather(*tasks, return_exceptions=True)
 
-        # 2. Check Cache
-        if not query.force_refresh:
-            cached_res = await search_cache.get(cache_key)
-            if cached_res:
-                logger.info(f"Cache HIT for search key: '{cache_key}'")
-                return cached_res
+        raw_jobs: List[NormalizedJob] = []
+        for idx, result in enumerate(results_list):
+            p_name = target_providers[idx].source_name
+            if isinstance(result, Exception):
+                logger.error(f"Provider '{p_name}' failed: {result}")
+            elif isinstance(result, list):
+                logger.info(f"Provider '{p_name}' finished: returned {len(result)} jobs")
+                raw_jobs.extend(result)
 
-        # 3. Request Deduplication (In-Flight Lock)
-        key_lock = await search_cache.get_key_lock(cache_key)
-        async with key_lock:
-            # Re-check cache inside lock
-            if not query.force_refresh:
-                cached_res = await search_cache.get(cache_key)
-                if cached_res:
-                    logger.info(f"Cache HIT (coalesced) for search key: '{cache_key}'")
-                    return cached_res
+        # 3. Persist & normalize results in DB
+        saved_db_jobs: List[Job] = []
+        for norm_job in raw_jobs:
+            try:
+                db_job = await self.repo.save_normalized_job(norm_job)
+                saved_db_jobs.append(db_job)
+            except Exception as exc:
+                logger.warning(f"Error saving job '{norm_job.title}': {exc}")
 
-            from app.core.config import settings
-
-            # 4. Check Search Index (Local Database)
-            stored_jobs = await self.repo.search_jobs(
-                query=query.query,
-                location=query.location,
+        # Fallback to local DB if 0 new jobs returned
+        if not saved_db_jobs and (applied_query or applied_location):
+            stored = await self.repo.search_jobs(
+                query=applied_query,
+                location=applied_location,
                 remote_only=query.remote_only,
                 limit=query.limit,
-                max_age_days=settings.SEARCH_INDEX_MAX_JOB_AGE_DAYS
+                max_age_days=None
             )
+            saved_db_jobs = list(stored)
 
-            # Evaluate Quantity & Freshness
-            if len(stored_jobs) >= settings.SEARCH_INDEX_MIN_RESULTS:
-                logger.info(f"Search Index HIT: Found {len(stored_jobs)} fresh indexed jobs for query '{query.query}'. Skipping external discovery.")
-                response = JobListResponse(
-                    total=len(stored_jobs),
-                    jobs=[JobResponse.model_validate(j) for j in stored_jobs],
-                    suggested_queries=suggested_queries,
-                    search_mode=query.search_mode,
-                    applied_query=applied_query,
-                    applied_location=applied_location
-                )
-                await search_cache.set(cache_key, response)
-                await search_cache.cleanup_key_lock(cache_key)
-                return response
+        total_elapsed = time.time() - start_time
+        logger.info(f"Total jobs saved to DB: {len(saved_db_jobs)} in {total_elapsed:.2f}s")
 
-            target_providers = registry.get_enabled_providers()
+        job_responses = [JobResponse.model_validate(j) for j in saved_db_jobs]
+        return JobListResponse(
+            total=len(job_responses),
+            jobs=job_responses[:query.limit],
+            suggested_queries=[],
+            search_mode=query.search_mode,
+            applied_query=applied_query,
+            applied_location=applied_location
+        )
 
-            if not target_providers:
-                # Fallback: return what we have in the Search Index, even if insufficient
-                stored_jobs = await self.repo.search_jobs(
-                    query=query.query,
-                    location=query.location,
-                    remote_only=query.remote_only,
-                    limit=query.limit,
-                    max_age_days=None # Ignored for ultimate fallback
-                )
-                response = JobListResponse(
-                    total=len(stored_jobs),
-                    jobs=[JobResponse.model_validate(j) for j in stored_jobs],
-                    suggested_queries=suggested_queries,
-                    search_mode=query.search_mode,
-                    applied_query=applied_query,
-                    applied_location=applied_location
-                )
-                await search_cache.set(cache_key, response)
-                await search_cache.cleanup_key_lock(cache_key)
-                return response
-
-            # Wrap execution parameter in rich DiscoveryContext
-            from app.providers.base_discovery import DiscoveryContext
-            context = DiscoveryContext(query=query, user_id=user_id)
-            tracker = context.metadata.get("tracker")
-
-            from app.utils.pipeline_tracker import current_tracker
-            import os
-            
-            token = current_tracker.set(tracker)
-            try:
-                # Launch all provider discovery tasks concurrently with isolated error handling
-                tasks = [provider.discover(context) for provider in target_providers]
-                results_list = await asyncio.gather(*tasks, return_exceptions=True)
-
-                raw_jobs: List[NormalizedJob] = []
-                for idx, result in enumerate(results_list):
-                    p_name = target_providers[idx].source_name
-                    if isinstance(result, Exception):
-                        logger.error(f"Discovery provider '{p_name}' failed with error: {result}")
-                    elif isinstance(result, list):
-                        logger.info(f"Discovery provider '{p_name}' returned {len(result)} jobs")
-                        raw_jobs.extend(result)
-
-                # Persist & deduplicate in Search Index
-                if tracker:
-                    tracker.start_stage("Stage 7 - Persistence")
-                saved_db_jobs: List[Job] = []
-                for norm_job in raw_jobs:
-                    try:
-                        db_job = await self.repo.save_normalized_job(norm_job)
-                        saved_db_jobs.append(db_job)
-                    except Exception as exc:
-                        logger.warning(f"Error saving job '{norm_job.title}' at '{norm_job.company}': {exc}")
-                if tracker:
-                    tracker.end_stage("Stage 7 - Persistence")
-
-                # If no new jobs were scraped (or network offline), query stored indexed jobs
-                if not saved_db_jobs:
-                    stored = await self.repo.search_jobs(
-                        query=query.query,
-                        location=query.location,
-                        remote_only=query.remote_only,
-                        limit=query.limit,
-                        max_age_days=None # Fallback
-                    )
-                    saved_db_jobs = list(stored)
-
-                job_responses = [JobResponse.model_validate(j) for j in saved_db_jobs]
-
-                response = JobListResponse(
-                    total=len(job_responses),
-                    jobs=job_responses[:query.limit],
-                    suggested_queries=suggested_queries,
-                    search_mode=query.search_mode,
-                    applied_query=applied_query,
-                    applied_location=applied_location
-                )
-
-                await search_cache.set(cache_key, response)
-            finally:
-                current_tracker.reset(token)
-
-            if tracker:
-                tracker.complete()
-                from app.utils.pipeline_report_generator import PipelineReportGenerator
-                # Save under logs directory in backend
-                base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-                logs_dir = os.path.join(base_dir, "logs")
-                PipelineReportGenerator.write_reports(tracker, logs_dir)
-                
-                # Also save to conversation artifacts directory for visibility
-                artifacts_dir = r"C:\Users\codel\.gemini\antigravity\brain\00c5547d-eb3b-4b6e-9e36-b8c5556065e7"
-                if os.path.exists(artifacts_dir):
-                    try:
-                        PipelineReportGenerator.write_reports(tracker, artifacts_dir)
-                    except Exception as e:
-                        logger.warning(f"Failed to copy report to artifact dir: {e}")
-
-        await search_cache.cleanup_key_lock(cache_key)
-        return response
 
     async def get_job_by_id(self, job_id) -> Optional[JobResponse]:
         """

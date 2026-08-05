@@ -235,6 +235,8 @@ class SearchQueryGenerator:
 
         # Deduplicate while preserving order
         unique_queries = list(dict.fromkeys(queries))
+        print(f"Generated {len(unique_queries)} search engine queries from raw query '{raw_query}' with location '{location}'")
+        print("Queries:", unique_queries[:max_queries])
         return unique_queries[:max_queries]
 
 
