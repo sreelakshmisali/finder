@@ -126,9 +126,6 @@ class JobExtractor:
             except Exception as exc:
                 logger.warning(f"Extractor '{extractor.name}' failed for '{url}': {exc}")
 
-        if not base_job and search_result:
-            base_job = await HeuristicExtractor().extract(url=url, html=html, search_result=search_result)
-            succeeded_extractor = "HeuristicExtractorFallback"
 
         if not base_job:
             if tracker:

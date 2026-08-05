@@ -7,12 +7,14 @@ import EmptyState from "../components/shared/EmptyState";
 import SearchBar from "../components/ui/SearchBar";
 import ResumeUploader from "../components/shared/ResumeUploader";
 import ResumeViewerModal from "../components/profile/ResumeViewerModal";
+import AllResumesModal from "../components/shared/AllResumesModal";
 import { Spinner, Modal, Button, Badge } from "../components/ui";
 import { useJobSearch, useMatchJob, useSuggestedQueries } from "../hooks/useJobs";
 import {
   useActiveResume,
   useResumes,
   useUploadResume,
+  useSetActiveResume,
   useDeleteResume,
   useParseResume,
 } from "../hooks/useResume";
@@ -29,6 +31,7 @@ import {
   Upload,
   User,
   Layers,
+  FolderOpen,
 } from "lucide-react";
 
 function JobsPage() {
@@ -46,6 +49,7 @@ function JobsPage() {
   const [isMatchModalOpen, setIsMatchModalOpen] = useState(false);
   const [isResumeWarningModalOpen, setIsResumeWarningModalOpen] = useState(false);
   const [isPdfViewerOpen, setIsPdfViewerOpen] = useState(false);
+  const [isAllResumesModalOpen, setIsAllResumesModalOpen] = useState(false);
   const [showUploader, setShowUploader] = useState(false);
   const [sortByMatch, setSortByMatch] = useState(false);
 
@@ -53,6 +57,7 @@ function JobsPage() {
   const { data: resumesData, isLoading: isResumesLoading } = useResumes();
   const { data: activeResume } = useActiveResume();
   const uploadMutation = useUploadResume();
+  const setActiveMutation = useSetActiveResume();
   const deleteMutation = useDeleteResume();
   const parseMutation = useParseResume();
 
@@ -81,6 +86,10 @@ function JobsPage() {
     });
   };
 
+  const handleSetActiveResume = (resumeId: string) => {
+    setActiveMutation.mutate(resumeId);
+  };
+
   const handleDeleteResume = (resumeId: string) => {
     deleteMutation.mutate(resumeId);
   };
@@ -88,18 +97,16 @@ function JobsPage() {
   const handleSearch = (filters: {
     query: string;
     location: string;
-    remoteOnly: boolean;
+    remoteOnly?: boolean;
     searchMode?: SearchMode;
-    minSalary?: number;
     forceRefresh?: boolean;
   }) => {
     setHasSearched(true);
     setQueryParams({
       query: filters.query,
       location: filters.location,
-      remote_only: filters.remoteOnly,
+      remote_only: Boolean(filters.remoteOnly),
       search_mode: filters.searchMode || "NORMAL",
-      min_salary: filters.minSalary,
       force_refresh: filters.forceRefresh,
       limit: 50,
     });
@@ -150,15 +157,15 @@ function JobsPage() {
   return (
     <>
       <Header
-        title="Job Search & AI Matching"
-        subtitle="Discover tech positions tailored to your skills and rank opportunities by resume fit"
+        title="Finder"
+        subtitle="Single-page intelligent job discovery engine"
       />
 
       <PageWrapper>
         <div className="max-w-7xl mx-auto p-6 lg:p-10 space-y-8 min-h-[80vh]">
           
           {/* ========================================================================= */}
-          {/* UNIFIED RESUME CARD SECTION                                                */}
+          {/* TOP RESUME MANAGER SECTION                                                */}
           {/* ========================================================================= */}
           <section className="bg-surface border border-border rounded-2xl p-6 shadow-sm space-y-4">
             
@@ -169,7 +176,7 @@ function JobsPage() {
                   <div className="flex items-center justify-center md:justify-start gap-2">
                     <Sparkles className="text-accent" size={20} />
                     <h3 className="text-base font-bold text-text">
-                      Upload your resume to unlock AI-powered job suggestions
+                      Upload your resume to enable Search with Resume
                     </h3>
                   </div>
                   <p className="text-xs text-text-secondary">
@@ -190,7 +197,7 @@ function JobsPage() {
               <div className="flex items-center justify-center py-8 space-y-2 flex-col">
                 <Spinner size="md" />
                 <p className="text-sm font-semibold text-text animate-pulse">
-                  Analyzing resume... Generating suggestions...
+                  Analyzing resume... Generating AI search suggestions...
                 </p>
               </div>
             )}
@@ -209,17 +216,27 @@ function JobsPage() {
                           {currentActiveResume.filename}
                         </h4>
                         <Badge variant="success" className="text-[10px] font-bold">
-                          Resume Ready ✓
+                          Active Resume ✓
                         </Badge>
                       </div>
                       <p className="text-xs text-text-muted">
-                        Active resume for AI match scoring and search suggestions
+                        Active resume for candidate-guided search and AI job fit scoring
                       </p>
                     </div>
                   </div>
 
-                  {/* Actions: View, Replace, Remove */}
-                  <div className="flex items-center gap-2 shrink-0">
+                  {/* Resume Manager Buttons: Manage Resumes, View PDF, Upload, Remove */}
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setIsAllResumesModalOpen(true)}
+                      icon={<FolderOpen size={14} />}
+                      title="View & manage all uploaded resumes"
+                    >
+                      Manage Resumes
+                    </Button>
+
                     <Button
                       variant="secondary"
                       size="sm"
@@ -235,7 +252,7 @@ function JobsPage() {
                       onClick={() => setShowUploader(!showUploader)}
                       icon={<Upload size={14} />}
                     >
-                      {showUploader ? "Cancel Replace" : "Replace Resume"}
+                      {showUploader ? "Cancel" : "Upload"}
                     </Button>
 
                     <Button
@@ -244,14 +261,14 @@ function JobsPage() {
                       isLoading={deleteMutation.isPending}
                       onClick={() => handleDeleteResume(currentActiveResume.id)}
                       icon={<Trash2 size={14} />}
-                      title="Remove Resume"
+                      title="Remove Active Resume"
                     >
                       Remove
                     </Button>
                   </div>
                 </div>
 
-                {/* Optional Expandable Replace Dropzone */}
+                {/* Expandable Upload Dropzone */}
                 {showUploader && (
                   <div className="p-4 bg-surface-elevated/40 border border-border rounded-xl">
                     <ResumeUploader
@@ -261,7 +278,7 @@ function JobsPage() {
                   </div>
                 )}
 
-                {/* Parsed Resume Summary Badges */}
+                {/* Parsed Resume Key Skills Summary */}
                 {(() => {
                   const parsed = currentActiveResume.parsed_data as ParsedResumeData | null;
                   if (!parsed) return null;
@@ -279,13 +296,18 @@ function JobsPage() {
                       {skillsList.length > 0 && (
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-text-muted font-medium flex items-center gap-1">
-                            <Layers size={13} className="text-success" /> Key Skills:
+                            <Layers size={13} className="text-success" /> Extracted Skills:
                           </span>
-                          {skillsList.slice(0, 5).map((skillName: string, idx: number) => (
+                          {skillsList.slice(0, 6).map((skillName: string, idx: number) => (
                             <span key={idx} className="bg-surface-elevated border border-border px-2 py-0.5 rounded text-[11px] text-text">
                               {skillName}
                             </span>
                           ))}
+                          {skillsList.length > 6 && (
+                            <span className="text-[11px] text-text-muted font-medium">
+                              +{skillsList.length - 6} more
+                            </span>
+                          )}
                         </div>
                       )}
                     </div>
@@ -302,10 +324,10 @@ function JobsPage() {
             <SearchBar
               onSearch={handleSearch}
               isLoading={isSearchLoading && hasSearched}
+              activeResumeFilename={hasActiveResume ? currentActiveResume.filename : null}
               suggestedQueries={suggestedQueries}
               appliedQuery={searchData?.applied_query}
               appliedLocation={searchData?.applied_location}
-              layout="header"
             />
           </section>
 
@@ -320,7 +342,7 @@ function JobsPage() {
                   <div className="text-sm text-text-secondary">
                     {isSearchLoading ? (
                       <span className="flex items-center gap-2 font-medium">
-                        <Spinner size="sm" /> Fetching jobs...
+                        <Spinner size="sm" /> Searching jobs across ATS engines...
                       </span>
                     ) : (
                       <span>
@@ -377,13 +399,13 @@ function JobsPage() {
                   </div>
                 )}
 
-                {/* EXPLICIT EMPTY STATE: No Search Results */}
+                {/* Empty Results State */}
                 {!isSearchLoading && !isSearchError && displayedJobs.length === 0 && (
                   <div className="p-8 md:p-12 border border-border border-dashed rounded-2xl bg-surface text-center shadow-sm mt-4">
                     <EmptyState
                       icon={<Search size={48} className="mx-auto mb-4 text-text-muted" />}
                       title="No jobs found"
-                      description="Try another keyword, adjust location filters, or click one of your resume suggestions above."
+                      description="Try another keyword, adjust location, or click one of your resume suggestions above."
                     />
                   </div>
                 )}
@@ -404,16 +426,30 @@ function JobsPage() {
                 )}
               </>
             ) : (
-              /* Initial Landing Prompt before first search */
+              /* Initial Landing Prompt */
               <div className="p-12 text-center border border-border/50 border-dashed rounded-2xl bg-surface/50 space-y-3">
                 <Search size={40} className="mx-auto text-text-muted opacity-60" />
-                <h3 className="text-lg font-bold text-text">Start your job search above</h3>
-                <p className="text-xs text-text-secondary max-w-md mx-auto">
-                  Type a job title or click a suggested query generated from your resume to view matching opportunities.
+                <h3 className="text-lg font-bold text-text">Discover Opportunities</h3>
+                <p className="text-xs text-text-secondary max-w-md mx-auto leading-relaxed">
+                  Enter a keyword for a <strong>Standard Search</strong>, or click <strong>Search with Resume</strong> to discover positions matched to your profile.
                 </p>
               </div>
             )}
           </div>
+
+          {/* Manage All Resumes Modal */}
+          <AllResumesModal
+            isOpen={isAllResumesModalOpen}
+            onClose={() => setIsAllResumesModalOpen(false)}
+            resumes={resumes}
+            activeResumeId={currentActiveResume?.id}
+            onSetActive={handleSetActiveResume}
+            onDelete={handleDeleteResume}
+            onUpload={handleUploadResume}
+            isActivating={setActiveMutation.isPending}
+            isDeleting={deleteMutation.isPending}
+            isUploading={uploadMutation.isPending}
+          />
 
           {/* AI Match Explanation Modal */}
           <Modal
@@ -481,4 +517,3 @@ function JobsPage() {
 }
 
 export default JobsPage;
-

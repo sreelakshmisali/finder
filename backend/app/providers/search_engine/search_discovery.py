@@ -99,6 +99,13 @@ class SearchDiscoveryProvider(SearchEngineProvider):
         Stage 4: Job Extraction from vetted job URLs
         Stage 5: Deduplication & Company Limiting
         """
+        from app.utils.pipeline_tracker import current_tracker
+        tracker = context.metadata.get("tracker")
+        tracker_token = None
+        if tracker:
+            tracker_token = current_tracker.set(tracker)
+            tracker.start_stage("Stage 1 - Search Engine Discovery")
+
         raw_query = context.query.query or ""
         location = context.query.location or ""
         limit = context.query.limit
@@ -119,6 +126,7 @@ class SearchDiscoveryProvider(SearchEngineProvider):
         # Stage 2 — Multi-engine search aggregation
         candidate_results = await self.aggregator.aggregate_multi_query(
             queries=enriched_queries,
+            raw_query=raw_query,
             limit_per_query=10,
             total_limit=limit * 3,
         )
@@ -156,7 +164,7 @@ class SearchDiscoveryProvider(SearchEngineProvider):
                 self.job_extractor.extract_from_url(
                     url=tagged.url if hasattr(tagged, "url") else str(tagged),
                     search_result=url_to_result.get(tagged.url if hasattr(tagged, "url") else str(tagged)),
-                    skip_classification=True,
+                    skip_classification=False,
                 )
                 for tagged in job_posting_urls[:limit]
             ]
@@ -193,6 +201,17 @@ class SearchDiscoveryProvider(SearchEngineProvider):
                 if fingerprint not in seen_fingerprints:
                     seen_fingerprints.add(fingerprint)
                     final_jobs.append(job)
+
+        if final_jobs and raw_query:
+            from app.services.search.relevance_ranking import RelevanceRankingService
+            relevance_service = RelevanceRankingService()
+            accepted, _ = relevance_service.rank_and_filter(final_jobs, query=raw_query, location=location, min_score=0)
+            final_jobs = accepted
+
+        if tracker:
+            tracker.complete()
+            if tracker_token:
+                current_tracker.reset(tracker_token)
 
         return final_jobs
 

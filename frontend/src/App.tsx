@@ -12,7 +12,6 @@ import ProtectedRoute from "./components/shared/ProtectedRoute";
 import DashboardLayout from "./layouts/DashboardLayout";
 import AuthPage from "./pages/AuthPage";
 import JobsPage from "./pages/JobsPage";
-import ProfilePage from "./pages/ProfilePage";
 
 /* Create a single React Query client instance */
 const queryClient = new QueryClient({
@@ -39,7 +38,7 @@ function App() {
                 <Route index element={<Navigate to="/jobs" replace />} />
                 <Route path="jobs" element={<JobsPage />} />
                 <Route path="dashboard" element={<Navigate to="/jobs" replace />} />
-                <Route path="profile" element={<ProfilePage />} />
+                <Route path="profile" element={<Navigate to="/jobs" replace />} />
                 <Route path="resume" element={<Navigate to="/jobs" replace />} />
                 <Route path="tracker" element={<Navigate to="/jobs" replace />} />
               </Route>
