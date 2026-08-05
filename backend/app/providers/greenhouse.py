@@ -75,13 +75,6 @@ class GreenhouseProvider(ATSProvider):
                 job_url = item.get("absolute_url", "")
                 content = item.get("content", "")
 
-                # Filter by keyword if provided
-                if search_kw:
-                    query_terms = [t for t in search_kw.split() if len(t) > 1]
-                    text_to_check = f"{title} {content}".lower()
-                    if query_terms and not any(t in text_to_check for t in query_terms):
-                        continue
-
                 # Filter by location if provided
                 if search_loc:
                     if search_loc not in loc.lower():

@@ -75,13 +75,6 @@ class LeverProvider(ATSProvider):
                 job_url = post.get("hostedUrl", "")
                 desc_text = post.get("descriptionPlain", "") or post.get("description", "")
 
-                # Filter keyword
-                if search_kw:
-                    query_terms = [t for t in search_kw.split() if len(t) > 1]
-                    text_to_check = f"{title} {desc_text}".lower()
-                    if query_terms and not any(t in text_to_check for t in query_terms):
-                        continue
-
                 # Filter location
                 if search_loc:
                     if search_loc not in loc.lower():

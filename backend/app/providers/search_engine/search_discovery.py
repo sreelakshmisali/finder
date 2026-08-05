@@ -202,12 +202,6 @@ class SearchDiscoveryProvider(SearchEngineProvider):
                     seen_fingerprints.add(fingerprint)
                     final_jobs.append(job)
 
-        if final_jobs and raw_query:
-            from app.services.search.relevance_ranking import RelevanceRankingService
-            relevance_service = RelevanceRankingService()
-            accepted, _ = relevance_service.rank_and_filter(final_jobs, query=raw_query, location=location, min_score=0)
-            final_jobs = accepted
-
         if tracker:
             tracker.complete()
             if tracker_token:

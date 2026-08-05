@@ -74,13 +74,6 @@ class AshbyProvider(ATSProvider):
                 job_url = item.get("jobUrl", "")
                 desc_info = f"{title} position at {company_name} in {loc}."
 
-                # Filter keyword
-                if search_kw:
-                    query_terms = [t for t in search_kw.split() if len(t) > 1]
-                    text_to_check = f"{title}".lower()
-                    if query_terms and not any(t in text_to_check for t in query_terms):
-                        continue
-
                 # Filter location
                 if search_loc:
                     if search_loc not in loc.lower():
