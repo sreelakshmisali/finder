@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     MAX_JOBS_PER_COMPANY: int = 5
     LINKEDIN_MODE: str = "external_only"
     PROVIDER_OVERRIDES: Optional[str] = None
+    SEARCH_DIAGNOSTICS_ENABLED: bool = True
 
     # CORS
     CORS_ORIGINS: Union[str, List[AnyHttpUrl]] = ["http://localhost:5173"]

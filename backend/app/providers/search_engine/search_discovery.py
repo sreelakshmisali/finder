@@ -106,6 +106,11 @@ class SearchDiscoveryProvider(SearchEngineProvider):
             tracker_token = current_tracker.set(tracker)
             tracker.start_stage("Stage 1 - Search Engine Discovery")
 
+        from app.utils.search_diagnostics import current_diagnostics
+        diag = current_diagnostics.get()
+        if diag:
+            diag.start_provider(self.source_name, self.display_name, priority=40)
+
         raw_query = context.query.query or ""
         location = context.query.location or ""
         limit = context.query.limit
@@ -120,7 +125,14 @@ class SearchDiscoveryProvider(SearchEngineProvider):
             search_term = f"{raw_query} {location}".strip()
             enriched_queries = [search_term] if search_term else []
 
+        if diag:
+            diag.record_provider_stage(self.source_name, p1_searched=len(enriched_queries))
+            for q_str in enriched_queries[:5]:
+                diag.record_provider_stage(self.source_name, search_url=f"DuckDuckGo: '{q_str}'")
+
         if not enriched_queries:
+            if diag:
+                diag.finish_provider(self.source_name, 0)
             return []
 
         # Stage 2 — Multi-engine search aggregation
@@ -132,8 +144,13 @@ class SearchDiscoveryProvider(SearchEngineProvider):
         )
         candidate_urls = [r.url for r in candidate_results]
 
+        if diag:
+            diag.record_provider_stage(self.source_name, p2_fetched=len(candidate_urls))
+
         if not candidate_urls:
             logger.warning("[SearchDiscovery] No candidate URLs returned from search engines.")
+            if diag:
+                diag.finish_provider(self.source_name, 0)
             return []
 
         # Stage 3 — CrawlScheduler: Classify, drill down into listing/career pages, allocate fair budget
@@ -149,6 +166,16 @@ class SearchDiscoveryProvider(SearchEngineProvider):
         if not job_posting_urls:
             logger.info("[SearchDiscovery] CrawlScheduler yielded 0 URLs. Attempting candidate fallback.")
             target_urls = candidate_urls[:limit]
+            if diag and len(candidate_urls) > limit:
+                diag.record_limit_audit(
+                    provider=self.source_name,
+                    location="search_discovery.py:L151",
+                    variable_name="limit",
+                    applied_limit=limit,
+                    input_size=len(candidate_urls),
+                    output_size=len(target_urls),
+                    effect=f"Fallback candidate slicing capped at limit={limit}"
+                )
             url_to_result = {r.url: r for r in candidate_results}
             extraction_tasks = [
                 self.job_extractor.extract_from_url(
@@ -160,13 +187,24 @@ class SearchDiscoveryProvider(SearchEngineProvider):
             ]
         else:
             url_to_result = {r.url: r for r in candidate_results}
+            target_tagged = job_posting_urls[:limit]
+            if diag and len(job_posting_urls) > limit:
+                diag.record_limit_audit(
+                    provider=self.source_name,
+                    location="search_discovery.py:169",
+                    variable_name="limit",
+                    applied_limit=limit,
+                    input_size=len(job_posting_urls),
+                    output_size=len(target_tagged),
+                    effect=f"Job posting URLs sliced at limit={limit}"
+                )
             extraction_tasks = [
                 self.job_extractor.extract_from_url(
                     url=tagged.url if hasattr(tagged, "url") else str(tagged),
                     search_result=url_to_result.get(tagged.url if hasattr(tagged, "url") else str(tagged)),
                     skip_classification=False,
                 )
-                for tagged in job_posting_urls[:limit]
+                for tagged in target_tagged
             ]
 
         # Stage 4 — Job Extraction
@@ -179,6 +217,8 @@ class SearchDiscoveryProvider(SearchEngineProvider):
                 normalized_jobs.append(result)
             elif isinstance(result, Exception):
                 logger.warning(f"[SearchDiscovery] Job extraction failed: {result}")
+                if diag:
+                    diag.record_provider_stage(self.source_name, p3_rejected=1, rejection_reason="extraction_exception")
 
         # Stage 5 — Deduplication & Company Limiting
         max_jobs_per_company = self.scheduler.config.max_jobs_per_company or 5
@@ -194,6 +234,12 @@ class SearchDiscoveryProvider(SearchEngineProvider):
 
         for c_name, c_jobs in company_groups.items():
             limited = c_jobs[:max_jobs_per_company]
+            if diag and len(c_jobs) > max_jobs_per_company:
+                diag.record_provider_stage(
+                    self.source_name,
+                    p3_rejected=(len(c_jobs) - max_jobs_per_company),
+                    rejection_reason="company_cap_exceeded"
+                )
             for job in limited:
                 title_clean = job.title.strip().lower()
                 loc_clean = job.location.strip().lower()
@@ -201,11 +247,17 @@ class SearchDiscoveryProvider(SearchEngineProvider):
                 if fingerprint not in seen_fingerprints:
                     seen_fingerprints.add(fingerprint)
                     final_jobs.append(job)
+                elif diag:
+                    diag.record_provider_stage(self.source_name, p3_rejected=1, rejection_reason="fingerprint_duplicate")
 
         if tracker:
             tracker.complete()
             if tracker_token:
                 current_tracker.reset(tracker_token)
+
+        if diag:
+            diag.record_provider_stage(self.source_name, p4_returned=len(final_jobs))
+            diag.finish_provider(self.source_name, len(final_jobs))
 
         return final_jobs
 

@@ -48,9 +48,17 @@ class AshbyProvider(ATSProvider):
         search_kw = (query.query or "").lower()
         search_loc = (query.location or "").lower()
 
+        from app.utils.search_diagnostics import current_diagnostics
+        diag = current_diagnostics.get()
+        if diag:
+            diag.start_provider(self.source_name, self.display_name, priority=30)
+            diag.record_provider_stage(self.source_name, p1_searched=len(SAMPLE_ASHBY_COMPANIES))
+
         async def fetch_board(client: httpx.AsyncClient, board: str):
+            url = f"https://api.ashbyhq.com/posting-api/job-board/{board}"
+            if diag:
+                diag.record_provider_stage(self.source_name, search_url=url)
             try:
-                url = f"https://api.ashbyhq.com/posting-api/job-board/{board}"
                 resp = await client.get(url)
                 if resp.status_code == 200:
                     return board, resp.json()
@@ -61,12 +69,16 @@ class AshbyProvider(ATSProvider):
         async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
             board_results = await asyncio.gather(*[fetch_board(client, b) for b in SAMPLE_ASHBY_COMPANIES])
 
+        raw_fetched_count = 0
+        limit_triggered = False
+
         for board, data in board_results:
             if not data or not isinstance(data, dict):
                 continue
 
             company_name = board.capitalize()
             jobs_list = data.get("jobs", [])
+            raw_fetched_count += len(jobs_list)
 
             for item in jobs_list:
                 title = item.get("title", "")
@@ -77,11 +89,15 @@ class AshbyProvider(ATSProvider):
                 # Filter location
                 if search_loc:
                     if search_loc not in loc.lower():
+                        if diag:
+                            diag.record_provider_stage(self.source_name, p3_rejected=1, rejection_reason="location_mismatch")
                         continue
 
                 # Filter remote
                 is_remote = item.get("isRemote", False) or "remote" in loc.lower() or "remote" in title.lower()
                 if query.remote_only and not is_remote:
+                    if diag:
+                        diag.record_provider_stage(self.source_name, p3_rejected=1, rejection_reason="remote_only_filter")
                     continue
 
                 results.append(
@@ -99,10 +115,30 @@ class AshbyProvider(ATSProvider):
                 )
 
                 if len(results) >= query.limit:
+                    limit_triggered = True
                     break
 
             if len(results) >= query.limit:
+                limit_triggered = True
                 break
+
+        if diag:
+            diag.record_provider_stage(
+                self.source_name,
+                p2_fetched=raw_fetched_count,
+                p4_returned=len(results)
+            )
+            if limit_triggered:
+                diag.record_limit_audit(
+                    provider=self.source_name,
+                    location="ashby.py:L101",
+                    variable_name="query.limit",
+                    applied_limit=query.limit,
+                    input_size=raw_fetched_count,
+                    output_size=len(results),
+                    effect=f"Provider capped results at query.limit={query.limit}"
+                )
+            diag.finish_provider(self.source_name, len(results))
 
         return results
 

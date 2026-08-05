@@ -49,9 +49,17 @@ class LeverProvider(ATSProvider):
         search_kw = (query.query or "").lower()
         search_loc = (query.location or "").lower()
 
+        from app.utils.search_diagnostics import current_diagnostics
+        diag = current_diagnostics.get()
+        if diag:
+            diag.start_provider(self.source_name, self.display_name, priority=20)
+            diag.record_provider_stage(self.source_name, p1_searched=len(SAMPLE_LEVER_COMPANIES))
+
         async def fetch_company(client: httpx.AsyncClient, company: str):
+            url = f"https://api.lever.co/v0/postings/{company}?mode=json"
+            if diag:
+                diag.record_provider_stage(self.source_name, search_url=url)
             try:
-                url = f"https://api.lever.co/v0/postings/{company}?mode=json"
                 resp = await client.get(url)
                 if resp.status_code == 200:
                     return company, resp.json()
@@ -62,10 +70,14 @@ class LeverProvider(ATSProvider):
         async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
             company_results = await asyncio.gather(*[fetch_company(client, c) for c in SAMPLE_LEVER_COMPANIES])
 
+        raw_fetched_count = 0
+        limit_triggered = False
+
         for company, postings in company_results:
             if not postings or not isinstance(postings, list):
                 continue
 
+            raw_fetched_count += len(postings)
             company_name = company.capitalize()
 
             for post in postings:
@@ -78,12 +90,16 @@ class LeverProvider(ATSProvider):
                 # Filter location
                 if search_loc:
                     if search_loc not in loc.lower():
+                        if diag:
+                            diag.record_provider_stage(self.source_name, p3_rejected=1, rejection_reason="location_mismatch")
                         continue
 
                 # Filter remote
                 work_type = post.get("workplaceType", "").lower()
                 is_remote = "remote" in loc.lower() or work_type == "remote" or "remote" in title.lower()
                 if query.remote_only and not is_remote:
+                    if diag:
+                        diag.record_provider_stage(self.source_name, p3_rejected=1, rejection_reason="remote_only_filter")
                     continue
 
                 results.append(
@@ -101,10 +117,30 @@ class LeverProvider(ATSProvider):
                 )
 
                 if len(results) >= query.limit:
+                    limit_triggered = True
                     break
 
             if len(results) >= query.limit:
+                limit_triggered = True
                 break
+
+        if diag:
+            diag.record_provider_stage(
+                self.source_name,
+                p2_fetched=raw_fetched_count,
+                p4_returned=len(results)
+            )
+            if limit_triggered:
+                diag.record_limit_audit(
+                    provider=self.source_name,
+                    location="lever.py:L103",
+                    variable_name="query.limit",
+                    applied_limit=query.limit,
+                    input_size=raw_fetched_count,
+                    output_size=len(results),
+                    effect=f"Provider capped results at query.limit={query.limit}"
+                )
+            diag.finish_provider(self.source_name, len(results))
 
         return results
 
