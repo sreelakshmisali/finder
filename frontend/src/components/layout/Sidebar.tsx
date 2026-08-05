@@ -91,7 +91,6 @@ function Sidebar({ isOpen = false, onClose }: SidebarProps) {
               <NavLink
                 key={item.path}
                 to={item.path}
-                end={item.path === "/"}
                 onClick={() => onClose?.()}
                 className={({ isActive }) =>
                   `flex items-center gap-3 px-3 py-2 h-10 rounded-lg text-sm font-medium transition-all ${

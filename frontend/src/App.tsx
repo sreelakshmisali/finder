@@ -11,10 +11,8 @@ import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/shared/ProtectedRoute";
 import DashboardLayout from "./layouts/DashboardLayout";
 import AuthPage from "./pages/AuthPage";
-import DashboardPage from "./pages/DashboardPage";
 import JobsPage from "./pages/JobsPage";
 import ProfilePage from "./pages/ProfilePage";
-import TrackerPage from "./pages/TrackerPage";
 
 /* Create a single React Query client instance */
 const queryClient = new QueryClient({
@@ -38,16 +36,17 @@ function App() {
             {/* Protected Application Routes (Requires Authentication Guard) */}
             <Route element={<ProtectedRoute />}>
               <Route path="/" element={<DashboardLayout />}>
-                <Route index element={<DashboardPage />} />
+                <Route index element={<Navigate to="/jobs" replace />} />
                 <Route path="jobs" element={<JobsPage />} />
+                <Route path="dashboard" element={<Navigate to="/jobs" replace />} />
                 <Route path="profile" element={<ProfilePage />} />
-                <Route path="resume" element={<Navigate to="/profile" replace />} />
-                <Route path="tracker" element={<TrackerPage />} />
+                <Route path="resume" element={<Navigate to="/jobs" replace />} />
+                <Route path="tracker" element={<Navigate to="/jobs" replace />} />
               </Route>
             </Route>
 
             {/* Catch-all redirect */}
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/jobs" replace />} />
           </Routes>
         </BrowserRouter>
       </AuthProvider>
