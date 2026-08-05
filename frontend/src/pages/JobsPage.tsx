@@ -342,7 +342,7 @@ function JobsPage() {
                   <div className="text-sm text-text-secondary">
                     {isSearchLoading ? (
                       <span className="flex items-center gap-2 font-medium">
-                        <Spinner size="sm" /> Searching jobs across ATS engines...
+                        <Spinner size="sm" /> Searching jobs...
                       </span>
                     ) : (
                       <span>

@@ -37,6 +37,28 @@ function JobCard({
 
   const cleanDescription = job.description ? stripHtml(job.description) : "";
 
+  // Preferred viewing destination provided by backend
+  const primaryJobUrl = job.url;
+
+  // Determine if application URL is distinct from canonical job posting URL
+  const hasDistinctApplyUrl = Boolean(job.can_apply && job.apply_url && job.apply_url !== job.url);
+
+  const handlePrimaryClick = () => {
+    if (hasDistinctApplyUrl) {
+      if (onApply) {
+        onApply(job);
+      } else {
+        window.open(job.apply_url!, "_blank");
+      }
+    } else {
+      window.open(primaryJobUrl, "_blank");
+    }
+  };
+
+  const handleSecondaryViewJob = () => {
+    window.open(primaryJobUrl, "_blank");
+  };
+
   return (
     <div className="p-6 rounded-2xl bg-surface border border-border shadow-sm hover:shadow-md flex flex-col justify-between h-full group hover:border-primary/30 transition-all relative overflow-hidden">
       {/* Top Header: Company Avatar + Title + Match Badge */}
@@ -81,10 +103,6 @@ function JobCard({
               {job.salary}
             </Badge>
           )}
-
-          <Badge variant="default" className="text-xs px-2.5 py-1 capitalize text-text-muted">
-            {job.source}
-          </Badge>
         </div>
 
         {/* Short Description */}
@@ -93,45 +111,61 @@ function JobCard({
         </p>
       </div>
 
-      {/* Action Footer */}
+      {/* Action Footer adhering to strict Action Hierarchy */}
       <div className="pt-4 flex flex-wrap items-center justify-between gap-3 mt-auto border-t border-border/50">
+        {/* Primary & Secondary Actions */}
         <div className="flex flex-wrap items-center gap-2">
-          {(onMatchClick || onMatch) && (
+          {hasDistinctApplyUrl ? (
+            <>
+              {/* Primary Action: Apply */}
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handlePrimaryClick}
+                className="text-sm font-medium px-4 shadow-sm"
+              >
+                Apply
+              </Button>
+
+              {/* Secondary Action: View Job */}
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleSecondaryViewJob}
+                icon={<ExternalLink size={14} />}
+                className="text-sm font-medium px-3 shadow-sm bg-surface-elevated hover:bg-surface-hover text-text border border-border/80"
+              >
+                View Job
+              </Button>
+            </>
+          ) : (
+            /* Primary Action: View Job (styled to match card background surface, not white) */
             <Button
               variant="secondary"
               size="sm"
+              onClick={handlePrimaryClick}
+              icon={<ExternalLink size={14} />}
+              className="text-sm font-medium px-4 shadow-sm bg-surface-elevated hover:bg-surface-hover text-text border border-border/80"
+            >
+              View Job
+            </Button>
+          )}
+        </div>
+
+        {/* Tertiary Actions: AI Fit & Save */}
+        <div className="flex items-center gap-1">
+          {(onMatchClick || onMatch) && (
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={handleMatch}
               icon={<Sparkles size={16} className="text-accent" />}
-              className="text-sm hover:text-accent font-medium bg-surface-elevated hover:bg-surface-elevated/80 border-transparent shadow-sm"
+              className="text-xs font-medium hover:text-accent"
             >
               AI Fit
             </Button>
           )}
 
-          {onApply && job.can_apply && (
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => onApply(job)}
-              className="text-sm font-medium px-4 shadow-sm"
-            >
-              Apply
-            </Button>
-          )}
-
-          {onApply && !job.can_apply && (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                window.open(job.url, "_blank"); 
-              }}
-              className="text-sm font-medium px-4 shadow-sm"
-            >
-              View Source
-            </Button>
-          )}
-          
           {onSaveClick && (
             <Button
               variant="ghost"
@@ -139,21 +173,11 @@ function JobCard({
               onClick={() => onSaveClick(job)}
               isLoading={isSaving}
               icon={<Bookmark size={16} />}
-              className="text-sm hover:text-primary p-2"
-            >
-              Save
-            </Button>
+              className="text-xs hover:text-primary p-2"
+              title="Save Job"
+            />
           )}
         </div>
-
-        <a
-          href={job.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-text-muted hover:text-primary transition-colors p-2"
-        >
-          Details <ExternalLink size={14} />
-        </a>
       </div>
     </div>
   );
