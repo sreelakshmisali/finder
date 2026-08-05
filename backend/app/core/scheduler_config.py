@@ -26,8 +26,8 @@ class SchedulerConfig:
     # Global budgets
     global_crawl_budget: int = 60            # Total job posting URLs to extract
     max_candidate_pages: int = 60            # Max candidate search engine URLs to process
-    max_concurrent_fetches: int = 15         # Concurrency cap for Stage 4 extraction
-    fetch_timeout: float = 10.0
+    max_concurrent_fetches: int = 30         # Concurrency cap for Stage 4 extraction & candidate fetches
+    fetch_timeout: float = 3.5
     
     # Global Company Cap (Single source of truth used by Scheduler AND Stage 6)
     max_jobs_per_company: int = 5
