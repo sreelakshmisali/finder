@@ -31,10 +31,13 @@ class Settings(BaseSettings):
     DEDUP_DESCRIPTION_WEIGHT: float = 0.1
     DEDUP_MIN_SCORE_THRESHOLD: float = 0.85
     
-    # Search Index Settings
-    SEARCH_INDEX_MIN_RESULTS: int = 15
-    SEARCH_INDEX_MAX_JOB_AGE_DAYS: int = 7
-
+    # Search Engine & Ranking Settings
+    RANKING_VERSION: str = "v2_intent_engine"
+    RANKING_WEIGHT_TITLE: float = 0.60
+    RANKING_WEIGHT_SKILLS: float = 0.25
+    RANKING_WEIGHT_DESCRIPTION: float = 0.10
+    RANKING_WEIGHT_LOCATION: float = 0.05
+    
     # Crawl Scheduler Settings (Phase 2)
     CRAWL_BUDGET: int = 60
     MAX_CANDIDATE_PAGES: int = 60
@@ -42,6 +45,7 @@ class Settings(BaseSettings):
     MAX_JOBS_PER_COMPANY: int = 5
     LINKEDIN_MODE: str = "external_only"
     PROVIDER_OVERRIDES: Optional[str] = None
+    SEARCH_DIAGNOSTICS_ENABLED: bool = True
 
     # CORS
     CORS_ORIGINS: Union[str, List[AnyHttpUrl]] = ["http://localhost:5173"]

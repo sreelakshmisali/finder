@@ -49,7 +49,9 @@ class SearchResultRanker:
         if not results:
             return []
 
-        query_tokens = set(re.findall(r'\w+', query.lower()))
+        STOP_WORDS = {"site", "boards", "greenhouse", "lever", "ashby", "jobs", "hiring", "com", "http", "https", "io", "co", "myworkdayjobs", "smartrecruiters"}
+        raw_tokens = set(re.findall(r'\w+', query.lower()))
+        query_tokens = {t for t in raw_tokens if t not in STOP_WORDS and len(t) > 2}
 
         def compute_score(item: SearchResult) -> float:
             score = 50.0

@@ -46,8 +46,8 @@ export function useUploadResume() {
     mutationFn: (file: File) => uploadResume(file),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["resumes"] });
-      queryClient.invalidateQueries({ queryKey: ["onboarding"] });
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      queryClient.invalidateQueries({ queryKey: ["jobs", "suggested-queries"] });
+      queryClient.invalidateQueries({ queryKey: ["jobs"] });
     },
   });
 }
@@ -62,8 +62,8 @@ export function useSetActiveResume() {
     mutationFn: (resumeId: string) => setActiveResume(resumeId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["resumes"] });
-      queryClient.invalidateQueries({ queryKey: ["onboarding"] });
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      queryClient.invalidateQueries({ queryKey: ["jobs", "suggested-queries"] });
+      queryClient.invalidateQueries({ queryKey: ["jobs"] });
     },
   });
 }
@@ -78,8 +78,8 @@ export function useParseResume() {
     mutationFn: (resumeId: string) => parseResume(resumeId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["resumes"] });
-      queryClient.invalidateQueries({ queryKey: ["onboarding"] });
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      queryClient.invalidateQueries({ queryKey: ["jobs", "suggested-queries"] });
+      queryClient.invalidateQueries({ queryKey: ["jobs"] });
     },
   });
 }
@@ -94,7 +94,8 @@ export function useDeleteResume() {
     mutationFn: (resumeId: string) => deleteResume(resumeId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["resumes"] });
-      queryClient.invalidateQueries({ queryKey: ["onboarding"] });
+      queryClient.invalidateQueries({ queryKey: ["jobs", "suggested-queries"] });
+      queryClient.invalidateQueries({ queryKey: ["jobs"] });
     },
   });
 }

@@ -15,6 +15,8 @@ function MatchDetails({ job, match, onApply }: MatchDetailsProps) {
   else if (match.score < 80) variant = "warning";
   else if (match.score >= 90) variant = "primary";
 
+  const hasDistinctApplyUrl = Boolean(job.can_apply && job.apply_url && job.apply_url !== job.url);
+
   return (
     <div className="space-y-6">
       {/* Job Title & Company Header */}
@@ -117,28 +119,43 @@ function MatchDetails({ job, match, onApply }: MatchDetailsProps) {
         </div>
       )}
 
-      {/* Footer Action Buttons */}
-      <div className="pt-6 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
-        <a
-          href={job.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-text-secondary hover:text-primary transition-colors p-2"
-        >
-          View Original Listing <ExternalLink size={16} />
-        </a>
-
-        {onApply && job.can_apply && (
-          <Button variant="primary" size="lg" onClick={() => onApply(job)} icon={<Zap size={18} />} className="w-full sm:w-auto font-bold px-8 shadow-sm">
-            Approve & Apply
-          </Button>
-        )}
-        
-        {onApply && !job.can_apply && (
-          <Button variant="secondary" size="lg" onClick={() => {
-              window.open(job.url, "_blank"); 
-          }} className="w-full sm:w-auto font-bold px-8 shadow-sm">
-            View Source
+      {/* Footer Action Buttons adhering to Action Hierarchy */}
+      <div className="pt-6 border-t border-border flex flex-col sm:flex-row items-center justify-end gap-3">
+        {hasDistinctApplyUrl ? (
+          <>
+            <Button
+              variant="secondary"
+              size="lg"
+              onClick={() => window.open(job.url, "_blank")}
+              icon={<ExternalLink size={18} />}
+              className="w-full sm:w-auto font-medium px-6 shadow-sm bg-surface-elevated hover:bg-surface-hover text-text border border-border/80"
+            >
+              View Job
+            </Button>
+            {onApply && (
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={() => onApply(job)}
+                icon={<Zap size={18} />}
+                className="w-full sm:w-auto font-bold px-8 shadow-sm"
+              >
+                Apply
+              </Button>
+            )}
+          </>
+        ) : (
+          <Button
+            variant="secondary"
+            size="lg"
+            onClick={() => {
+              if (onApply) onApply(job);
+              else window.open(job.url, "_blank");
+            }}
+            icon={<ExternalLink size={18} />}
+            className="w-full sm:w-auto font-bold px-8 shadow-sm bg-surface-elevated hover:bg-surface-hover text-text border border-border/80"
+          >
+            View Job
           </Button>
         )}
       </div>

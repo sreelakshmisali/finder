@@ -43,6 +43,7 @@ class SearchAggregator:
     async def aggregate_multi_query(
         self,
         queries: List[str],
+        raw_query: Optional[str] = None,
         limit_per_query: int = 30,
         total_limit: int = 50,
     ) -> List["SearchResult"]:
@@ -56,6 +57,7 @@ class SearchAggregator:
 
         Args:
             queries: List of enriched search query strings.
+            raw_query: User's original target search query string for scoring.
             limit_per_query: Max results to request per query per engine.
             total_limit: Maximum total results to return after merging.
 
@@ -65,11 +67,15 @@ class SearchAggregator:
         if not queries:
             return []
 
-        # Run all queries concurrently
-        tasks = [
-            self.aggregate_search(query=q, limit=limit_per_query)
-            for q in queries
-        ]
+        # Run queries with rate limiting to prevent search engine throttling
+        sem = asyncio.Semaphore(2)
+        async def run_throttled_query(q: str):
+            async with sem:
+                res = await self.aggregate_search(query=q, limit=limit_per_query)
+                await asyncio.sleep(0.15)
+                return res
+
+        tasks = [run_throttled_query(q) for q in queries]
         results_per_query = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Merge all results, re-deduplicating across queries
@@ -97,7 +103,8 @@ class SearchAggregator:
         if not merged:
             return []
 
-        ranked = self.ranker.rank_results(results=merged, query=" ".join(queries))
+        ranking_query = raw_query if raw_query and raw_query.strip() else queries[0]
+        ranked = self.ranker.rank_results(results=merged, query=ranking_query)
         logger.info(
             f"[SearchAggregator] Multi-query ({len(queries)} queries) → "
             f"{len(merged)} unique URLs → {min(len(ranked), total_limit)} after limit."
