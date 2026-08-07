@@ -11,9 +11,6 @@ from typing import List, Optional, Dict, Set, Any
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
 from app.providers.search_engine.base_search import SearchProvider, SearchResult
-from app.providers.search_engine.google_search import GoogleSearchProvider
-from app.providers.search_engine.bing_search import BingSearchProvider
-from app.providers.search_engine.brave_search import BraveSearchProvider
 from app.providers.search_engine.duckduckgo_search import DuckDuckGoSearchProvider
 from app.services.search_ranking import SearchResultRanker
 
@@ -37,14 +34,76 @@ class SearchAggregator:
         ranker: Optional[SearchResultRanker] = None,
         provider_timeout: float = 10.0
     ):
-        self.search_providers = search_providers if search_providers is not None else [
-            GoogleSearchProvider(),
-            BingSearchProvider(),
-            BraveSearchProvider(),
+        self.search_providers = search_providers or [
             DuckDuckGoSearchProvider()
         ]
         self.ranker = ranker or SearchResultRanker()
         self.provider_timeout = provider_timeout
+
+    async def aggregate_multi_query(
+        self,
+        queries: List[str],
+        limit_per_query: int = 30,
+        total_limit: int = 50,
+    ) -> List["SearchResult"]:
+        """
+        Runs multiple search queries in parallel across all active providers,
+        merges, deduplicates, and ranks all results into one combined list.
+
+        This is the main entry point for the multi-stage crawler pipeline,
+        which generates several enriched queries (e.g. site:greenhouse.io react)
+        and needs all their results merged together before URL classification.
+
+        Args:
+            queries: List of enriched search query strings.
+            limit_per_query: Max results to request per query per engine.
+            total_limit: Maximum total results to return after merging.
+
+        Returns:
+            Deduplicated, ranked list of SearchResult objects.
+        """
+        if not queries:
+            return []
+
+        # Run all queries concurrently
+        tasks = [
+            self.aggregate_search(query=q, limit=limit_per_query)
+            for q in queries
+        ]
+        results_per_query = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Merge all results, re-deduplicating across queries
+        merged_map: Dict[str, "SearchResult"] = {}
+        for query_results in results_per_query:
+            if isinstance(query_results, Exception):
+                logger.warning(f"[SearchAggregator.aggregate_multi_query] Query failed: {query_results}")
+                continue
+            for item in query_results:
+                norm_url = self.normalize_url(item.url)
+                if not norm_url:
+                    continue
+                if norm_url not in merged_map:
+                    item.url = norm_url
+                    merged_map[norm_url] = item
+                else:
+                    # Append discovery info
+                    existing = merged_map[norm_url]
+                    discovered_by = existing.metadata.get("discovered_by", [existing.engine])
+                    if item.engine not in discovered_by:
+                        discovered_by.append(item.engine)
+                    existing.metadata["discovered_by"] = discovered_by
+
+        merged = list(merged_map.values())
+        if not merged:
+            return []
+
+        ranked = self.ranker.rank_results(results=merged, query=" ".join(queries))
+        logger.info(
+            f"[SearchAggregator] Multi-query ({len(queries)} queries) → "
+            f"{len(merged)} unique URLs → {min(len(ranked), total_limit)} after limit."
+        )
+        return ranked[:total_limit]
+
 
     async def aggregate_search(
         self,
@@ -75,10 +134,10 @@ class SearchAggregator:
                     timeout=self.provider_timeout
                 )
             except asyncio.TimeoutError:
-                logger.warning(f"Search provider '{provider.name}' timed out after {self.provider_timeout}s.")
+                logger.warning(f"Provider failed: {provider.display_name}")
                 return []
             except Exception as exc:
-                logger.warning(f"Search provider '{provider.name}' failed with error: {exc}")
+                logger.warning(f"Provider failed: {provider.display_name}")
                 return []
 
         tasks = [run_single_provider(p) for p in active_providers]
@@ -91,6 +150,7 @@ class SearchAggregator:
             if isinstance(res_list, list):
                 for item in res_list:
                     norm_url = self.normalize_url(item.url)
+                    print("norm_url------------------------------", norm_url)
                     if not norm_url:
                         continue
 

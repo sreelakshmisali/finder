@@ -5,7 +5,7 @@
  */
 
 import api from "./api";
-import type { Job, JobListResponse, JobSearchQueryParams, ProviderInfo } from "../types/job";
+import type { Job, JobListResponse, JobSearchQueryParams } from "../types/job";
 import type { MatchResult, BatchMatchResult } from "../types/match";
 
 /**
@@ -17,21 +17,12 @@ export async function searchJobs(params: JobSearchQueryParams): Promise<JobListR
       q: params.query,
       location: params.location,
       remote_only: params.remote_only,
-      sources: params.sources,
       search_mode: params.search_mode,
       min_salary: params.min_salary,
       force_refresh: params.force_refresh,
       limit: params.limit || 50,
     },
   });
-  return response.data;
-}
-
-/**
- * Fetch list of registered job discovery providers.
- */
-export async function fetchProviders(): Promise<ProviderInfo[]> {
-  const response = await api.get<ProviderInfo[]>("/jobs/providers");
   return response.data;
 }
 

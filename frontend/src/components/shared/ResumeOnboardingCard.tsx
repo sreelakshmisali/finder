@@ -164,7 +164,6 @@ export default function ResumeOnboardingCard() {
           <ShieldCheck size={14} className="text-success" />
           PDF Encryption & Private Data Isolation Enabled
         </span>
-        <span className="hidden sm:inline">Preferences remain optional</span>
       </div>
     </div>
   );

@@ -2,7 +2,7 @@
  * Profile Setup Type Definitions
  */
 
-import type { Preference } from "./preference";
+
 
 export interface ResumeSummary {
   has_resume: boolean;
@@ -18,8 +18,6 @@ export interface ResumeSummary {
 
 export interface ProfileSetupData {
   resume_completed: boolean;
-  preferences_completed: boolean;
   profile_completion_percentage: number;
   resume_summary?: ResumeSummary | null;
-  preferences?: Preference | null;
 }

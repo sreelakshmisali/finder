@@ -88,6 +88,19 @@ class Job(Base):
         comment="Source provider name (e.g., 'greenhouse', 'lever', 'ashby')"
     )
 
+    apply_url: Mapped[Optional[str]] = mapped_column(
+        String(1024),
+        nullable=True,
+        comment="Direct application form link"
+    )
+
+    can_apply: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+        comment="True if the job has an external application URL"
+    )
+
     content_hash: Mapped[str] = mapped_column(
         String(64),
         nullable=False,

@@ -347,7 +347,7 @@ class MockProvider(AIProvider):
         """
         Parses resume text using modular rule-based extraction tailored for Indian IT resumes.
         """
-        logger.info("Executing Mock AI rule-based resume parser")
+        logger.debug("Executing Mock AI rule-based resume parser")
         lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
 
         full_name = self._extract_full_name(lines)

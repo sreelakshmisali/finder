@@ -54,15 +54,21 @@ class JobRepository:
         Returns existing merged record if a duplicate is found using intelligent detection.
         """
         content_hash = generate_content_hash(norm_job.company, norm_job.title, norm_job.location)
+        from app.utils.pipeline_tracker import current_tracker
+        tracker = current_tracker.get()
 
         # 1. Exact URL match (fast path)
         existing_url = await self.get_by_url(norm_job.url)
         if existing_url:
+            if tracker:
+                tracker.record_persistence(norm_job.url, status="merged", duplicate_of_url=existing_url.url, details="Exact URL match")
             return await self._merge_job(existing_url, norm_job)
 
         # 2. Exact content hash match (legacy fast path)
         existing_hash = await self.get_by_content_hash(content_hash)
         if existing_hash:
+            if tracker:
+                tracker.record_persistence(norm_job.url, status="merged", duplicate_of_url=existing_hash.url, details="Exact title/company/location content hash match")
             return await self._merge_job(existing_hash, norm_job)
 
         # 3. Intelligent Duplicate Detection
@@ -81,6 +87,8 @@ class JobRepository:
         if dup_result.is_duplicate and dup_result.duplicate_of_id:
             existing_dup = await self.get_by_id(dup_result.duplicate_of_id)
             if existing_dup:
+                if tracker:
+                    tracker.record_persistence(norm_job.url, status="merged", duplicate_of_url=existing_dup.url, details=f"Similarity duplicate match (score={dup_result.score:.2f})")
                 return await self._merge_job(existing_dup, norm_job)
 
         # 4. No duplicate found, create new record
@@ -94,6 +102,8 @@ class JobRepository:
             description=norm_job.description,
             url=norm_job.url,
             source=norm_job.source,
+            apply_url=norm_job.apply_url,
+            can_apply=norm_job.can_apply,
             content_hash=content_hash,
             posted_date=norm_job.posted_date,
         )
@@ -101,6 +111,8 @@ class JobRepository:
         self.db.add(db_job)
         await self.db.commit()
         await self.db.refresh(db_job)
+        if tracker:
+            tracker.record_persistence(norm_job.url, status="new", details="Unique job saved successfully")
         return db_job
 
     async def _merge_job(self, existing: Job, norm_job: NormalizedJob) -> Job:
@@ -124,6 +136,16 @@ class JobRepository:
             existing.source = f"{existing.source},{norm_job.source}"
             changed = True
             
+        # Merge apply_url and can_apply if existing is missing it
+        if not existing.apply_url and norm_job.apply_url:
+            existing.apply_url = norm_job.apply_url
+            existing.can_apply = norm_job.can_apply
+            changed = True
+            
+        # Keep URL if we want to prefer LinkedIn, but since search_discovery already handles logic, just inherit apply_url
+        if existing.source == "linkedin" and existing.apply_url:
+            existing.can_apply = True
+
         if changed:
             await self.db.commit()
             await self.db.refresh(existing)
@@ -135,12 +157,11 @@ class JobRepository:
         query: Optional[str] = None,
         location: Optional[str] = None,
         remote_only: bool = False,
-        sources: Optional[List[str]] = None,
         limit: int = 50,
         max_age_days: Optional[int] = None
     ) -> Sequence[Job]:
         """
-        Search indexed jobs in PostgreSQL matching keywords, location, or source filters.
+        Search indexed jobs in PostgreSQL matching keywords or location filters.
         """
         stmt = select(Job)
 
@@ -160,8 +181,17 @@ class JobRepository:
         if remote_only:
             stmt = stmt.where(Job.remote.is_(True))
 
-        if sources and len(sources) > 0:
-            stmt = stmt.where(Job.source.in_(sources))
+        # Enforce linkedin_mode config filter in database searches
+        from app.core.scheduler_config import SchedulerConfig
+        config = SchedulerConfig.from_env()
+        if config.linkedin_mode == "external_only":
+            stmt = stmt.where(
+                or_(
+                    Job.source.is_(None),
+                    ~Job.source.ilike("%linkedin%"),
+                    Job.can_apply.is_(True)
+                )
+            )
 
         if max_age_days is not None:
             from datetime import datetime, timedelta, timezone

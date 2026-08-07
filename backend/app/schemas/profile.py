@@ -9,9 +9,6 @@ import uuid
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
 
-from app.schemas.preference import PreferenceResponse
-
-
 class ResumeSummary(BaseModel):
     """
     Lightweight summary of candidate's active resume and parsed details.
@@ -32,7 +29,5 @@ class ProfileSetupResponse(BaseModel):
     Combined Profile Setup response output.
     """
     resume_completed: bool = Field(..., description="True if active resume exists and is parsed")
-    preferences_completed: bool = Field(..., description="True if search preferences are configured")
     profile_completion_percentage: float = Field(..., description="Overall profile completion percentage")
     resume_summary: Optional[ResumeSummary] = Field(None, description="Active resume summary")
-    preferences: Optional[PreferenceResponse] = Field(None, description="User search preferences")

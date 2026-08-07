@@ -7,10 +7,19 @@ discovered source metadata tracking, multi-engine consensus scoring, and failure
 
 import asyncio
 from app.providers.search_engine.base_search import SearchProvider, SearchResult
-from app.providers.search_engine.brave_search import BraveSearchProvider
 from app.providers.search_engine.duckduckgo_search import DuckDuckGoSearchProvider
 from app.services.search_ranking import SearchResultRanker
 from app.services.search_aggregator import SearchAggregator
+
+
+def test_search_aggregator_default_provider():
+    """
+    Test that SearchAggregator defaults to DuckDuckGoSearchProvider when initialized without custom providers.
+    """
+    aggregator = SearchAggregator()
+    assert len(aggregator.search_providers) == 1
+    assert isinstance(aggregator.search_providers[0], DuckDuckGoSearchProvider)
+
 
 
 class MockEnginePlugin(SearchProvider):
@@ -139,4 +148,4 @@ if __name__ == "__main__":
     test_search_aggregator_multi_engine_merge_and_metadata()
     test_search_result_ranker_consensus_boost()
     test_failure_isolation_and_timeouts()
-    print("ALL 4 SEARCH AGGREGATOR TESTS PASSED SUCCESSFULLY!")
+

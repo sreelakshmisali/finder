@@ -1,7 +1,7 @@
 """
 Search Query Generator Service
 
-Consumes a `ResumeSearchProfile` and optional candidate `Preference` object to build
+Consumes a `ResumeSearchProfile` to build
 deterministic, ranked, and semantically deduplicated search queries for job discovery engines.
 """
 
@@ -9,7 +9,6 @@ import logging
 from typing import List, Dict, Any, Optional, Set
 
 from app.models.resume import Resume
-from app.models.preference import Preference
 from app.schemas.search_profile import ResumeSearchProfile, GeneratedQuery
 from app.services.resume_signal_extractor import ResumeSignalExtractor
 
@@ -25,7 +24,6 @@ class SearchQueryGenerator:
     def generate_rich_queries(
         cls,
         profile: ResumeSearchProfile,
-        preference: Optional[Preference] = None,
         max_queries: int = 5
     ) -> List[GeneratedQuery]:
         """
@@ -33,7 +31,6 @@ class SearchQueryGenerator:
 
         Args:
             profile: `ResumeSearchProfile` instance.
-            preference: Optional candidate search preferences entity.
             max_queries: Maximum number of query objects to return.
 
         Returns:
@@ -48,24 +45,6 @@ class SearchQueryGenerator:
         primary_domain = profile.domains[0] if profile.domains else "Software"
         frameworks = profile.frameworks[:3]
         roles = profile.roles
-
-        # Preference overrides / boosts
-        pref_roles: List[str] = preference.preferred_roles if preference and preference.preferred_roles else []
-
-        # Strategy 0: Preference Boost (if explicit preferred roles specified)
-        for pref_role in pref_roles:
-            if primary_lang:
-                candidates.append(GeneratedQuery(
-                    query=f"{primary_lang} {pref_role}".strip(),
-                    priority=110,
-                    strategy="preference_boost"
-                ))
-            else:
-                candidates.append(GeneratedQuery(
-                    query=pref_role.strip(),
-                    priority=105,
-                    strategy="preference_boost"
-                ))
 
         # Strategy 1: Tech + Domain + Role (e.g. "Python Backend Engineer")
         if primary_lang and primary_domain:
@@ -155,7 +134,6 @@ class SearchQueryGenerator:
     def generate_queries(
         cls,
         resume: Optional[Resume] = None,
-        preference: Optional[Preference] = None,
         max_queries: int = 5
     ) -> List[str]:
         """
@@ -163,7 +141,6 @@ class SearchQueryGenerator:
 
         Args:
             resume: Optional active Resume entity with `parsed_data`.
-            preference: Optional Preference entity.
             max_queries: Maximum number of search query strings to return.
 
         Returns:
@@ -171,7 +148,7 @@ class SearchQueryGenerator:
         """
         parsed_data: Dict[str, Any] = (resume.parsed_data if resume else {}) or {}
         profile = ResumeSignalExtractor.extract_profile(parsed_data)
-        rich_queries = cls.generate_rich_queries(profile, preference=preference, max_queries=max_queries)
+        rich_queries = cls.generate_rich_queries(profile, max_queries=max_queries)
         return [q.query for q in rich_queries]
 
     @staticmethod
@@ -195,3 +172,72 @@ class SearchQueryGenerator:
             else:
                 normalized.append(w_clean)
         return normalized
+
+    @staticmethod
+    def generate_search_engine_queries(
+        raw_query: str, 
+        location: Optional[str] = None, 
+        max_queries: int = 15
+    ) -> List[str]:
+        """
+        Expands a raw user query into multiple targeted job-search engine queries.
+        Uses RoleSynonymRegistry for synonym expansion and injects location constraints.
+        """
+        from app.services.search.synonyms import RoleSynonymRegistry
+        
+        q = raw_query.strip()
+        if not q:
+            return ["software developer jobs", "software engineer jobs"]
+
+        # Expand synonyms
+        synonyms = RoleSynonymRegistry.expand_role(q)
+        
+        queries = []
+        role_keywords = {"developer", "engineer", "designer", "manager", "architect", "analyst", "intern"}
+        
+        # Build base queries from synonyms
+        base_queries = []
+        for syn in synonyms:
+            syn_lower = syn.lower()
+            has_role = any(kw in syn_lower for kw in role_keywords)
+            if has_role:
+                base_queries.extend([f"{syn} jobs", f"{syn} hiring"])
+            else:
+                base_queries.extend([f"{syn} developer jobs", f"{syn} engineer jobs"])
+                
+        # If location is provided, inject it heavily
+        if location and location.strip() and location.lower() != "remote":
+            loc = location.strip()
+            loc_queries = []
+            for bq in base_queries:
+                loc_queries.append(f"{bq} {loc}")
+            
+            # ATS queries with location
+            loc_queries.extend([
+                f"site:boards.greenhouse.io {synonyms[0]} {loc}",
+                f"site:jobs.lever.co {synonyms[0]} {loc}",
+                f"site:jobs.ashbyhq.com {synonyms[0]} {loc}",
+            ])
+            # Add back some non-location remote queries just in case
+            loc_queries.extend(base_queries[:2])
+            queries = loc_queries
+        else:
+            # Remote or no location
+            queries.extend(base_queries)
+            remote_kw = "remote " if location and location.lower() == "remote" else ""
+            queries.extend([
+                f"site:boards.greenhouse.io {remote_kw}{synonyms[0]}",
+                f"site:jobs.lever.co {remote_kw}{synonyms[0]}",
+                f"site:jobs.ashbyhq.com {remote_kw}{synonyms[0]}",
+                f"site:myworkdayjobs.com {remote_kw}{synonyms[0]}",
+                f"site:jobs.smartrecruiters.com {remote_kw}{synonyms[0]}",
+            ])
+
+        # Deduplicate while preserving order
+        unique_queries = list(dict.fromkeys(queries))
+        print(f"Generated {len(unique_queries)} search engine queries from raw query '{raw_query}' with location '{location}'")
+        print("Queries:", unique_queries[:max_queries])
+        return unique_queries[:max_queries]
+
+
+

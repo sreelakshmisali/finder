@@ -36,7 +36,7 @@ class GreenhouseAutomator(ApplicationAutomator):
         Fills standard Greenhouse fields (first_name, last_name, email, phone, resume_file)
         and detects custom questions.
         """
-        logger.info(f"GreenhouseAutomator starting for URL: {job_url}")
+        logger.debug(f"GreenhouseAutomator starting for URL: {job_url}")
         filled_summary: List[str] = []
         custom_questions: List[AutomationQuestion] = []
 

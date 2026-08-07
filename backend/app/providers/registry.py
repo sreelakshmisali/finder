@@ -18,7 +18,6 @@ from app.providers.greenhouse import GreenhouseProvider
 from app.providers.lever import LeverProvider
 from app.providers.ashby import AshbyProvider
 from app.providers.search_engine.search_discovery import SearchDiscoveryProvider
-from app.schemas.job import ProviderInfo
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +63,7 @@ class ProviderRegistry:
             capabilities=capabilities or []
         )
         self._entries[key] = meta
-        logger.info(f"Registered job discovery provider: '{key}' ({provider.display_name}) [Type: {provider.provider_type.value}]")
+        logger.debug(f"Registered job discovery provider: '{key}' ({provider.display_name}) [Type: {provider.provider_type.value}]")
 
     def set_provider_enabled(self, source_name: str, enabled: bool) -> bool:
         """
@@ -101,23 +100,6 @@ class ProviderRegistry:
             providers.append(entry.provider)
 
         return providers
-
-    def list_providers_info(self) -> List[ProviderInfo]:
-        """
-        Return metadata for all registered providers.
-        """
-        info_list: List[ProviderInfo] = []
-        for name, entry in self._entries.items():
-            p = entry.provider
-            info_list.append(
-                ProviderInfo(
-                    name=p.source_name,
-                    display_name=p.display_name,
-                    description=p.description,
-                    enabled=entry.enabled
-                )
-            )
-        return info_list
 
 
 # Singleton registry instance initialized with default discovery providers

@@ -1,7 +1,7 @@
 """Configuration module for the Finder application."""
 
 from functools import lru_cache
-from typing import List, Union
+from typing import List, Union, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import AnyHttpUrl, validator
 
@@ -34,6 +34,14 @@ class Settings(BaseSettings):
     # Search Index Settings
     SEARCH_INDEX_MIN_RESULTS: int = 15
     SEARCH_INDEX_MAX_JOB_AGE_DAYS: int = 7
+
+    # Crawl Scheduler Settings (Phase 2)
+    CRAWL_BUDGET: int = 60
+    MAX_CANDIDATE_PAGES: int = 60
+    MAX_CONCURRENT_FETCHES: int = 15
+    MAX_JOBS_PER_COMPANY: int = 5
+    LINKEDIN_MODE: str = "external_only"
+    PROVIDER_OVERRIDES: Optional[str] = None
 
     # CORS
     CORS_ORIGINS: Union[str, List[AnyHttpUrl]] = ["http://localhost:5173"]

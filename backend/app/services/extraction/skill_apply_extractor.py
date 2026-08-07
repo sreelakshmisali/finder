@@ -93,7 +93,7 @@ class SkillAndApplyExtractor:
     @classmethod
     def extract_apply_url(cls, base_url: str, html: str) -> Optional[str]:
         if not html:
-            return base_url
+            return None
 
         apply_patterns = [
             r'<a[^>]+href=["\']([^"\']+)["\'][^>]*>(?:.*?)apply(?:.*?)</a\s*>',
@@ -109,4 +109,4 @@ class SkillAndApplyExtractor:
                     resolved_url = urljoin(base_url, href)
                     return resolved_url
 
-        return base_url
+        return None

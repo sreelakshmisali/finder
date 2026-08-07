@@ -5,13 +5,13 @@ import JobCard from "../components/shared/JobCard";
 import MatchDetails from "../components/shared/MatchDetails";
 import EmptyState from "../components/shared/EmptyState";
 import SearchBar from "../components/ui/SearchBar";
-import { Badge, Spinner, Modal, Button } from "../components/ui";
+import { Spinner, Modal, Button } from "../components/ui";
 import { useNavigate } from "react-router-dom";
-import { useJobSearch, useProviders, useMatchJob, useSuggestedQueries } from "../hooks/useJobs";
+import { useJobSearch, useMatchJob, useSuggestedQueries } from "../hooks/useJobs";
 import { useOnboardingStatus } from "../hooks/useOnboarding";
 import type { Job, JobSearchQueryParams, SearchMode } from "../types/job";
 import type { MatchResult } from "../types/match";
-import { Search, Layers, Sparkles, FileText, AlertTriangle } from "lucide-react";
+import { Search, Sparkles, FileText, AlertTriangle } from "lucide-react";
 
 function JobsPage() {
   const navigate = useNavigate();
@@ -30,7 +30,6 @@ function JobsPage() {
   const [isResumeWarningModalOpen, setIsResumeWarningModalOpen] = useState(false);
   const [sortByMatch, setSortByMatch] = useState(false);
 
-  const { data: providersData } = useProviders();
   const { data: searchData, isLoading, isError, refetch } = useJobSearch(
     queryParams,
     hasSearched // Only enable query if user has explicitly searched
@@ -52,7 +51,6 @@ function JobsPage() {
     query: string;
     location: string;
     remoteOnly: boolean;
-    sources: string[];
     searchMode: SearchMode;
     minSalary?: number;
     forceRefresh?: boolean;
@@ -62,7 +60,6 @@ function JobsPage() {
       query: filters.query,
       location: filters.location,
       remote_only: filters.remoteOnly,
-      sources: filters.sources,
       search_mode: filters.searchMode,
       min_salary: filters.minSalary,
       force_refresh: filters.forceRefresh,
@@ -95,16 +92,19 @@ function JobsPage() {
   };
 
   const handleApply = (job: Job) => {
-    window.open(job.url, "_blank");
+    if (job.can_apply && job.apply_url) {
+        window.open(job.apply_url, "_blank");
+    } else {
+        window.open(job.url, "_blank");
+    }
   };
 
-  const handleSkip = (job: Job) => {
-    console.log("Skipped job:", job.id);
+  const handleSkip = (_job: Job) => {
+
   };
 
   const rawJobs = searchData?.jobs || [];
   const totalJobs = searchData?.total || 0;
-  const providersSearched = searchData?.providers_searched || [];
 
   // Sort jobs by match score if toggle is enabled
   const displayedJobs = [...rawJobs].sort((a, b) => {
@@ -119,23 +119,7 @@ function JobsPage() {
       {hasSearched && (
         <Header
           title="Jobs Discovery & AI Matcher"
-          subtitle="Search tech opportunities aggregated concurrently across ATS platforms and rank by resume fit"
-          actions={
-            providersData && (
-              <div className="flex flex-wrap items-center gap-2 mt-4 sm:mt-0">
-                <span className="text-sm text-text-secondary flex items-center gap-1.5 font-medium">
-                  <Layers size={16} /> Active Sources:
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  {providersData.map((p) => (
-                    <Badge key={p.name} variant="default" className="text-xs px-2.5 py-1 bg-surface-elevated">
-                      {p.display_name}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )
-          }
+          subtitle="Search tech opportunities aggregated across platforms and rank by resume fit"
         />
       )}
 
@@ -170,8 +154,8 @@ function JobsPage() {
           <div className={`transition-all duration-700 ease-in-out ${hasSearched ? "translate-y-0" : "-translate-y-12"}`}>
             {!hasSearched && (
               <div className="text-center mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700 fade-out slide-out-to-top-4">
-                <h1 className="text-4xl md:text-5xl font-bold text-text mb-4 tracking-tight">What job are you looking for?</h1>
-                <p className="text-text-secondary text-lg max-w-2xl mx-auto">Search exactly what you want, or let your resume do the work to find the perfect role.</p>
+                {/* <h1 className="text-4xl md:text-5xl font-bold text-text mb-4 tracking-tight">What job are you looking for?</h1>
+                <p className="text-text-secondary text-lg max-w-2xl mx-auto">Search exactly what you want, or let your resume do the work to find the perfect role.</p> */}
               </div>
             )}
             
@@ -179,7 +163,6 @@ function JobsPage() {
               <SearchBar
                 onSearch={handleSearch}
                 isLoading={isLoading && hasSearched}
-                providers={providersData}
                 suggestedQueries={suggestedQueries}
                 appliedQuery={searchData?.applied_query}
                 appliedLocation={searchData?.applied_location}
@@ -196,16 +179,11 @@ function JobsPage() {
                   <div className="text-sm text-text-secondary">
                     {isLoading ? (
                       <span className="flex items-center gap-2 font-medium">
-                        <Spinner size="sm" /> Searching across job providers...
+                        <Spinner size="sm" /> Searching for jobs...
                       </span>
                     ) : (
                       <span>
                         Found <strong className="text-text font-bold">{totalJobs}</strong> matching positions
-                        {providersSearched.length > 0 && (
-                          <span className="text-text-muted ml-1">
-                            from {providersSearched.join(", ")}
-                          </span>
-                        )}
                       </span>
                     )}
                   </div>
@@ -244,7 +222,7 @@ function JobsPage() {
                     <EmptyState
                       icon={<Search size={48} className="mx-auto mb-4 text-error/50" />}
                       title="Search failed"
-                      description="Unable to query job providers at this time. Please ensure the backend service is active and try again."
+                      description="Unable to execute search at this time. Please ensure the backend service is active and try again."
                       action={
                         <Button
                           onClick={() => refetch()}

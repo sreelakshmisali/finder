@@ -8,7 +8,6 @@ preference refinements, and edge cases (large resumes, missing fields, preferenc
 from app.schemas.search_profile import ResumeSearchProfile
 from app.services.resume_signal_extractor import ResumeSignalExtractor
 from app.services.search_query_generator import SearchQueryGenerator
-from app.models.preference import Preference
 from app.models.resume import Resume
 
 
@@ -61,24 +60,6 @@ def test_generate_queries_prompt_example():
     for item in expected:
         assert item in query_strings, f"Expected '{item}' in generated queries: {query_strings}"
 
-
-def test_preference_refinement_and_conflicts():
-    """
-    Test that user preferences refine and prioritize generated searches,
-    even when conflicting with resume domain (e.g. Resume = Backend, Preference = Data Engineer).
-    """
-    parsed_data = {
-        "skills": ["Python", "Django", "FastAPI"],
-        "experience": [{"title": "Backend Developer"}]
-    }
-    profile = ResumeSignalExtractor.extract_profile(parsed_data)
-
-    preference = Preference(preferred_roles=["Data Engineer"])
-    rich_queries = SearchQueryGenerator.generate_rich_queries(profile, preference=preference, max_queries=5)
-    query_strings = [q.query for q in rich_queries]
-
-    # Preference boost strategy should place preferred role at top priority
-    assert query_strings[0] == "Python Data Engineer"
 
 
 def test_semantic_deduplication():
@@ -180,11 +161,10 @@ def test_multi_domain_resume():
 if __name__ == "__main__":
     test_resume_signal_extractor_example()
     test_generate_queries_prompt_example()
-    test_preference_refinement_and_conflicts()
     test_semantic_deduplication()
     test_deterministic_ordering()
     test_large_resume_safeguards()
     test_no_experience_or_no_skills_fallback()
     test_unknown_technologies()
     test_multi_domain_resume()
-    print("ALL 9 SEARCH QUERY GENERATOR TESTS PASSED SUCCESSFULLY!")
+

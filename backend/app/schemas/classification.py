@@ -11,12 +11,20 @@ from pydantic import BaseModel, Field
 
 class PageType(str, Enum):
     """
-    Taxonomy for web page classification in the job discovery pipeline.
+    Extended taxonomy for web page classification in the multi-stage job discovery pipeline.
     """
-    JOB_POSTING = "JOB_POSTING"       # Single specific job opportunity
-    CAREER_PAGE = "CAREER_PAGE"       # General company career portal index/search
-    COMPANY_PAGE = "COMPANY_PAGE"     # General company landing/about page
-    IRRELEVANT = "IRRELEVANT"         # Blog post, news, press release, dead link, etc.
+    JOB_POSTING = "JOB_POSTING"             # Single specific job opportunity → pass to JobExtractor
+    ATS_CAREER_PAGE = "ATS_CAREER_PAGE"     # Greenhouse/Lever/Ashby/Workday listing → ATSLinkExtractor
+    JOB_LISTING_PAGE = "JOB_LISTING_PAGE"   # Generic job listing/search page → JobLinkExtractor
+    COMPANY_CAREERS_HOME = "COMPANY_CAREERS_HOME"  # Company /careers root → JobLinkExtractor
+    JOB_BOARD = "JOB_BOARD"                 # Indeed/LinkedIn/Naukri → JobLinkExtractor
+    BLOG = "BLOG"                           # Blog post → discard
+    DOCUMENTATION = "DOCUMENTATION"         # Docs/wiki → discard
+    HOME_PAGE = "HOME_PAGE"                 # Generic homepage → discard
+    # Legacy values kept for backward compat with RuleBasedJobPageClassifier
+    CAREER_PAGE = "CAREER_PAGE"             # Alias for COMPANY_CAREERS_HOME (legacy)
+    COMPANY_PAGE = "COMPANY_PAGE"           # Generic company page (legacy)
+    IRRELEVANT = "IRRELEVANT"               # Anything else → discard
 
 
 class ClassificationResult(BaseModel):
@@ -28,4 +36,5 @@ class ClassificationResult(BaseModel):
     matched_signals: List[str] = Field(default_factory=list, description="List of rule/signal names that matched positively")
     failed_signals: List[str] = Field(default_factory=list, description="List of rule/signal names that failed to match")
     is_valid_job: bool = Field(..., description="True only if page is JOB_POSTING and confidence >= threshold")
-    rejected_reason: Optional[str] = Field(None, description="Reason if page was rejected (e.g., negative signals dominant)")
+    rejected_reason: Optional[str] = Field(None, description="Reason if page was rejected")
+    sub_type: Optional[str] = Field(None, description="Detected ATS platform name (e.g. 'greenhouse', 'lever', 'ashby') or job board name")

@@ -21,12 +21,11 @@ class JobSearchQuery(BaseModel):
     """
     Search parameters sent by the client or service.
 
-    Allows filtering by keywords, location, remote preference, and specific providers.
+    Allows filtering by keywords, location, and remote preference.
     """
     query: Optional[str] = Field(None, description="Search keyword (e.g. 'Python', 'Software Engineer')")
     location: Optional[str] = Field(None, description="Preferred location (e.g. 'San Francisco', 'Remote')")
     remote_only: bool = Field(False, description="Filter to remote positions only")
-    providers: Optional[List[str]] = Field(None, description="Specific providers to query (e.g. ['greenhouse', 'lever'])")
     limit: int = Field(50, ge=1, le=200, description="Maximum number of results to return")
     search_mode: SearchMode = Field(default=SearchMode.NORMAL, description="The search mode to execute (NORMAL or SMART)")
     min_salary: Optional[int] = Field(None, description="Minimum salary filter")
@@ -51,7 +50,10 @@ class NormalizedJob(BaseModel):
     posted_date: Optional[datetime] = Field(default_factory=datetime.utcnow, description="Original posting date")
     required_skills: List[str] = Field(default_factory=list, description="Extracted required technical skills")
     apply_url: Optional[str] = Field(None, description="Direct application form link")
+    can_apply: bool = Field(False, description="True if the job has an external application URL")
     last_verified_date: Optional[datetime] = Field(default_factory=datetime.utcnow, description="When this job was last verified as active")
+    relevance_score: Optional[int] = Field(None, description="Score assigned by RelevanceRankingService")
+    match_reasons: List[str] = Field(default_factory=list, description="Reasons for the relevance score")
 
 
 class JobResponse(BaseModel):
@@ -67,10 +69,14 @@ class JobResponse(BaseModel):
     description: str
     url: str
     source: str
+    apply_url: Optional[str] = None
+    can_apply: bool = False
     posted_date: datetime
     fetched_at: datetime
     last_verified_date: datetime
     content_hash: str
+    relevance_score: Optional[int] = None
+    match_reasons: List[str] = []
 
     class Config:
         from_attributes = True
@@ -82,18 +88,7 @@ class JobListResponse(BaseModel):
     """
     total: int = Field(..., description="Total number of unique jobs returned")
     jobs: List[JobResponse] = Field(..., description="List of normalized jobs")
-    providers_searched: List[str] = Field(..., description="List of providers queried")
     suggested_queries: List[str] = Field(default=[], description="Generated candidate-aware search suggestions")
     search_mode: SearchMode = Field(default=SearchMode.NORMAL, description="The search mode that was executed")
     applied_query: Optional[str] = Field(None, description="The actual search query string executed")
     applied_location: Optional[str] = Field(None, description="The actual location parameter executed")
-
-
-class ProviderInfo(BaseModel):
-    """
-    Metadata about an available job discovery provider.
-    """
-    name: str = Field(..., description="Identifier name (e.g., 'greenhouse')")
-    display_name: str = Field(..., description="Human friendly title (e.g., 'Greenhouse')")
-    description: str = Field(..., description="Brief description of the source")
-    enabled: bool = Field(True, description="Whether this provider is currently active")

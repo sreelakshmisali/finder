@@ -4,7 +4,7 @@ Job Discovery Provider Architecture
 Defines the core discovery interface (`JobDiscoveryProvider`), strongly-typed taxonomy Enum (`ProviderType`),
 execution context (`DiscoveryContext`), and specialized abstract base classes:
 - ATSProvider (Greenhouse, Lever, Ashby, Workday)
-- SearchEngineProvider (Google, Bing, Serper)
+- SearchEngineProvider (DuckDuckGo)
 - CrawlerProvider (Career Page Web Crawlers)
 """
 
@@ -37,6 +37,14 @@ class DiscoveryContext:
     user_id: Optional[uuid.UUID] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
 
+    def __post_init__(self):
+        if self.metadata is None:
+            self.metadata = {}
+        from app.utils.pipeline_tracker import PipelineTracker
+        if "tracker" not in self.metadata:
+            self.metadata["tracker"] = PipelineTracker()
+
+
 
 class JobDiscoveryProvider(ABC):
     """
@@ -50,7 +58,7 @@ class JobDiscoveryProvider(ABC):
     @abstractmethod
     def source_name(self) -> str:
         """
-        Unique technical identifier (e.g. 'greenhouse', 'lever', 'ashby', 'google_search').
+        Unique technical identifier (e.g. 'greenhouse', 'lever', 'ashby', 'search_engine').
         """
         pass
 
@@ -58,7 +66,7 @@ class JobDiscoveryProvider(ABC):
     @abstractmethod
     def display_name(self) -> str:
         """
-        Human friendly name (e.g. 'Greenhouse Board', 'Lever ATS', 'Google Jobs').
+        Human friendly name (e.g. 'Greenhouse Board', 'Lever ATS', 'DuckDuckGo Search').
         """
         pass
 
@@ -111,7 +119,7 @@ class ATSProvider(JobDiscoveryProvider):
 
 class SearchEngineProvider(JobDiscoveryProvider):
     """
-    Abstract base class for Web Search Engine discovery providers (Google, Bing, etc.).
+    Abstract base class for Web Search Engine discovery providers (DuckDuckGo, etc.).
     """
 
     @property

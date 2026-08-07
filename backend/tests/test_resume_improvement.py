@@ -32,16 +32,13 @@ def test_ai_resume_quality_analysis():
         "experience": [{"title": "Software Engineer", "company": "Tech Corp"}]
     }
 
-    loop = asyncio.get_event_loop()
-    result = loop.run_until_complete(provider.analyze_resume_quality(raw_text, parsed_data))
+    result = asyncio.run(provider.analyze_resume_quality(raw_text, parsed_data))
 
     assert "quality_score" in result
     assert result["quality_score"] > 0
     assert len(result["missing_skills"]) > 0
     assert len(result["weak_descriptions"]) > 0
     assert len(result["ats_issues"]) >= 0
-
-    print("test_ai_resume_quality_analysis: PASSED")
 
 
 def test_ai_job_specific_suggestions():
@@ -55,16 +52,13 @@ def test_ai_job_specific_suggestions():
     job_title = "Senior Backend Engineer"
     job_description = "We are seeking a Senior Backend Engineer proficient in Python, FastAPI, PostgreSQL, Docker, and Microservices."
 
-    loop = asyncio.get_event_loop()
-    result = loop.run_until_complete(
+    result = asyncio.run(
         provider.suggest_job_specific_improvements(raw_text, parsed_data, job_title, job_description)
     )
 
     assert "Python" in result["matching_skills"]
     assert "FastAPI" in result["missing_job_skills"]
     assert len(result["suggested_changes"]) > 0
-
-    print("test_ai_job_specific_suggestions: PASSED")
 
 
 if __name__ == "__main__":

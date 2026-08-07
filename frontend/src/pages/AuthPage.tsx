@@ -62,16 +62,12 @@ export default function AuthPage() {
       {/* Main Container */}
       <div className="w-full max-w-[420px] relative z-10 space-y-6">
         {/* Brand Header */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-primary text-white font-extrabold text-2xl shadow-lg shadow-primary/25 mb-1">
-            F
-          </div>
-          <h1 className="text-2xl font-black tracking-tight text-text">
+        <div className="">
+          <p className="text-sm text-text-muted flex items-center justify-center gap-1.5 font-medium">
+            <h1 className="text-2xl font-black tracking-tight text-text">
             Finder
           </h1>
-          <p className="text-sm text-text-muted flex items-center justify-center gap-1.5 font-medium">
-            <Sparkles size={14} className="text-primary" />
-            AI-Powered Job Application Assistant
+          <Sparkles size={14} className="text-primary" />
           </p>
         </div>
 

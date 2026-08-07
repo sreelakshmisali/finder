@@ -5,6 +5,7 @@ Implements `JobProvider` for Ashby HQ public posting API.
 Fetches public postings from Ashby job boards and transforms them into `NormalizedJob`.
 """
 
+import asyncio
 import logging
 from typing import List, Optional
 from datetime import datetime
@@ -40,70 +41,75 @@ class AshbyProvider(ATSProvider):
 
     async def discover(self, context: DiscoveryContext) -> List[NormalizedJob]:
         """
-        Executes discovery on Ashby public posting API matching DiscoveryContext.
+        Executes discovery on Ashby board endpoints matching DiscoveryContext concurrently.
         """
         query = context.query
         results: List[NormalizedJob] = []
         search_kw = (query.query or "").lower()
         search_loc = (query.location or "").lower()
 
-        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
-            for board in SAMPLE_ASHBY_COMPANIES:
-                try:
-                    url = f"https://api.ashbyhq.com/posting-api/job-board/{board}"
-                    resp = await client.get(url)
+        async def fetch_board(client: httpx.AsyncClient, board: str):
+            try:
+                url = f"https://api.ashbyhq.com/posting-api/job-board/{board}"
+                resp = await client.get(url)
+                if resp.status_code == 200:
+                    return board, resp.json()
+            except Exception as exc:
+                logger.warning(f"Ashby fetch failed for board '{board}': {exc}")
+            return board, None
 
-                    if resp.status_code != 200:
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+            board_results = await asyncio.gather(*[fetch_board(client, b) for b in SAMPLE_ASHBY_COMPANIES])
+
+        for board, data in board_results:
+            if not data or not isinstance(data, dict):
+                continue
+
+            company_name = board.capitalize()
+            jobs_list = data.get("jobs", [])
+
+            for item in jobs_list:
+                title = item.get("title", "")
+                loc = item.get("locationName", "Remote")
+                job_url = item.get("jobUrl", "")
+                desc_info = f"{title} position at {company_name} in {loc}."
+
+                # Filter keyword
+                if search_kw:
+                    query_terms = [t for t in search_kw.split() if len(t) > 1]
+                    text_to_check = f"{title}".lower()
+                    if query_terms and not any(t in text_to_check for t in query_terms):
                         continue
 
-                    data = resp.json()
-                    jobs_list = data.get("jobs", [])
-                    company_name = board.capitalize()
+                # Filter location
+                if search_loc:
+                    if search_loc not in loc.lower():
+                        continue
 
-                    for item in jobs_list:
-                        title = item.get("title", "")
-                        loc = item.get("locationName", "Remote")
-                        job_url = item.get("jobUrl", "")
-                        is_remote = item.get("isRemote", False) or "remote" in loc.lower() or "remote" in title.lower()
-                        desc_info = f"{title} position at {company_name} in {loc}."
-
-                        # Filter keyword
-                        if search_kw:
-                            if search_kw not in title.lower():
-                                continue
-
-                        # Filter location
-                        if search_loc:
-                            if search_loc not in loc.lower():
-                                continue
-
-                        # Filter remote
-                        if query.remote_only and not is_remote:
-                            continue
-
-                        results.append(
-                            NormalizedJob(
-                                company=company_name,
-                                title=title,
-                                location=loc,
-                                remote=is_remote,
-                                salary=None,
-                                description=desc_info,
-                                url=job_url,
-                                source=self.source_name,
-                                posted_date=datetime.utcnow()
-                            )
-                        )
-
-                        if len(results) >= query.limit:
-                            break
-
-                except Exception as exc:
-                    logger.warning(f"Ashby fetch failed for board '{board}': {exc}")
+                # Filter remote
+                is_remote = item.get("isRemote", False) or "remote" in loc.lower() or "remote" in title.lower()
+                if query.remote_only and not is_remote:
                     continue
+
+                results.append(
+                    NormalizedJob(
+                        company=company_name,
+                        title=title,
+                        location=loc,
+                        remote=is_remote,
+                        salary=None,
+                        description=desc_info,
+                        url=job_url,
+                        source=self.source_name,
+                        posted_date=datetime.utcnow()
+                    )
+                )
 
                 if len(results) >= query.limit:
                     break
+
+            if len(results) >= query.limit:
+                break
 
         return results
 
