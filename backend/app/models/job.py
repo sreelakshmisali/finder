@@ -88,6 +88,13 @@ class Job(Base):
         comment="Source provider name (e.g., 'greenhouse', 'lever', 'ashby')"
     )
 
+    discovery_provider: Mapped[Optional[str]] = mapped_column(
+        String(50),
+        nullable=True,
+        index=True,
+        comment="Discovery pipeline provider name (e.g., 'search_engine', 'lever', 'greenhouse')"
+    )
+
     apply_url: Mapped[Optional[str]] = mapped_column(
         String(1024),
         nullable=True,

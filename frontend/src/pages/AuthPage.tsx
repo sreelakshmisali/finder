@@ -25,8 +25,8 @@ export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // If user is already authenticated, redirect to target page or dashboard
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || "/";
+  // If user is already authenticated, redirect to target page or /jobs
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || "/jobs";
   if (isAuthenticated) {
     navigate(from, { replace: true });
   }

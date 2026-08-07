@@ -23,8 +23,7 @@ class RoleSynonymRegistry:
         "python developer": [
             "python engineer",
             "backend python developer",
-            "python software engineer",
-            "django developer"
+            "python software engineer"
         ],
         "data scientist": [
             "machine learning engineer",

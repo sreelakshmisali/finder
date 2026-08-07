@@ -5,16 +5,36 @@ import JobCard from "../components/shared/JobCard";
 import MatchDetails from "../components/shared/MatchDetails";
 import EmptyState from "../components/shared/EmptyState";
 import SearchBar from "../components/ui/SearchBar";
-import { Spinner, Modal, Button } from "../components/ui";
-import { useNavigate } from "react-router-dom";
+import ResumeUploader from "../components/shared/ResumeUploader";
+import ResumeViewerModal from "../components/profile/ResumeViewerModal";
+import AllResumesModal from "../components/shared/AllResumesModal";
+import { Spinner, Modal, Button, Badge } from "../components/ui";
 import { useJobSearch, useMatchJob, useSuggestedQueries } from "../hooks/useJobs";
-import { useOnboardingStatus } from "../hooks/useOnboarding";
+import {
+  useActiveResume,
+  useResumes,
+  useUploadResume,
+  useSetActiveResume,
+  useDeleteResume,
+  useParseResume,
+} from "../hooks/useResume";
 import type { Job, JobSearchQueryParams, SearchMode } from "../types/job";
 import type { MatchResult } from "../types/match";
-import { Search, Sparkles, FileText, AlertTriangle } from "lucide-react";
+import type { ParsedResumeData } from "../types/resume";
+import {
+  Search,
+  Sparkles,
+  FileText,
+  AlertTriangle,
+  CheckCircle2,
+  Trash2,
+  Upload,
+  User,
+  Layers,
+  FolderOpen,
+} from "lucide-react";
 
 function JobsPage() {
-  const navigate = useNavigate();
   const [hasSearched, setHasSearched] = useState(false);
   const [queryParams, setQueryParams] = useState<JobSearchQueryParams>({
     query: "",
@@ -28,40 +48,65 @@ function JobsPage() {
   const [activeMatchResult, setActiveMatchResult] = useState<MatchResult | null>(null);
   const [isMatchModalOpen, setIsMatchModalOpen] = useState(false);
   const [isResumeWarningModalOpen, setIsResumeWarningModalOpen] = useState(false);
+  const [isPdfViewerOpen, setIsPdfViewerOpen] = useState(false);
+  const [isAllResumesModalOpen, setIsAllResumesModalOpen] = useState(false);
+  const [showUploader, setShowUploader] = useState(false);
   const [sortByMatch, setSortByMatch] = useState(false);
 
-  const { data: searchData, isLoading, isError, refetch } = useJobSearch(
-    queryParams,
-    hasSearched // Only enable query if user has explicitly searched
-  );
-  
-  // Notice: We intentionally do NOT use a useEffect to auto-restore search state.
-  // Returning to the Jobs page after leaving always resets to the search landing state.
+  // Resume hooks
+  const { data: resumesData, isLoading: isResumesLoading } = useResumes();
+  const { data: activeResume } = useActiveResume();
+  const uploadMutation = useUploadResume();
+  const setActiveMutation = useSetActiveResume();
+  const deleteMutation = useDeleteResume();
+  const parseMutation = useParseResume();
 
-  const { data: onboarding } = useOnboardingStatus();
+  const resumes = resumesData?.resumes || [];
+  const currentActiveResume = activeResume || resumes.find((r) => r.is_active) || resumes[0];
+  const hasActiveResume = Boolean(currentActiveResume);
+
+  // Job search hooks
+  const { data: searchData, isLoading: isSearchLoading, isError: isSearchError, refetch } = useJobSearch(
+    queryParams,
+    hasSearched
+  );
+
   const { data: suggestedQueriesData } = useSuggestedQueries();
   const matchMutation = useMatchJob();
 
-  const hasActiveResume = onboarding?.has_active_resume ?? true;
   const suggestedQueries = searchData?.suggested_queries?.length
     ? searchData.suggested_queries
     : suggestedQueriesData || [];
 
+  const handleUploadResume = (file: File) => {
+    uploadMutation.mutate(file, {
+      onSuccess: () => {
+        setShowUploader(false);
+      },
+    });
+  };
+
+  const handleSetActiveResume = (resumeId: string) => {
+    setActiveMutation.mutate(resumeId);
+  };
+
+  const handleDeleteResume = (resumeId: string) => {
+    deleteMutation.mutate(resumeId);
+  };
+
   const handleSearch = (filters: {
     query: string;
     location: string;
-    remoteOnly: boolean;
-    searchMode: SearchMode;
-    minSalary?: number;
+    remoteOnly?: boolean;
+    searchMode?: SearchMode;
     forceRefresh?: boolean;
   }) => {
     setHasSearched(true);
     setQueryParams({
       query: filters.query,
       location: filters.location,
-      remote_only: filters.remoteOnly,
-      search_mode: filters.searchMode,
-      min_salary: filters.minSalary,
+      remote_only: Boolean(filters.remoteOnly),
+      search_mode: filters.searchMode || "NORMAL",
       force_refresh: filters.forceRefresh,
       limit: 50,
     });
@@ -93,20 +138,15 @@ function JobsPage() {
 
   const handleApply = (job: Job) => {
     if (job.can_apply && job.apply_url) {
-        window.open(job.apply_url, "_blank");
+      window.open(job.apply_url, "_blank");
     } else {
-        window.open(job.url, "_blank");
+      window.open(job.url, "_blank");
     }
-  };
-
-  const handleSkip = (_job: Job) => {
-
   };
 
   const rawJobs = searchData?.jobs || [];
   const totalJobs = searchData?.total || 0;
 
-  // Sort jobs by match score if toggle is enabled
   const displayedJobs = [...rawJobs].sort((a, b) => {
     if (!sortByMatch) return 0;
     const scoreA = matchesCache[a.id]?.score ?? a.match_score ?? 0;
@@ -116,70 +156,193 @@ function JobsPage() {
 
   return (
     <>
-      {hasSearched && (
-        <Header
-          title="Jobs Discovery & AI Matcher"
-          subtitle="Search tech opportunities aggregated across platforms and rank by resume fit"
-        />
-      )}
+      <Header
+        title="Finder"
+        subtitle="Single-page intelligent job discovery engine"
+      />
 
       <PageWrapper>
-        <div className={`max-w-7xl mx-auto p-6 lg:p-12 space-y-8 min-h-[80vh] flex flex-col ${!hasSearched ? 'justify-center' : ''}`}>
+        <div className="max-w-7xl mx-auto p-6 lg:p-10 space-y-8 min-h-[80vh]">
           
-          {/* Missing Resume Warning Banner */}
-          {!hasActiveResume && hasSearched && (
-            <div className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm animate-in fade-in duration-200">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-amber-500/20 text-amber-500 flex items-center justify-center shrink-0">
-                  <AlertTriangle size={20} />
+          {/* ========================================================================= */}
+          {/* TOP RESUME MANAGER SECTION                                                */}
+          {/* ========================================================================= */}
+          <section className="bg-surface border border-border rounded-2xl p-6 shadow-sm space-y-4">
+            
+            {/* STATE 1: No Resume Uploaded */}
+            {!hasActiveResume && !isResumesLoading && !uploadMutation.isPending && (
+              <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="space-y-1 text-center md:text-left">
+                  <div className="flex items-center justify-center md:justify-start gap-2">
+                    <Sparkles className="text-accent" size={20} />
+                    <h3 className="text-base font-bold text-text">
+                      Upload your resume to enable Search with Resume
+                    </h3>
+                  </div>
+                  <p className="text-xs text-text-secondary">
+                    PDF resumes are analyzed to extract skills and generate personalized job recommendations.
+                  </p>
                 </div>
-                <div className="space-y-0.5">
-                  <h4 className="text-sm font-bold text-text">AI Fit Analysis Restricted</h4>
-                  <p className="text-xs text-text-secondary">Upload an active PDF resume to unlock personalized skill matching and job fit ranking.</p>
+                <div className="w-full md:w-auto shrink-0">
+                  <ResumeUploader
+                    onUpload={handleUploadResume}
+                    isLoading={uploadMutation.isPending}
+                  />
                 </div>
-              </div>
-              <Button
-                variant="primary"
-                size="sm"
-                icon={<FileText size={14} />}
-                onClick={() => navigate("/profile")}
-                className="shrink-0 text-xs font-semibold shadow-sm"
-              >
-                Upload Resume
-              </Button>
-            </div>
-          )}
-
-          {/* Search Area */}
-          <div className={`transition-all duration-700 ease-in-out ${hasSearched ? "translate-y-0" : "-translate-y-12"}`}>
-            {!hasSearched && (
-              <div className="text-center mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700 fade-out slide-out-to-top-4">
-                {/* <h1 className="text-4xl md:text-5xl font-bold text-text mb-4 tracking-tight">What job are you looking for?</h1>
-                <p className="text-text-secondary text-lg max-w-2xl mx-auto">Search exactly what you want, or let your resume do the work to find the perfect role.</p> */}
               </div>
             )}
-            
-            <section className={`transition-all duration-700 ease-in-out ${hasSearched ? "bg-surface border border-border shadow-sm p-4 sm:p-6 rounded-2xl sticky top-4 z-10" : ""}`}>
-              <SearchBar
-                onSearch={handleSearch}
-                isLoading={isLoading && hasSearched}
-                suggestedQueries={suggestedQueries}
-                appliedQuery={searchData?.applied_query}
-                appliedLocation={searchData?.applied_location}
-                layout={hasSearched ? "header" : "landing"}
-              />
-            </section>
-          </div>
 
-          <div className={`transition-all duration-700 ease-in-out flex-1 ${hasSearched ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12 h-0 overflow-hidden"}`}>
-            {hasSearched && (
+            {/* STATE 2: Resume Uploading or Parsing in Progress */}
+            {(uploadMutation.isPending || parseMutation.isPending) && (
+              <div className="flex items-center justify-center py-8 space-y-2 flex-col">
+                <Spinner size="md" />
+                <p className="text-sm font-semibold text-text animate-pulse">
+                  Analyzing resume... Generating AI search suggestions...
+                </p>
+              </div>
+            )}
+
+            {/* STATE 3: Resume Uploaded & Ready */}
+            {hasActiveResume && !uploadMutation.isPending && !parseMutation.isPending && (
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/60 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-success/15 text-success border border-success/30 flex items-center justify-center shrink-0 font-bold">
+                      <CheckCircle2 size={20} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-text truncate max-w-xs sm:max-w-md">
+                          {currentActiveResume.filename}
+                        </h4>
+                        <Badge variant="success" className="text-[10px] font-bold">
+                          Active Resume ✓
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-text-muted">
+                        Active resume for candidate-guided search and AI job fit scoring
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Resume Manager Buttons: Manage Resumes, View PDF, Upload, Remove */}
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setIsAllResumesModalOpen(true)}
+                      icon={<FolderOpen size={14} />}
+                      title="View & manage all uploaded resumes"
+                    >
+                      Manage Resumes
+                    </Button>
+
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setIsPdfViewerOpen(true)}
+                      icon={<FileText size={14} />}
+                    >
+                      View PDF
+                    </Button>
+
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setShowUploader(!showUploader)}
+                      icon={<Upload size={14} />}
+                    >
+                      {showUploader ? "Cancel" : "Upload"}
+                    </Button>
+
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      isLoading={deleteMutation.isPending}
+                      onClick={() => handleDeleteResume(currentActiveResume.id)}
+                      icon={<Trash2 size={14} />}
+                      title="Remove Active Resume"
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Expandable Upload Dropzone */}
+                {showUploader && (
+                  <div className="p-4 bg-surface-elevated/40 border border-border rounded-xl">
+                    <ResumeUploader
+                      onUpload={handleUploadResume}
+                      isLoading={uploadMutation.isPending}
+                    />
+                  </div>
+                )}
+
+                {/* Parsed Resume Key Skills Summary */}
+                {(() => {
+                  const parsed = currentActiveResume.parsed_data as ParsedResumeData | null;
+                  if (!parsed) return null;
+                  const candidateName = parsed.full_name;
+                  const skillsList = Array.isArray(parsed.skills) ? parsed.skills : [];
+                  return (
+                    <div className="flex flex-wrap items-center gap-4 text-xs pt-1">
+                      {candidateName && (
+                        <span className="flex items-center gap-1 font-semibold text-text">
+                          <User size={13} className="text-primary" />
+                          {candidateName}
+                        </span>
+                      )}
+
+                      {skillsList.length > 0 && (
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-text-muted font-medium flex items-center gap-1">
+                            <Layers size={13} className="text-success" /> Extracted Skills:
+                          </span>
+                          {skillsList.slice(0, 6).map((skillName: string, idx: number) => (
+                            <span key={idx} className="bg-surface-elevated border border-border px-2 py-0.5 rounded text-[11px] text-text">
+                              {skillName}
+                            </span>
+                          ))}
+                          {skillsList.length > 6 && (
+                            <span className="text-[11px] text-text-muted font-medium">
+                              +{skillsList.length - 6} more
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+          </section>
+
+          {/* ========================================================================= */}
+          {/* SEARCH SECTION & SUGGESTION CHIPS                                         */}
+          {/* ========================================================================= */}
+          <section className="bg-surface border border-border shadow-sm p-6 rounded-2xl">
+            <SearchBar
+              onSearch={handleSearch}
+              isLoading={isSearchLoading && hasSearched}
+              activeResumeFilename={hasActiveResume ? currentActiveResume.filename : null}
+              suggestedQueries={suggestedQueries}
+              appliedQuery={searchData?.applied_query}
+              appliedLocation={searchData?.applied_location}
+            />
+          </section>
+
+          {/* ========================================================================= */}
+          {/* SEARCH RESULTS SECTION                                                    */}
+          {/* ========================================================================= */}
+          <div className="flex-1">
+            {hasSearched ? (
               <>
                 {/* Results Toolbar */}
-                <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-2 mt-2">
+                <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-2">
                   <div className="text-sm text-text-secondary">
-                    {isLoading ? (
+                    {isSearchLoading ? (
                       <span className="flex items-center gap-2 font-medium">
-                        <Spinner size="sm" /> Searching for jobs...
+                        <Spinner size="sm" /> Searching jobs...
                       </span>
                     ) : (
                       <span>
@@ -208,7 +371,7 @@ function JobsPage() {
                 </section>
 
                 {/* Loading Skeletons */}
-                {isLoading && (
+                {isSearchLoading && (
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-4">
                     {[1, 2, 3, 4, 5, 6].map((i) => (
                       <div key={i} className="h-72 bg-surface-elevated animate-pulse rounded-2xl border border-border" />
@@ -217,12 +380,12 @@ function JobsPage() {
                 )}
 
                 {/* Error State */}
-                {isError && !isLoading && (
+                {isSearchError && !isSearchLoading && (
                   <div className="p-8 md:p-12 border border-border border-dashed rounded-2xl bg-surface text-center shadow-sm mt-4">
                     <EmptyState
                       icon={<Search size={48} className="mx-auto mb-4 text-error/50" />}
                       title="Search failed"
-                      description="Unable to execute search at this time. Please ensure the backend service is active and try again."
+                      description="Unable to execute search at this time. Please check your backend connection and try again."
                       action={
                         <Button
                           onClick={() => refetch()}
@@ -236,19 +399,19 @@ function JobsPage() {
                   </div>
                 )}
 
-                {/* Empty State */}
-                {!isLoading && !isError && displayedJobs.length === 0 && (
+                {/* Empty Results State */}
+                {!isSearchLoading && !isSearchError && displayedJobs.length === 0 && (
                   <div className="p-8 md:p-12 border border-border border-dashed rounded-2xl bg-surface text-center shadow-sm mt-4">
                     <EmptyState
                       icon={<Search size={48} className="mx-auto mb-4 text-text-muted" />}
                       title="No jobs found"
-                      description="Try adjusting your search keywords or location filters to discover open positions."
+                      description="Try another keyword, adjust location, or click one of your resume suggestions above."
                     />
                   </div>
                 )}
 
                 {/* Jobs Grid */}
-                {!isLoading && !isError && displayedJobs.length > 0 && (
+                {!isSearchLoading && !isSearchError && displayedJobs.length > 0 && (
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 auto-rows-fr mt-4">
                     {displayedJobs.map((job) => (
                       <JobCard
@@ -256,15 +419,37 @@ function JobsPage() {
                         job={job}
                         match={matchesCache[job.id]}
                         onApply={handleApply}
-                        onSkip={handleSkip}
                         onMatch={handleMatchClick}
                       />
                     ))}
                   </div>
                 )}
               </>
+            ) : (
+              /* Initial Landing Prompt */
+              <div className="p-12 text-center border border-border/50 border-dashed rounded-2xl bg-surface/50 space-y-3">
+                <Search size={40} className="mx-auto text-text-muted opacity-60" />
+                <h3 className="text-lg font-bold text-text">Discover Opportunities</h3>
+                <p className="text-xs text-text-secondary max-w-md mx-auto leading-relaxed">
+                  Enter a keyword for a <strong>Standard Search</strong>, or click <strong>Search with Resume</strong> to discover positions matched to your profile.
+                </p>
+              </div>
             )}
           </div>
+
+          {/* Manage All Resumes Modal */}
+          <AllResumesModal
+            isOpen={isAllResumesModalOpen}
+            onClose={() => setIsAllResumesModalOpen(false)}
+            resumes={resumes}
+            activeResumeId={currentActiveResume?.id}
+            onSetActive={handleSetActiveResume}
+            onDelete={handleDeleteResume}
+            onUpload={handleUploadResume}
+            isActivating={setActiveMutation.isPending}
+            isDeleting={deleteMutation.isPending}
+            isUploading={uploadMutation.isPending}
+          />
 
           {/* AI Match Explanation Modal */}
           <Modal
@@ -277,7 +462,7 @@ function JobsPage() {
               <div className="flex flex-col items-center justify-center py-16 space-y-4">
                 <Spinner size="lg" />
                 <p className="text-sm font-medium text-text-secondary animate-pulse">
-                  Analyzing skill overlap and generating AI insights...
+                  Analyzing skill overlap and calculating match score...
                 </p>
               </div>
             ) : activeModalJob && activeMatchResult ? (
@@ -289,7 +474,7 @@ function JobsPage() {
             ) : null}
           </Modal>
 
-          {/* Resume Required Alert Modal */}
+          {/* Missing Resume Warning Modal */}
           <Modal
             isOpen={isResumeWarningModalOpen}
             onClose={() => setIsResumeWarningModalOpen(false)}
@@ -302,7 +487,7 @@ function JobsPage() {
                 <div className="text-xs space-y-1">
                   <p className="font-bold text-sm text-text">Active Resume Missing</p>
                   <p className="text-text-secondary leading-relaxed">
-                    AI Job Matching compares candidate resume skills against job requirements. Please upload an active PDF resume to enable personalized scoring.
+                    AI Job Matching compares candidate resume skills against job requirements. Please upload a PDF resume using the card above.
                   </p>
                 </div>
               </div>
@@ -313,22 +498,18 @@ function JobsPage() {
                   size="sm"
                   onClick={() => setIsResumeWarningModalOpen(false)}
                 >
-                  Cancel
-                </Button>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => {
-                    setIsResumeWarningModalOpen(false);
-                    navigate("/profile");
-                  }}
-                  icon={<FileText size={14} />}
-                >
-                  Upload Resume
+                  Close
                 </Button>
               </div>
             </div>
           </Modal>
+
+          {/* Active PDF Viewer Modal */}
+          <ResumeViewerModal
+            isOpen={isPdfViewerOpen}
+            onClose={() => setIsPdfViewerOpen(false)}
+            filename={currentActiveResume?.filename || "Active Resume"}
+          />
         </div>
       </PageWrapper>
     </>

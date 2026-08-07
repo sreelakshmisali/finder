@@ -1,0 +1,2127 @@
+{
+  "session": {
+    "search_session_id": "20260807-034130-fee9cf",
+    "query": "Python",
+    "location": "",
+    "remote_only": false,
+    "limit": 5,
+    "timestamp": "2026-08-07T03:41:54.685384+00:00",
+    "total_duration_s": 23.844
+  },
+  "runtime_config": {
+    "registered_providers": [
+      {
+        "source_name": "greenhouse",
+        "display_name": "Greenhouse",
+        "priority": 10,
+        "enabled": true
+      },
+      {
+        "source_name": "lever",
+        "display_name": "Lever",
+        "priority": 20,
+        "enabled": true
+      },
+      {
+        "source_name": "ashby",
+        "display_name": "Ashby",
+        "priority": 30,
+        "enabled": true
+      },
+      {
+        "source_name": "search_engine",
+        "display_name": "Search Engine Discovery",
+        "priority": 40,
+        "enabled": true
+      }
+    ],
+    "linkedin_mode": "external_only",
+    "search_diagnostics_enabled": false
+  },
+  "providers": {
+    "greenhouse": {
+      "source_name": "greenhouse",
+      "display_name": "Greenhouse",
+      "priority": 10,
+      "enabled": true,
+      "duration_s": 3.841,
+      "stages": {
+        "P1_targets_requested": 10,
+        "P1_targets_successful": 0,
+        "P1_targets_zero_jobs": 0,
+        "P1_targets_with_jobs": 0,
+        "P2_raw_fetched": 551,
+        "P2_extracted": 0,
+        "P2_extraction_failures": 0,
+        "P3_internal_rejected": 0,
+        "P4_returned_to_aggregator": 5
+      },
+      "rejection_reasons": {},
+      "search_urls": [
+        "https://boards-api.greenhouse.io/v1/boards/stripe/jobs?content=true",
+        "https://boards-api.greenhouse.io/v1/boards/github/jobs?content=true",
+        "https://boards-api.greenhouse.io/v1/boards/cloudflare/jobs?content=true",
+        "https://boards-api.greenhouse.io/v1/boards/figma/jobs?content=true",
+        "https://boards-api.greenhouse.io/v1/boards/airbnb/jobs?content=true",
+        "https://boards-api.greenhouse.io/v1/boards/hashicorp/jobs?content=true",
+        "https://boards-api.greenhouse.io/v1/boards/datadog/jobs?content=true",
+        "https://boards-api.greenhouse.io/v1/boards/discord/jobs?content=true",
+        "https://boards-api.greenhouse.io/v1/boards/canva/jobs?content=true",
+        "https://boards-api.greenhouse.io/v1/boards/elastic/jobs?content=true"
+      ],
+      "sample_rejections": []
+    },
+    "lever": {
+      "source_name": "lever",
+      "display_name": "Lever",
+      "priority": 20,
+      "enabled": true,
+      "duration_s": 12.439,
+      "stages": {
+        "P1_targets_requested": 8,
+        "P1_targets_successful": 0,
+        "P1_targets_zero_jobs": 0,
+        "P1_targets_with_jobs": 0,
+        "P2_raw_fetched": 105,
+        "P2_extracted": 0,
+        "P2_extraction_failures": 0,
+        "P3_internal_rejected": 0,
+        "P4_returned_to_aggregator": 5
+      },
+      "rejection_reasons": {},
+      "search_urls": [
+        "https://api.lever.co/v0/postings/netflix?mode=json",
+        "https://api.lever.co/v0/postings/spotify?mode=json",
+        "https://api.lever.co/v0/postings/palantir?mode=json",
+        "https://api.lever.co/v0/postings/twitch?mode=json",
+        "https://api.lever.co/v0/postings/atlassian?mode=json",
+        "https://api.lever.co/v0/postings/plaid?mode=json",
+        "https://api.lever.co/v0/postings/dbt?mode=json",
+        "https://api.lever.co/v0/postings/roblox?mode=json"
+      ],
+      "sample_rejections": []
+    },
+    "ashby": {
+      "source_name": "ashby",
+      "display_name": "Ashby",
+      "priority": 30,
+      "enabled": true,
+      "duration_s": 1.985,
+      "stages": {
+        "P1_targets_requested": 7,
+        "P1_targets_successful": 0,
+        "P1_targets_zero_jobs": 0,
+        "P1_targets_with_jobs": 0,
+        "P2_raw_fetched": 119,
+        "P2_extracted": 0,
+        "P2_extraction_failures": 0,
+        "P3_internal_rejected": 0,
+        "P4_returned_to_aggregator": 5
+      },
+      "rejection_reasons": {},
+      "search_urls": [
+        "https://api.ashbyhq.com/posting-api/job-board/notion",
+        "https://api.ashbyhq.com/posting-api/job-board/linear",
+        "https://api.ashbyhq.com/posting-api/job-board/ramp",
+        "https://api.ashbyhq.com/posting-api/job-board/resend",
+        "https://api.ashbyhq.com/posting-api/job-board/vanta",
+        "https://api.ashbyhq.com/posting-api/job-board/pinecone",
+        "https://api.ashbyhq.com/posting-api/job-board/posthog"
+      ],
+      "sample_rejections": []
+    },
+    "search_engine": {
+      "source_name": "search_engine",
+      "display_name": "Search Engine Discovery",
+      "priority": 40,
+      "enabled": true,
+      "duration_s": 22.779,
+      "stages": {
+        "P1_targets_requested": 9,
+        "P1_targets_successful": 0,
+        "P1_targets_zero_jobs": 0,
+        "P1_targets_with_jobs": 0,
+        "P2_raw_fetched": 15,
+        "P2_extracted": 0,
+        "P2_extraction_failures": 0,
+        "P3_internal_rejected": 0,
+        "P4_returned_to_aggregator": 5
+      },
+      "rejection_reasons": {},
+      "search_urls": [
+        "DuckDuckGo: 'site:boards.greenhouse.io Python'",
+        "DuckDuckGo: 'site:jobs.lever.co Python'",
+        "DuckDuckGo: 'site:jobs.ashbyhq.com Python'",
+        "DuckDuckGo: 'site:myworkdayjobs.com Python'",
+        "DuckDuckGo: 'site:jobs.smartrecruiters.com Python'"
+      ],
+      "sample_rejections": []
+    }
+  },
+  "provider_timeline": [
+    {
+      "source_name": "greenhouse",
+      "display_name": "Greenhouse",
+      "priority": 10,
+      "duration_s": 3.841,
+      "start_time": 1786074090.8415122,
+      "end_time": 1786074094.6828253
+    },
+    {
+      "source_name": "lever",
+      "display_name": "Lever",
+      "priority": 20,
+      "duration_s": 12.439,
+      "start_time": 1786074091.155289,
+      "end_time": 1786074103.5938065
+    },
+    {
+      "source_name": "ashby",
+      "display_name": "Ashby",
+      "priority": 30,
+      "duration_s": 1.985,
+      "start_time": 1786074091.4777904,
+      "end_time": 1786074093.4624481
+    },
+    {
+      "source_name": "search_engine",
+      "display_name": "Search Engine Discovery",
+      "priority": 40,
+      "duration_s": 22.779,
+      "start_time": 1786074091.8274248,
+      "end_time": 1786074114.6060805
+    }
+  ],
+  "provider_internal_stages": {
+    "greenhouse": {
+      "P1_targets_requested": 10,
+      "P1_targets_successful": 0,
+      "P1_targets_zero_jobs": 0,
+      "P1_targets_with_jobs": 0,
+      "P2_raw_fetched": 551,
+      "P2_extracted": 0,
+      "P2_extraction_failures": 0,
+      "P3_internal_rejected": 0,
+      "P4_returned_to_aggregator": 5
+    },
+    "lever": {
+      "P1_targets_requested": 8,
+      "P1_targets_successful": 0,
+      "P1_targets_zero_jobs": 0,
+      "P1_targets_with_jobs": 0,
+      "P2_raw_fetched": 105,
+      "P2_extracted": 0,
+      "P2_extraction_failures": 0,
+      "P3_internal_rejected": 0,
+      "P4_returned_to_aggregator": 5
+    },
+    "ashby": {
+      "P1_targets_requested": 7,
+      "P1_targets_successful": 0,
+      "P1_targets_zero_jobs": 0,
+      "P1_targets_with_jobs": 0,
+      "P2_raw_fetched": 119,
+      "P2_extracted": 0,
+      "P2_extraction_failures": 0,
+      "P3_internal_rejected": 0,
+      "P4_returned_to_aggregator": 5
+    },
+    "search_engine": {
+      "P1_targets_requested": 9,
+      "P1_targets_successful": 0,
+      "P1_targets_zero_jobs": 0,
+      "P1_targets_with_jobs": 0,
+      "P2_raw_fetched": 15,
+      "P2_extracted": 0,
+      "P2_extraction_failures": 0,
+      "P3_internal_rejected": 0,
+      "P4_returned_to_aggregator": 5
+    }
+  },
+  "limit_audit": [
+    {
+      "provider": "ashby",
+      "location": "ashby.py:L101",
+      "expression": "slicing[query.limit]",
+      "variable_name": "query.limit",
+      "applied_limit": 5,
+      "input_size": 119,
+      "output_size": 5,
+      "stage": "provider_internal",
+      "effect": "Provider capped results at query.limit=5"
+    },
+    {
+      "provider": "greenhouse",
+      "location": "greenhouse.py:L102",
+      "expression": "slicing[query.limit]",
+      "variable_name": "query.limit",
+      "applied_limit": 5,
+      "input_size": 551,
+      "output_size": 5,
+      "stage": "provider_internal",
+      "effect": "Provider capped results at query.limit=5"
+    },
+    {
+      "provider": "lever",
+      "location": "lever.py:L103",
+      "expression": "slicing[query.limit]",
+      "variable_name": "query.limit",
+      "applied_limit": 5,
+      "input_size": 105,
+      "output_size": 5,
+      "stage": "provider_internal",
+      "effect": "Provider capped results at query.limit=5"
+    },
+    {
+      "provider": "search_engine",
+      "location": "search_discovery.py:169",
+      "expression": "slicing[limit]",
+      "variable_name": "limit",
+      "applied_limit": 5,
+      "input_size": 14,
+      "output_size": 5,
+      "stage": "provider_internal",
+      "effect": "Job posting URLs sliced at limit=5"
+    },
+    {
+      "provider": "Global Aggregator",
+      "location": "job_service.py:L141",
+      "expression": "slicing[query.limit]",
+      "variable_name": "query.limit",
+      "applied_limit": 5,
+      "input_size": 0,
+      "output_size": 0,
+      "stage": "provider_internal",
+      "effect": "Sliced final result list to query.limit=5"
+    }
+  ],
+  "aggregation": {
+    "running_progress": [
+      {
+        "provider": "greenhouse",
+        "newly_added": 5,
+        "cumulative_total": 5,
+        "timestamp": 23.764568328857422
+      },
+      {
+        "provider": "lever",
+        "newly_added": 5,
+        "cumulative_total": 10,
+        "timestamp": 23.764568328857422
+      },
+      {
+        "provider": "ashby",
+        "newly_added": 5,
+        "cumulative_total": 15,
+        "timestamp": 23.764568328857422
+      },
+      {
+        "provider": "search_engine",
+        "newly_added": 5,
+        "cumulative_total": 20,
+        "timestamp": 23.764568328857422
+      }
+    ],
+    "cumulative_final_count": 20
+  },
+  "deduplication": {
+    "pairwise_matrix": {},
+    "records": []
+  },
+  "ranking": {
+    "rejection_categories": {
+      "intent_domain_mismatch": 12,
+      "insufficient_title_match": 3
+    },
+    "provider_comparison": {
+      "greenhouse": {
+        "entered": 5,
+        "accepted": 0,
+        "rejected": 5,
+        "acceptance_pct": 0.0,
+        "avg_score": -150.0,
+        "median_score": -150.0,
+        "min_score": -150.0,
+        "max_score": -150.0
+      },
+      "lever": {
+        "entered": 5,
+        "accepted": 0,
+        "rejected": 5,
+        "acceptance_pct": 0.0,
+        "avg_score": -56.0,
+        "median_score": -70.0,
+        "min_score": -70.0,
+        "max_score": 0.0
+      },
+      "ashby": {
+        "entered": 5,
+        "accepted": 0,
+        "rejected": 5,
+        "acceptance_pct": 0.0,
+        "avg_score": -90.0,
+        "median_score": -150.0,
+        "min_score": -150.0,
+        "max_score": 0.0
+      },
+      "search_engine": {
+        "entered": 5,
+        "accepted": 5,
+        "rejected": 0,
+        "acceptance_pct": 100.0,
+        "avg_score": 72.9,
+        "median_score": 72.5,
+        "min_score": 72.5,
+        "max_score": 74.5
+      }
+    },
+    "records": [
+      {
+        "trace_id": "greenhouse-ebd03f79",
+        "provider": "greenhouse",
+        "company": "Stripe",
+        "title": "Account Executive, Bridge",
+        "url": "https://stripe.com/jobs/search?gh_jid=8023928",
+        "score": -150.0,
+        "accepted": false,
+        "rejection_category": "intent_domain_mismatch",
+        "reasons": [
+          "- Domain mismatch: Non-tech job domain '{'sales'}' for tech query",
+          "- Specialization conflict: Domain '['sales']' conflicts with query domain '{'backend'}'"
+        ],
+        "score_breakdown": {
+          "title_score": 0.0,
+          "skills_score": 0.0,
+          "description_score": 0.0,
+          "location_score": 0.0,
+          "penalties": -150.0,
+          "weighted_total": -150.0,
+          "confidence": 0.1,
+          "role_similarity": 0.15,
+          "matched_domains": [],
+          "conflicting_domains": [
+            "sales"
+          ],
+          "matched_technologies": []
+        }
+      },
+      {
+        "trace_id": "greenhouse-2c421e5b",
+        "provider": "greenhouse",
+        "company": "Stripe",
+        "title": "Account Executive, Bridge ",
+        "url": "https://stripe.com/jobs/search?gh_jid=8077887",
+        "score": -150.0,
+        "accepted": false,
+        "rejection_category": "intent_domain_mismatch",
+        "reasons": [
+          "- Domain mismatch: Non-tech job domain '{'sales'}' for tech query",
+          "- Specialization conflict: Domain '['sales']' conflicts with query domain '{'backend'}'"
+        ],
+        "score_breakdown": {
+          "title_score": 0.0,
+          "skills_score": 0.0,
+          "description_score": 0.0,
+          "location_score": 0.0,
+          "penalties": -150.0,
+          "weighted_total": -150.0,
+          "confidence": 0.1,
+          "role_similarity": 0.15,
+          "matched_domains": [],
+          "conflicting_domains": [
+            "sales"
+          ],
+          "matched_technologies": []
+        }
+      },
+      {
+        "trace_id": "greenhouse-ea3535f9",
+        "provider": "greenhouse",
+        "company": "Stripe",
+        "title": "Account Executive, Commercial Grower (Japanese Fluency)",
+        "url": "https://stripe.com/jobs/search?gh_jid=8042978",
+        "score": -150.0,
+        "accepted": false,
+        "rejection_category": "intent_domain_mismatch",
+        "reasons": [
+          "- Domain mismatch: Non-tech job domain '{'sales'}' for tech query",
+          "- Specialization conflict: Domain '['sales']' conflicts with query domain '{'backend'}'"
+        ],
+        "score_breakdown": {
+          "title_score": 0.0,
+          "skills_score": 0.0,
+          "description_score": 0.0,
+          "location_score": 0.0,
+          "penalties": -150.0,
+          "weighted_total": -150.0,
+          "confidence": 0.1,
+          "role_similarity": 0.15,
+          "matched_domains": [],
+          "conflicting_domains": [
+            "sales"
+          ],
+          "matched_technologies": []
+        }
+      },
+      {
+        "trace_id": "greenhouse-8555b4da",
+        "provider": "greenhouse",
+        "company": "Stripe",
+        "title": "Account Executive, Commercial Hunter (Japanese Fluency)",
+        "url": "https://stripe.com/jobs/search?gh_jid=7789539",
+        "score": -150.0,
+        "accepted": false,
+        "rejection_category": "intent_domain_mismatch",
+        "reasons": [
+          "- Domain mismatch: Non-tech job domain '{'sales'}' for tech query",
+          "- Specialization conflict: Domain '['sales']' conflicts with query domain '{'backend'}'"
+        ],
+        "score_breakdown": {
+          "title_score": 0.0,
+          "skills_score": 0.0,
+          "description_score": 0.0,
+          "location_score": 0.0,
+          "penalties": -150.0,
+          "weighted_total": -150.0,
+          "confidence": 0.1,
+          "role_similarity": 0.15,
+          "matched_domains": [],
+          "conflicting_domains": [
+            "sales"
+          ],
+          "matched_technologies": []
+        }
+      },
+      {
+        "trace_id": "greenhouse-4b687415",
+        "provider": "greenhouse",
+        "company": "Stripe",
+        "title": "Account Executive, Cross Border China",
+        "url": "https://stripe.com/jobs/search?gh_jid=7893199",
+        "score": -150.0,
+        "accepted": false,
+        "rejection_category": "intent_domain_mismatch",
+        "reasons": [
+          "- Domain mismatch: Non-tech job domain '{'sales'}' for tech query",
+          "- Specialization conflict: Domain '['sales']' conflicts with query domain '{'backend'}'"
+        ],
+        "score_breakdown": {
+          "title_score": 0.0,
+          "skills_score": 0.0,
+          "description_score": 0.0,
+          "location_score": 0.0,
+          "penalties": -150.0,
+          "weighted_total": -150.0,
+          "confidence": 0.1,
+          "role_similarity": 0.15,
+          "matched_domains": [],
+          "conflicting_domains": [
+            "sales"
+          ],
+          "matched_technologies": []
+        }
+      },
+      {
+        "trace_id": "lever-696b4b96",
+        "provider": "lever",
+        "company": "Spotify",
+        "title": "Advertiser Solutions Vendor Lead - Programmatic and Direct Support",
+        "url": "https://jobs.lever.co/spotify/890b2c0f-f46f-4a4b-bb73-3a6af6e0edd5",
+        "score": 0.0,
+        "accepted": false,
+        "rejection_category": "insufficient_title_match",
+        "reasons": [],
+        "score_breakdown": {
+          "title_score": 0.0,
+          "skills_score": 0.0,
+          "description_score": 0.0,
+          "location_score": 0.0,
+          "penalties": 0.0,
+          "weighted_total": 0.0,
+          "confidence": 0.1,
+          "role_similarity": 0.5,
+          "matched_domains": [],
+          "conflicting_domains": [],
+          "matched_technologies": []
+        }
+      },
+      {
+        "trace_id": "lever-26aaded9",
+        "provider": "lever",
+        "company": "Spotify",
+        "title": "Agency Development Lead, India",
+        "url": "https://jobs.lever.co/spotify/f0b5fa47-bd55-40a6-ae28-d5e873b86bbe",
+        "score": -70.0,
+        "accepted": false,
+        "rejection_category": "intent_domain_mismatch",
+        "reasons": [
+          "- Specialization conflict: Domain '['mobile', 'data']' conflicts with query domain '{'backend'}'"
+        ],
+        "score_breakdown": {
+          "title_score": 0.0,
+          "skills_score": 0.0,
+          "description_score": 0.0,
+          "location_score": 0.0,
+          "penalties": -70.0,
+          "weighted_total": -70.0,
+          "confidence": 0.1,
+          "role_similarity": 0.5,
+          "matched_domains": [],
+          "conflicting_domains": [
+            "mobile",
+            "data"
+          ],
+          "matched_technologies": []
+        }
+      },
+      {
+        "trace_id": "lever-ff961087",
+        "provider": "lever",
+        "company": "Spotify",
+        "title": "Analytics Engineer II",
+        "url": "https://jobs.lever.co/spotify/08d82da1-0c72-44d1-91eb-7fa22dee3d39",
+        "score": -70.0,
+        "accepted": false,
+        "rejection_category": "intent_domain_mismatch",
+        "reasons": [
+          "- Specialization conflict: Domain '['data']' conflicts with query domain '{'backend'}'"
+        ],
+        "score_breakdown": {
+          "title_score": 0.0,
+          "skills_score": 0.0,
+          "description_score": 0.0,
+          "location_score": 0.0,
+          "penalties": -70.0,
+          "weighted_total": -70.0,
+          "confidence": 0.1,
+          "role_similarity": 0.5,
+          "matched_domains": [],
+          "conflicting_domains": [
+            "data"
+          ],
+          "matched_technologies": []
+        }
+      },
+      {
+        "trace_id": "lever-564e71ac",
+        "provider": "lever",
+        "company": "Spotify",
+        "title": "Android Engineer - Advertising",
+        "url": "https://jobs.lever.co/spotify/a0fa7da3-4c3c-4fa2-97bd-7d6eb01eb9e5",
+        "score": -70.0,
+        "accepted": false,
+        "rejection_category": "intent_domain_mismatch",
+        "reasons": [
+          "- Specialization conflict: Domain '['mobile']' conflicts with query domain '{'backend'}'"
+        ],
+        "score_breakdown": {
+          "title_score": 0.0,
+          "skills_score": 0.0,
+          "description_score": 0.0,
+          "location_score": 0.0,
+          "penalties": -70.0,
+          "weighted_total": -70.0,
+          "confidence": 0.1,
+          "role_similarity": 0.5,
+          "matched_domains": [],
+          "conflicting_domains": [
+            "mobile"
+          ],
+          "matched_technologies": []
+        }
+      },
+      {
+        "trace_id": "lever-ca23af58",
+        "provider": "lever",
+        "company": "Spotify",
+        "title": "Android Engineer - Experience",
+        "url": "https://jobs.lever.co/spotify/2193db3f-77c5-43b8-b030-8f92c9882bf1",
+        "score": -70.0,
+        "accepted": false,
+        "rejection_category": "intent_domain_mismatch",
+        "reasons": [
+          "- Specialization conflict: Domain '['mobile']' conflicts with query domain '{'backend'}'"
+        ],
+        "score_breakdown": {
+          "title_score": 0.0,
+          "skills_score": 0.0,
+          "description_score": 0.0,
+          "location_score": 0.0,
+          "penalties": -70.0,
+          "weighted_total": -70.0,
+          "confidence": 0.1,
+          "role_similarity": 0.5,
+          "matched_domains": [],
+          "conflicting_domains": [
+            "mobile"
+          ],
+          "matched_technologies": []
+        }
+      },
+      {
+        "trace_id": "ashby-73929583",
+        "provider": "ashby",
+        "company": "Notion",
+        "title": "Business Development Representative, New York",
+        "url": "https://jobs.ashbyhq.com/notion/05e14247-17c4-4e98-9a13-53828a4e2f13",
+        "score": -150.0,
+        "accepted": false,
+        "rejection_category": "intent_domain_mismatch",
+        "reasons": [
+          "- Domain mismatch: Non-tech job domain '{'sales'}' for tech query",
+          "- Specialization conflict: Domain '['sales']' conflicts with query domain '{'backend'}'"
+        ],
+        "score_breakdown": {
+          "title_score": 0.0,
+          "skills_score": 0.0,
+          "description_score": 0.0,
+          "location_score": 0.0,
+          "penalties": -150.0,
+          "weighted_total": -150.0,
+          "confidence": 0.1,
+          "role_similarity": 0.15,
+          "matched_domains": [],
+          "conflicting_domains": [
+            "sales"
+          ],
+          "matched_technologies": []
+        }
+      },
+      {
+        "trace_id": "ashby-36e0b54a",
+        "provider": "ashby",
+        "company": "Notion",
+        "title": "Business Development Representative, San Francisco",
+        "url": "https://jobs.ashbyhq.com/notion/b21fef72-4864-4a3e-a627-91557a0f8a36",
+        "score": -150.0,
+        "accepted": false,
+        "rejection_category": "intent_domain_mismatch",
+        "reasons": [
+          "- Domain mismatch: Non-tech job domain '{'sales'}' for tech query",
+          "- Specialization conflict: Domain '['sales']' conflicts with query domain '{'backend'}'"
+        ],
+        "score_breakdown": {
+          "title_score": 0.0,
+          "skills_score": 0.0,
+          "description_score": 0.0,
+          "location_score": 0.0,
+          "penalties": -150.0,
+          "weighted_total": -150.0,
+          "confidence": 0.1,
+          "role_similarity": 0.15,
+          "matched_domains": [],
+          "conflicting_domains": [
+            "sales"
+          ],
+          "matched_technologies": []
+        }
+      },
+      {
+        "trace_id": "ashby-3a6c1909",
+        "provider": "ashby",
+        "company": "Notion",
+        "title": "Product Designer",
+        "url": "https://jobs.ashbyhq.com/notion/d177d052-ef57-4900-acf2-d58e9eded620",
+        "score": 0.0,
+        "accepted": false,
+        "rejection_category": "insufficient_title_match",
+        "reasons": [],
+        "score_breakdown": {
+          "title_score": 0.0,
+          "skills_score": 0.0,
+          "description_score": 0.0,
+          "location_score": 0.0,
+          "penalties": 0.0,
+          "weighted_total": 0.0,
+          "confidence": 0.1,
+          "role_similarity": 0.5,
+          "matched_domains": [],
+          "conflicting_domains": [],
+          "matched_technologies": []
+        }
+      },
+      {
+        "trace_id": "ashby-d4ce4274",
+        "provider": "ashby",
+        "company": "Notion",
+        "title": "Business Development Representative, Japan",
+        "url": "https://jobs.ashbyhq.com/notion/c64a2cda-4c84-45bd-823d-f9141c316733",
+        "score": -150.0,
+        "accepted": false,
+        "rejection_category": "intent_domain_mismatch",
+        "reasons": [
+          "- Domain mismatch: Non-tech job domain '{'sales'}' for tech query",
+          "- Specialization conflict: Domain '['sales']' conflicts with query domain '{'backend'}'"
+        ],
+        "score_breakdown": {
+          "title_score": 0.0,
+          "skills_score": 0.0,
+          "description_score": 0.0,
+          "location_score": 0.0,
+          "penalties": -150.0,
+          "weighted_total": -150.0,
+          "confidence": 0.1,
+          "role_similarity": 0.15,
+          "matched_domains": [],
+          "conflicting_domains": [
+            "sales"
+          ],
+          "matched_technologies": []
+        }
+      },
+      {
+        "trace_id": "ashby-128e504c",
+        "provider": "ashby",
+        "company": "Notion",
+        "title": "Forward Deployed Engineer, GTM, AMER",
+        "url": "https://jobs.ashbyhq.com/notion/10437426-14c8-4c45-8075-67959ce80393",
+        "score": 0.0,
+        "accepted": false,
+        "rejection_category": "insufficient_title_match",
+        "reasons": [],
+        "score_breakdown": {
+          "title_score": 0.0,
+          "skills_score": 0.0,
+          "description_score": 0.0,
+          "location_score": 0.0,
+          "penalties": 0.0,
+          "weighted_total": 0.0,
+          "confidence": 0.1,
+          "role_similarity": 0.5,
+          "matched_domains": [],
+          "conflicting_domains": [],
+          "matched_technologies": []
+        }
+      },
+      {
+        "trace_id": "search_engine-689826de",
+        "provider": "search_engine",
+        "company": "Company",
+        "title": "Artera - Senior/Staff Software Engineer - Python",
+        "url": "https://jobs.lever.co/artera/cc5cbc4d-c7e7-4573-993f-526cb33f5a81/apply",
+        "score": 72.5,
+        "accepted": true,
+        "rejection_category": null,
+        "reasons": [
+          "+ Exact title query match: +100",
+          "+ Required skill match for 'python': +50"
+        ],
+        "score_breakdown": {
+          "title_score": 60.0,
+          "skills_score": 12.5,
+          "description_score": 0.0,
+          "location_score": 0.0,
+          "penalties": 0.0,
+          "weighted_total": 72.5,
+          "confidence": 1.0,
+          "role_similarity": 1.0,
+          "matched_domains": [
+            "backend"
+          ],
+          "conflicting_domains": [
+            "frontend",
+            "data"
+          ],
+          "matched_technologies": [
+            "python"
+          ]
+        }
+      },
+      {
+        "trace_id": "search_engine-b7770b2d",
+        "provider": "search_engine",
+        "company": "Company",
+        "title": "Python Cloud Engineer",
+        "url": "https://boards.greenhouse.io/admios/jobs/5751446002",
+        "score": 72.5,
+        "accepted": true,
+        "rejection_category": null,
+        "reasons": [
+          "+ Exact title query match: +100",
+          "+ Required skill match for 'python': +50"
+        ],
+        "score_breakdown": {
+          "title_score": 60.0,
+          "skills_score": 12.5,
+          "description_score": 0.0,
+          "location_score": 0.0,
+          "penalties": 0.0,
+          "weighted_total": 72.5,
+          "confidence": 1.0,
+          "role_similarity": 1.0,
+          "matched_domains": [
+            "backend"
+          ],
+          "conflicting_domains": [
+            "frontend",
+            "data",
+            "devops"
+          ],
+          "matched_technologies": [
+            "python"
+          ]
+        }
+      },
+      {
+        "trace_id": "search_engine-6031f015",
+        "provider": "search_engine",
+        "company": "Company",
+        "title": "Betr - Senior Backend Engineer (PHP/Python)",
+        "url": "https://jobs.lever.co/betr/fc7cd746-f746-43d5-89b1-fe92bf508a68/apply",
+        "score": 74.5,
+        "accepted": true,
+        "rejection_category": null,
+        "reasons": [
+          "+ Exact title query match: +100",
+          "+ Required skill match for 'python': +50"
+        ],
+        "score_breakdown": {
+          "title_score": 60.0,
+          "skills_score": 12.5,
+          "description_score": 2.0,
+          "location_score": 0.0,
+          "penalties": 0.0,
+          "weighted_total": 74.5,
+          "confidence": 1.0,
+          "role_similarity": 1.0,
+          "matched_domains": [
+            "backend"
+          ],
+          "conflicting_domains": [
+            "frontend",
+            "data"
+          ],
+          "matched_technologies": [
+            "python"
+          ]
+        }
+      },
+      {
+        "trace_id": "search_engine-2d4f2cbe",
+        "provider": "search_engine",
+        "company": "Company",
+        "title": "Filevine - Senior Backend Engineer - Python",
+        "url": "https://jobs.lever.co/filevine/cc9e0224-2deb-4a21-9a1f-79cfae365bab/apply",
+        "score": 72.5,
+        "accepted": true,
+        "rejection_category": null,
+        "reasons": [
+          "+ Exact title query match: +100",
+          "+ Required skill match for 'python': +50"
+        ],
+        "score_breakdown": {
+          "title_score": 60.0,
+          "skills_score": 12.5,
+          "description_score": 0.0,
+          "location_score": 0.0,
+          "penalties": 0.0,
+          "weighted_total": 72.5,
+          "confidence": 1.0,
+          "role_similarity": 1.0,
+          "matched_domains": [
+            "backend"
+          ],
+          "conflicting_domains": [
+            "frontend",
+            "data"
+          ],
+          "matched_technologies": [
+            "python"
+          ]
+        }
+      },
+      {
+        "trace_id": "search_engine-cd2fe99b",
+        "provider": "search_engine",
+        "company": "Company",
+        "title": "Fliff - Senior Python Engineer, DataFeed Team",
+        "url": "https://jobs.lever.co/Fliff/761c99a6-1731-4d0d-b653-7c381f2360e6/apply",
+        "score": 72.5,
+        "accepted": true,
+        "rejection_category": null,
+        "reasons": [
+          "+ Exact title query match: +100",
+          "+ Required skill match for 'python': +50"
+        ],
+        "score_breakdown": {
+          "title_score": 60.0,
+          "skills_score": 12.5,
+          "description_score": 0.0,
+          "location_score": 0.0,
+          "penalties": 0.0,
+          "weighted_total": 72.5,
+          "confidence": 1.0,
+          "role_similarity": 1.0,
+          "matched_domains": [
+            "backend"
+          ],
+          "conflicting_domains": [
+            "frontend",
+            "data"
+          ],
+          "matched_technologies": [
+            "python"
+          ]
+        }
+      }
+    ]
+  },
+  "normalization": {
+    "greenhouse": {
+      "total_jobs": 5,
+      "pct_title": 100.0,
+      "pct_description": 0.0,
+      "pct_required_skills": 0.0,
+      "pct_location": 100.0,
+      "pct_remote": 0.0,
+      "pct_company": 100.0,
+      "pct_apply_url": 0.0
+    },
+    "lever": {
+      "total_jobs": 5,
+      "pct_title": 100.0,
+      "pct_description": 0.0,
+      "pct_required_skills": 0.0,
+      "pct_location": 100.0,
+      "pct_remote": 20.0,
+      "pct_company": 100.0,
+      "pct_apply_url": 0.0
+    },
+    "ashby": {
+      "total_jobs": 5,
+      "pct_title": 100.0,
+      "pct_description": 0.0,
+      "pct_required_skills": 0.0,
+      "pct_location": 100.0,
+      "pct_remote": 100.0,
+      "pct_company": 100.0,
+      "pct_apply_url": 0.0
+    },
+    "search_engine": {
+      "total_jobs": 5,
+      "pct_title": 100.0,
+      "pct_description": 0.0,
+      "pct_required_skills": 0.0,
+      "pct_location": 100.0,
+      "pct_remote": 20.0,
+      "pct_company": 100.0,
+      "pct_apply_url": 100.0
+    }
+  },
+  "final_response": {
+    "returned_counts_by_provider": {},
+    "returned_urls_by_provider": {}
+  },
+  "root_cause_indicators": [
+    {
+      "status": "CONFIRMED",
+      "code": "PROVIDER_INTERNAL_CAP_TRIGGERED",
+      "message": "Provider 'ashby' hit internal cap query.limit=5 at ashby.py:L101 (Input: 119 -> Output: 5)"
+    },
+    {
+      "status": "CONFIRMED",
+      "code": "PROVIDER_INTERNAL_CAP_TRIGGERED",
+      "message": "Provider 'greenhouse' hit internal cap query.limit=5 at greenhouse.py:L102 (Input: 551 -> Output: 5)"
+    },
+    {
+      "status": "CONFIRMED",
+      "code": "PROVIDER_INTERNAL_CAP_TRIGGERED",
+      "message": "Provider 'lever' hit internal cap query.limit=5 at lever.py:L103 (Input: 105 -> Output: 5)"
+    },
+    {
+      "status": "CONFIRMED",
+      "code": "PROVIDER_INTERNAL_CAP_TRIGGERED",
+      "message": "Provider 'search_engine' hit internal cap query.limit=5 at search_discovery.py:169 (Input: 14 -> Output: 5)"
+    },
+    {
+      "status": "CONFIRMED",
+      "code": "HIGH_RELEVANCE_REJECTION_RATE",
+      "message": "Intent Matching Engine rejected 15/20 (75.0%) candidate jobs entering ranking"
+    },
+    {
+      "status": "CONFIRMED",
+      "code": "GLOBAL_LIMIT_NOT_RESTRICTING",
+      "message": "Final global response limit (LIMIT=5) did NOT cut off results because only 0 accepted jobs reached S6"
+    },
+    {
+      "status": "CONFIRMED",
+      "code": "ZERO_CROSS_PROVIDER_DEDUPLICATION",
+      "message": "Cross-provider deduplication removed 0 jobs across all candidate providers"
+    }
+  ],
+  "job_traces": [
+    {
+      "trace_id": "greenhouse-ebd03f79",
+      "provider": "greenhouse",
+      "provider_priority": 10,
+      "company": "Stripe",
+      "title": "Account Executive, Bridge",
+      "source_url": "https://stripe.com/jobs/search?gh_jid=8023928",
+      "apply_url": null,
+      "location": "London",
+      "remote": false,
+      "normalized_metadata": {
+        "title": "",
+        "company": "",
+        "skills_count": 0,
+        "has_description": false,
+        "description_length": 0,
+        "technologies": [],
+        "domains": []
+      },
+      "lifecycle_stages": [
+        "DISCOVERED",
+        "RELEVANCE_RANKING"
+      ],
+      "stage_status": {
+        "RELEVANCE_RANKING": "REJECTED"
+      },
+      "rejection_stage": "RELEVANCE_RANKING",
+      "rejection_category": "intent_domain_mismatch",
+      "rejection_details": {
+        "category": "intent_domain_mismatch",
+        "score": -150.0,
+        "reasons": [
+          "- Domain mismatch: Non-tech job domain '{'sales'}' for tech query",
+          "- Specialization conflict: Domain '['sales']' conflicts with query domain '{'backend'}'"
+        ]
+      },
+      "relevance_score": -150.0,
+      "score_breakdown": {
+        "title_score": 0.0,
+        "skills_score": 0.0,
+        "description_score": 0.0,
+        "location_score": 0.0,
+        "penalties": -150.0,
+        "weighted_total": -150.0,
+        "confidence": 0.1,
+        "role_similarity": 0.15,
+        "matched_domains": [],
+        "conflicting_domains": [
+          "sales"
+        ],
+        "matched_technologies": []
+      },
+      "final_rank": null,
+      "duplication_survived_by": null
+    },
+    {
+      "trace_id": "greenhouse-2c421e5b",
+      "provider": "greenhouse",
+      "provider_priority": 10,
+      "company": "Stripe",
+      "title": "Account Executive, Bridge ",
+      "source_url": "https://stripe.com/jobs/search?gh_jid=8077887",
+      "apply_url": null,
+      "location": "SF, NYC, SEA, CHI",
+      "remote": false,
+      "normalized_metadata": {
+        "title": "",
+        "company": "",
+        "skills_count": 0,
+        "has_description": false,
+        "description_length": 0,
+        "technologies": [],
+        "domains": []
+      },
+      "lifecycle_stages": [
+        "DISCOVERED",
+        "RELEVANCE_RANKING"
+      ],
+      "stage_status": {
+        "RELEVANCE_RANKING": "REJECTED"
+      },
+      "rejection_stage": "RELEVANCE_RANKING",
+      "rejection_category": "intent_domain_mismatch",
+      "rejection_details": {
+        "category": "intent_domain_mismatch",
+        "score": -150.0,
+        "reasons": [
+          "- Domain mismatch: Non-tech job domain '{'sales'}' for tech query",
+          "- Specialization conflict: Domain '['sales']' conflicts with query domain '{'backend'}'"
+        ]
+      },
+      "relevance_score": -150.0,
+      "score_breakdown": {
+        "title_score": 0.0,
+        "skills_score": 0.0,
+        "description_score": 0.0,
+        "location_score": 0.0,
+        "penalties": -150.0,
+        "weighted_total": -150.0,
+        "confidence": 0.1,
+        "role_similarity": 0.15,
+        "matched_domains": [],
+        "conflicting_domains": [
+          "sales"
+        ],
+        "matched_technologies": []
+      },
+      "final_rank": null,
+      "duplication_survived_by": null
+    },
+    {
+      "trace_id": "greenhouse-ea3535f9",
+      "provider": "greenhouse",
+      "provider_priority": 10,
+      "company": "Stripe",
+      "title": "Account Executive, Commercial Grower (Japanese Fluency)",
+      "source_url": "https://stripe.com/jobs/search?gh_jid=8042978",
+      "apply_url": null,
+      "location": "Japan",
+      "remote": false,
+      "normalized_metadata": {
+        "title": "",
+        "company": "",
+        "skills_count": 0,
+        "has_description": false,
+        "description_length": 0,
+        "technologies": [],
+        "domains": []
+      },
+      "lifecycle_stages": [
+        "DISCOVERED",
+        "RELEVANCE_RANKING"
+      ],
+      "stage_status": {
+        "RELEVANCE_RANKING": "REJECTED"
+      },
+      "rejection_stage": "RELEVANCE_RANKING",
+      "rejection_category": "intent_domain_mismatch",
+      "rejection_details": {
+        "category": "intent_domain_mismatch",
+        "score": -150.0,
+        "reasons": [
+          "- Domain mismatch: Non-tech job domain '{'sales'}' for tech query",
+          "- Specialization conflict: Domain '['sales']' conflicts with query domain '{'backend'}'"
+        ]
+      },
+      "relevance_score": -150.0,
+      "score_breakdown": {
+        "title_score": 0.0,
+        "skills_score": 0.0,
+        "description_score": 0.0,
+        "location_score": 0.0,
+        "penalties": -150.0,
+        "weighted_total": -150.0,
+        "confidence": 0.1,
+        "role_similarity": 0.15,
+        "matched_domains": [],
+        "conflicting_domains": [
+          "sales"
+        ],
+        "matched_technologies": []
+      },
+      "final_rank": null,
+      "duplication_survived_by": null
+    },
+    {
+      "trace_id": "greenhouse-8555b4da",
+      "provider": "greenhouse",
+      "provider_priority": 10,
+      "company": "Stripe",
+      "title": "Account Executive, Commercial Hunter (Japanese Fluency)",
+      "source_url": "https://stripe.com/jobs/search?gh_jid=7789539",
+      "apply_url": null,
+      "location": "Japan",
+      "remote": false,
+      "normalized_metadata": {
+        "title": "",
+        "company": "",
+        "skills_count": 0,
+        "has_description": false,
+        "description_length": 0,
+        "technologies": [],
+        "domains": []
+      },
+      "lifecycle_stages": [
+        "DISCOVERED",
+        "RELEVANCE_RANKING"
+      ],
+      "stage_status": {
+        "RELEVANCE_RANKING": "REJECTED"
+      },
+      "rejection_stage": "RELEVANCE_RANKING",
+      "rejection_category": "intent_domain_mismatch",
+      "rejection_details": {
+        "category": "intent_domain_mismatch",
+        "score": -150.0,
+        "reasons": [
+          "- Domain mismatch: Non-tech job domain '{'sales'}' for tech query",
+          "- Specialization conflict: Domain '['sales']' conflicts with query domain '{'backend'}'"
+        ]
+      },
+      "relevance_score": -150.0,
+      "score_breakdown": {
+        "title_score": 0.0,
+        "skills_score": 0.0,
+        "description_score": 0.0,
+        "location_score": 0.0,
+        "penalties": -150.0,
+        "weighted_total": -150.0,
+        "confidence": 0.1,
+        "role_similarity": 0.15,
+        "matched_domains": [],
+        "conflicting_domains": [
+          "sales"
+        ],
+        "matched_technologies": []
+      },
+      "final_rank": null,
+      "duplication_survived_by": null
+    },
+    {
+      "trace_id": "greenhouse-4b687415",
+      "provider": "greenhouse",
+      "provider_priority": 10,
+      "company": "Stripe",
+      "title": "Account Executive, Cross Border China",
+      "source_url": "https://stripe.com/jobs/search?gh_jid=7893199",
+      "apply_url": null,
+      "location": "Singapore",
+      "remote": false,
+      "normalized_metadata": {
+        "title": "",
+        "company": "",
+        "skills_count": 0,
+        "has_description": false,
+        "description_length": 0,
+        "technologies": [],
+        "domains": []
+      },
+      "lifecycle_stages": [
+        "DISCOVERED",
+        "RELEVANCE_RANKING"
+      ],
+      "stage_status": {
+        "RELEVANCE_RANKING": "REJECTED"
+      },
+      "rejection_stage": "RELEVANCE_RANKING",
+      "rejection_category": "intent_domain_mismatch",
+      "rejection_details": {
+        "category": "intent_domain_mismatch",
+        "score": -150.0,
+        "reasons": [
+          "- Domain mismatch: Non-tech job domain '{'sales'}' for tech query",
+          "- Specialization conflict: Domain '['sales']' conflicts with query domain '{'backend'}'"
+        ]
+      },
+      "relevance_score": -150.0,
+      "score_breakdown": {
+        "title_score": 0.0,
+        "skills_score": 0.0,
+        "description_score": 0.0,
+        "location_score": 0.0,
+        "penalties": -150.0,
+        "weighted_total": -150.0,
+        "confidence": 0.1,
+        "role_similarity": 0.15,
+        "matched_domains": [],
+        "conflicting_domains": [
+          "sales"
+        ],
+        "matched_technologies": []
+      },
+      "final_rank": null,
+      "duplication_survived_by": null
+    },
+    {
+      "trace_id": "lever-696b4b96",
+      "provider": "lever",
+      "provider_priority": 20,
+      "company": "Spotify",
+      "title": "Advertiser Solutions Vendor Lead - Programmatic and Direct Support",
+      "source_url": "https://jobs.lever.co/spotify/890b2c0f-f46f-4a4b-bb73-3a6af6e0edd5",
+      "apply_url": null,
+      "location": "London",
+      "remote": false,
+      "normalized_metadata": {
+        "title": "",
+        "company": "",
+        "skills_count": 0,
+        "has_description": false,
+        "description_length": 0,
+        "technologies": [],
+        "domains": []
+      },
+      "lifecycle_stages": [
+        "DISCOVERED",
+        "RELEVANCE_RANKING"
+      ],
+      "stage_status": {
+        "RELEVANCE_RANKING": "REJECTED"
+      },
+      "rejection_stage": "RELEVANCE_RANKING",
+      "rejection_category": "insufficient_title_match",
+      "rejection_details": {
+        "category": "insufficient_title_match",
+        "score": 0.0,
+        "reasons": []
+      },
+      "relevance_score": 0.0,
+      "score_breakdown": {
+        "title_score": 0.0,
+        "skills_score": 0.0,
+        "description_score": 0.0,
+        "location_score": 0.0,
+        "penalties": 0.0,
+        "weighted_total": 0.0,
+        "confidence": 0.1,
+        "role_similarity": 0.5,
+        "matched_domains": [],
+        "conflicting_domains": [],
+        "matched_technologies": []
+      },
+      "final_rank": null,
+      "duplication_survived_by": null
+    },
+    {
+      "trace_id": "lever-26aaded9",
+      "provider": "lever",
+      "provider_priority": 20,
+      "company": "Spotify",
+      "title": "Agency Development Lead, India",
+      "source_url": "https://jobs.lever.co/spotify/f0b5fa47-bd55-40a6-ae28-d5e873b86bbe",
+      "apply_url": null,
+      "location": "Mumbai",
+      "remote": false,
+      "normalized_metadata": {
+        "title": "",
+        "company": "",
+        "skills_count": 0,
+        "has_description": false,
+        "description_length": 0,
+        "technologies": [],
+        "domains": []
+      },
+      "lifecycle_stages": [
+        "DISCOVERED",
+        "RELEVANCE_RANKING"
+      ],
+      "stage_status": {
+        "RELEVANCE_RANKING": "REJECTED"
+      },
+      "rejection_stage": "RELEVANCE_RANKING",
+      "rejection_category": "intent_domain_mismatch",
+      "rejection_details": {
+        "category": "intent_domain_mismatch",
+        "score": -70.0,
+        "reasons": [
+          "- Specialization conflict: Domain '['mobile', 'data']' conflicts with query domain '{'backend'}'"
+        ]
+      },
+      "relevance_score": -70.0,
+      "score_breakdown": {
+        "title_score": 0.0,
+        "skills_score": 0.0,
+        "description_score": 0.0,
+        "location_score": 0.0,
+        "penalties": -70.0,
+        "weighted_total": -70.0,
+        "confidence": 0.1,
+        "role_similarity": 0.5,
+        "matched_domains": [],
+        "conflicting_domains": [
+          "mobile",
+          "data"
+        ],
+        "matched_technologies": []
+      },
+      "final_rank": null,
+      "duplication_survived_by": null
+    },
+    {
+      "trace_id": "lever-ff961087",
+      "provider": "lever",
+      "provider_priority": 20,
+      "company": "Spotify",
+      "title": "Analytics Engineer II",
+      "source_url": "https://jobs.lever.co/spotify/08d82da1-0c72-44d1-91eb-7fa22dee3d39",
+      "apply_url": null,
+      "location": "Stockholm",
+      "remote": false,
+      "normalized_metadata": {
+        "title": "",
+        "company": "",
+        "skills_count": 0,
+        "has_description": false,
+        "description_length": 0,
+        "technologies": [],
+        "domains": []
+      },
+      "lifecycle_stages": [
+        "DISCOVERED",
+        "RELEVANCE_RANKING"
+      ],
+      "stage_status": {
+        "RELEVANCE_RANKING": "REJECTED"
+      },
+      "rejection_stage": "RELEVANCE_RANKING",
+      "rejection_category": "intent_domain_mismatch",
+      "rejection_details": {
+        "category": "intent_domain_mismatch",
+        "score": -70.0,
+        "reasons": [
+          "- Specialization conflict: Domain '['data']' conflicts with query domain '{'backend'}'"
+        ]
+      },
+      "relevance_score": -70.0,
+      "score_breakdown": {
+        "title_score": 0.0,
+        "skills_score": 0.0,
+        "description_score": 0.0,
+        "location_score": 0.0,
+        "penalties": -70.0,
+        "weighted_total": -70.0,
+        "confidence": 0.1,
+        "role_similarity": 0.5,
+        "matched_domains": [],
+        "conflicting_domains": [
+          "data"
+        ],
+        "matched_technologies": []
+      },
+      "final_rank": null,
+      "duplication_survived_by": null
+    },
+    {
+      "trace_id": "lever-564e71ac",
+      "provider": "lever",
+      "provider_priority": 20,
+      "company": "Spotify",
+      "title": "Android Engineer - Advertising",
+      "source_url": "https://jobs.lever.co/spotify/a0fa7da3-4c3c-4fa2-97bd-7d6eb01eb9e5",
+      "apply_url": null,
+      "location": "New York, NY",
+      "remote": true,
+      "normalized_metadata": {
+        "title": "",
+        "company": "",
+        "skills_count": 0,
+        "has_description": false,
+        "description_length": 0,
+        "technologies": [],
+        "domains": []
+      },
+      "lifecycle_stages": [
+        "DISCOVERED",
+        "RELEVANCE_RANKING"
+      ],
+      "stage_status": {
+        "RELEVANCE_RANKING": "REJECTED"
+      },
+      "rejection_stage": "RELEVANCE_RANKING",
+      "rejection_category": "intent_domain_mismatch",
+      "rejection_details": {
+        "category": "intent_domain_mismatch",
+        "score": -70.0,
+        "reasons": [
+          "- Specialization conflict: Domain '['mobile']' conflicts with query domain '{'backend'}'"
+        ]
+      },
+      "relevance_score": -70.0,
+      "score_breakdown": {
+        "title_score": 0.0,
+        "skills_score": 0.0,
+        "description_score": 0.0,
+        "location_score": 0.0,
+        "penalties": -70.0,
+        "weighted_total": -70.0,
+        "confidence": 0.1,
+        "role_similarity": 0.5,
+        "matched_domains": [],
+        "conflicting_domains": [
+          "mobile"
+        ],
+        "matched_technologies": []
+      },
+      "final_rank": null,
+      "duplication_survived_by": null
+    },
+    {
+      "trace_id": "lever-ca23af58",
+      "provider": "lever",
+      "provider_priority": 20,
+      "company": "Spotify",
+      "title": "Android Engineer - Experience",
+      "source_url": "https://jobs.lever.co/spotify/2193db3f-77c5-43b8-b030-8f92c9882bf1",
+      "apply_url": null,
+      "location": "London",
+      "remote": false,
+      "normalized_metadata": {
+        "title": "",
+        "company": "",
+        "skills_count": 0,
+        "has_description": false,
+        "description_length": 0,
+        "technologies": [],
+        "domains": []
+      },
+      "lifecycle_stages": [
+        "DISCOVERED",
+        "RELEVANCE_RANKING"
+      ],
+      "stage_status": {
+        "RELEVANCE_RANKING": "REJECTED"
+      },
+      "rejection_stage": "RELEVANCE_RANKING",
+      "rejection_category": "intent_domain_mismatch",
+      "rejection_details": {
+        "category": "intent_domain_mismatch",
+        "score": -70.0,
+        "reasons": [
+          "- Specialization conflict: Domain '['mobile']' conflicts with query domain '{'backend'}'"
+        ]
+      },
+      "relevance_score": -70.0,
+      "score_breakdown": {
+        "title_score": 0.0,
+        "skills_score": 0.0,
+        "description_score": 0.0,
+        "location_score": 0.0,
+        "penalties": -70.0,
+        "weighted_total": -70.0,
+        "confidence": 0.1,
+        "role_similarity": 0.5,
+        "matched_domains": [],
+        "conflicting_domains": [
+          "mobile"
+        ],
+        "matched_technologies": []
+      },
+      "final_rank": null,
+      "duplication_survived_by": null
+    },
+    {
+      "trace_id": "ashby-73929583",
+      "provider": "ashby",
+      "provider_priority": 30,
+      "company": "Notion",
+      "title": "Business Development Representative, New York",
+      "source_url": "https://jobs.ashbyhq.com/notion/05e14247-17c4-4e98-9a13-53828a4e2f13",
+      "apply_url": null,
+      "location": "Remote",
+      "remote": true,
+      "normalized_metadata": {
+        "title": "",
+        "company": "",
+        "skills_count": 0,
+        "has_description": false,
+        "description_length": 0,
+        "technologies": [],
+        "domains": []
+      },
+      "lifecycle_stages": [
+        "DISCOVERED",
+        "RELEVANCE_RANKING"
+      ],
+      "stage_status": {
+        "RELEVANCE_RANKING": "REJECTED"
+      },
+      "rejection_stage": "RELEVANCE_RANKING",
+      "rejection_category": "intent_domain_mismatch",
+      "rejection_details": {
+        "category": "intent_domain_mismatch",
+        "score": -150.0,
+        "reasons": [
+          "- Domain mismatch: Non-tech job domain '{'sales'}' for tech query",
+          "- Specialization conflict: Domain '['sales']' conflicts with query domain '{'backend'}'"
+        ]
+      },
+      "relevance_score": -150.0,
+      "score_breakdown": {
+        "title_score": 0.0,
+        "skills_score": 0.0,
+        "description_score": 0.0,
+        "location_score": 0.0,
+        "penalties": -150.0,
+        "weighted_total": -150.0,
+        "confidence": 0.1,
+        "role_similarity": 0.15,
+        "matched_domains": [],
+        "conflicting_domains": [
+          "sales"
+        ],
+        "matched_technologies": []
+      },
+      "final_rank": null,
+      "duplication_survived_by": null
+    },
+    {
+      "trace_id": "ashby-36e0b54a",
+      "provider": "ashby",
+      "provider_priority": 30,
+      "company": "Notion",
+      "title": "Business Development Representative, San Francisco",
+      "source_url": "https://jobs.ashbyhq.com/notion/b21fef72-4864-4a3e-a627-91557a0f8a36",
+      "apply_url": null,
+      "location": "Remote",
+      "remote": true,
+      "normalized_metadata": {
+        "title": "",
+        "company": "",
+        "skills_count": 0,
+        "has_description": false,
+        "description_length": 0,
+        "technologies": [],
+        "domains": []
+      },
+      "lifecycle_stages": [
+        "DISCOVERED",
+        "RELEVANCE_RANKING"
+      ],
+      "stage_status": {
+        "RELEVANCE_RANKING": "REJECTED"
+      },
+      "rejection_stage": "RELEVANCE_RANKING",
+      "rejection_category": "intent_domain_mismatch",
+      "rejection_details": {
+        "category": "intent_domain_mismatch",
+        "score": -150.0,
+        "reasons": [
+          "- Domain mismatch: Non-tech job domain '{'sales'}' for tech query",
+          "- Specialization conflict: Domain '['sales']' conflicts with query domain '{'backend'}'"
+        ]
+      },
+      "relevance_score": -150.0,
+      "score_breakdown": {
+        "title_score": 0.0,
+        "skills_score": 0.0,
+        "description_score": 0.0,
+        "location_score": 0.0,
+        "penalties": -150.0,
+        "weighted_total": -150.0,
+        "confidence": 0.1,
+        "role_similarity": 0.15,
+        "matched_domains": [],
+        "conflicting_domains": [
+          "sales"
+        ],
+        "matched_technologies": []
+      },
+      "final_rank": null,
+      "duplication_survived_by": null
+    },
+    {
+      "trace_id": "ashby-3a6c1909",
+      "provider": "ashby",
+      "provider_priority": 30,
+      "company": "Notion",
+      "title": "Product Designer",
+      "source_url": "https://jobs.ashbyhq.com/notion/d177d052-ef57-4900-acf2-d58e9eded620",
+      "apply_url": null,
+      "location": "Remote",
+      "remote": true,
+      "normalized_metadata": {
+        "title": "",
+        "company": "",
+        "skills_count": 0,
+        "has_description": false,
+        "description_length": 0,
+        "technologies": [],
+        "domains": []
+      },
+      "lifecycle_stages": [
+        "DISCOVERED",
+        "RELEVANCE_RANKING"
+      ],
+      "stage_status": {
+        "RELEVANCE_RANKING": "REJECTED"
+      },
+      "rejection_stage": "RELEVANCE_RANKING",
+      "rejection_category": "insufficient_title_match",
+      "rejection_details": {
+        "category": "insufficient_title_match",
+        "score": 0.0,
+        "reasons": []
+      },
+      "relevance_score": 0.0,
+      "score_breakdown": {
+        "title_score": 0.0,
+        "skills_score": 0.0,
+        "description_score": 0.0,
+        "location_score": 0.0,
+        "penalties": 0.0,
+        "weighted_total": 0.0,
+        "confidence": 0.1,
+        "role_similarity": 0.5,
+        "matched_domains": [],
+        "conflicting_domains": [],
+        "matched_technologies": []
+      },
+      "final_rank": null,
+      "duplication_survived_by": null
+    },
+    {
+      "trace_id": "ashby-d4ce4274",
+      "provider": "ashby",
+      "provider_priority": 30,
+      "company": "Notion",
+      "title": "Business Development Representative, Japan",
+      "source_url": "https://jobs.ashbyhq.com/notion/c64a2cda-4c84-45bd-823d-f9141c316733",
+      "apply_url": null,
+      "location": "Remote",
+      "remote": true,
+      "normalized_metadata": {
+        "title": "",
+        "company": "",
+        "skills_count": 0,
+        "has_description": false,
+        "description_length": 0,
+        "technologies": [],
+        "domains": []
+      },
+      "lifecycle_stages": [
+        "DISCOVERED",
+        "RELEVANCE_RANKING"
+      ],
+      "stage_status": {
+        "RELEVANCE_RANKING": "REJECTED"
+      },
+      "rejection_stage": "RELEVANCE_RANKING",
+      "rejection_category": "intent_domain_mismatch",
+      "rejection_details": {
+        "category": "intent_domain_mismatch",
+        "score": -150.0,
+        "reasons": [
+          "- Domain mismatch: Non-tech job domain '{'sales'}' for tech query",
+          "- Specialization conflict: Domain '['sales']' conflicts with query domain '{'backend'}'"
+        ]
+      },
+      "relevance_score": -150.0,
+      "score_breakdown": {
+        "title_score": 0.0,
+        "skills_score": 0.0,
+        "description_score": 0.0,
+        "location_score": 0.0,
+        "penalties": -150.0,
+        "weighted_total": -150.0,
+        "confidence": 0.1,
+        "role_similarity": 0.15,
+        "matched_domains": [],
+        "conflicting_domains": [
+          "sales"
+        ],
+        "matched_technologies": []
+      },
+      "final_rank": null,
+      "duplication_survived_by": null
+    },
+    {
+      "trace_id": "ashby-128e504c",
+      "provider": "ashby",
+      "provider_priority": 30,
+      "company": "Notion",
+      "title": "Forward Deployed Engineer, GTM, AMER",
+      "source_url": "https://jobs.ashbyhq.com/notion/10437426-14c8-4c45-8075-67959ce80393",
+      "apply_url": null,
+      "location": "Remote",
+      "remote": true,
+      "normalized_metadata": {
+        "title": "",
+        "company": "",
+        "skills_count": 0,
+        "has_description": false,
+        "description_length": 0,
+        "technologies": [],
+        "domains": []
+      },
+      "lifecycle_stages": [
+        "DISCOVERED",
+        "RELEVANCE_RANKING"
+      ],
+      "stage_status": {
+        "RELEVANCE_RANKING": "REJECTED"
+      },
+      "rejection_stage": "RELEVANCE_RANKING",
+      "rejection_category": "insufficient_title_match",
+      "rejection_details": {
+        "category": "insufficient_title_match",
+        "score": 0.0,
+        "reasons": []
+      },
+      "relevance_score": 0.0,
+      "score_breakdown": {
+        "title_score": 0.0,
+        "skills_score": 0.0,
+        "description_score": 0.0,
+        "location_score": 0.0,
+        "penalties": 0.0,
+        "weighted_total": 0.0,
+        "confidence": 0.1,
+        "role_similarity": 0.5,
+        "matched_domains": [],
+        "conflicting_domains": [],
+        "matched_technologies": []
+      },
+      "final_rank": null,
+      "duplication_survived_by": null
+    },
+    {
+      "trace_id": "search_engine-689826de",
+      "provider": "search_engine",
+      "provider_priority": 40,
+      "company": "Company",
+      "title": "Artera - Senior/Staff Software Engineer - Python",
+      "source_url": "https://jobs.lever.co/artera/cc5cbc4d-c7e7-4573-993f-526cb33f5a81/apply",
+      "apply_url": "https://jobs.lever.co/artera/cc5cbc4d-c7e7-4573-993f-526cb33f5a81/apply",
+      "location": "Onsite / Hybrid",
+      "remote": false,
+      "normalized_metadata": {
+        "title": "",
+        "company": "",
+        "skills_count": 0,
+        "has_description": false,
+        "description_length": 0,
+        "technologies": [],
+        "domains": []
+      },
+      "lifecycle_stages": [
+        "DISCOVERED",
+        "RELEVANCE_RANKING"
+      ],
+      "stage_status": {
+        "RELEVANCE_RANKING": "PASSED"
+      },
+      "rejection_stage": null,
+      "rejection_category": null,
+      "rejection_details": null,
+      "relevance_score": 72.5,
+      "score_breakdown": {
+        "title_score": 60.0,
+        "skills_score": 12.5,
+        "description_score": 0.0,
+        "location_score": 0.0,
+        "penalties": 0.0,
+        "weighted_total": 72.5,
+        "confidence": 1.0,
+        "role_similarity": 1.0,
+        "matched_domains": [
+          "backend"
+        ],
+        "conflicting_domains": [
+          "frontend",
+          "data"
+        ],
+        "matched_technologies": [
+          "python"
+        ]
+      },
+      "final_rank": null,
+      "duplication_survived_by": null
+    },
+    {
+      "trace_id": "search_engine-b7770b2d",
+      "provider": "search_engine",
+      "provider_priority": 40,
+      "company": "Company",
+      "title": "Python Cloud Engineer",
+      "source_url": "https://boards.greenhouse.io/admios/jobs/5751446002",
+      "apply_url": "https://www.admios.com",
+      "location": "Remote",
+      "remote": true,
+      "normalized_metadata": {
+        "title": "",
+        "company": "",
+        "skills_count": 0,
+        "has_description": false,
+        "description_length": 0,
+        "technologies": [],
+        "domains": []
+      },
+      "lifecycle_stages": [
+        "DISCOVERED",
+        "RELEVANCE_RANKING"
+      ],
+      "stage_status": {
+        "RELEVANCE_RANKING": "PASSED"
+      },
+      "rejection_stage": null,
+      "rejection_category": null,
+      "rejection_details": null,
+      "relevance_score": 72.5,
+      "score_breakdown": {
+        "title_score": 60.0,
+        "skills_score": 12.5,
+        "description_score": 0.0,
+        "location_score": 0.0,
+        "penalties": 0.0,
+        "weighted_total": 72.5,
+        "confidence": 1.0,
+        "role_similarity": 1.0,
+        "matched_domains": [
+          "backend"
+        ],
+        "conflicting_domains": [
+          "frontend",
+          "data",
+          "devops"
+        ],
+        "matched_technologies": [
+          "python"
+        ]
+      },
+      "final_rank": null,
+      "duplication_survived_by": null
+    },
+    {
+      "trace_id": "search_engine-6031f015",
+      "provider": "search_engine",
+      "provider_priority": 40,
+      "company": "Company",
+      "title": "Betr - Senior Backend Engineer (PHP/Python)",
+      "source_url": "https://jobs.lever.co/betr/fc7cd746-f746-43d5-89b1-fe92bf508a68/apply",
+      "apply_url": "https://jobs.lever.co/betr",
+      "location": "Onsite / Hybrid",
+      "remote": false,
+      "normalized_metadata": {
+        "title": "",
+        "company": "",
+        "skills_count": 0,
+        "has_description": false,
+        "description_length": 0,
+        "technologies": [],
+        "domains": []
+      },
+      "lifecycle_stages": [
+        "DISCOVERED",
+        "RELEVANCE_RANKING"
+      ],
+      "stage_status": {
+        "RELEVANCE_RANKING": "PASSED"
+      },
+      "rejection_stage": null,
+      "rejection_category": null,
+      "rejection_details": null,
+      "relevance_score": 74.5,
+      "score_breakdown": {
+        "title_score": 60.0,
+        "skills_score": 12.5,
+        "description_score": 2.0,
+        "location_score": 0.0,
+        "penalties": 0.0,
+        "weighted_total": 74.5,
+        "confidence": 1.0,
+        "role_similarity": 1.0,
+        "matched_domains": [
+          "backend"
+        ],
+        "conflicting_domains": [
+          "frontend",
+          "data"
+        ],
+        "matched_technologies": [
+          "python"
+        ]
+      },
+      "final_rank": null,
+      "duplication_survived_by": null
+    },
+    {
+      "trace_id": "search_engine-2d4f2cbe",
+      "provider": "search_engine",
+      "provider_priority": 40,
+      "company": "Company",
+      "title": "Filevine - Senior Backend Engineer - Python",
+      "source_url": "https://jobs.lever.co/filevine/cc9e0224-2deb-4a21-9a1f-79cfae365bab/apply",
+      "apply_url": "https://jobs.lever.co/filevine",
+      "location": "Onsite / Hybrid",
+      "remote": false,
+      "normalized_metadata": {
+        "title": "",
+        "company": "",
+        "skills_count": 0,
+        "has_description": false,
+        "description_length": 0,
+        "technologies": [],
+        "domains": []
+      },
+      "lifecycle_stages": [
+        "DISCOVERED",
+        "RELEVANCE_RANKING"
+      ],
+      "stage_status": {
+        "RELEVANCE_RANKING": "PASSED"
+      },
+      "rejection_stage": null,
+      "rejection_category": null,
+      "rejection_details": null,
+      "relevance_score": 72.5,
+      "score_breakdown": {
+        "title_score": 60.0,
+        "skills_score": 12.5,
+        "description_score": 0.0,
+        "location_score": 0.0,
+        "penalties": 0.0,
+        "weighted_total": 72.5,
+        "confidence": 1.0,
+        "role_similarity": 1.0,
+        "matched_domains": [
+          "backend"
+        ],
+        "conflicting_domains": [
+          "frontend",
+          "data"
+        ],
+        "matched_technologies": [
+          "python"
+        ]
+      },
+      "final_rank": null,
+      "duplication_survived_by": null
+    },
+    {
+      "trace_id": "search_engine-cd2fe99b",
+      "provider": "search_engine",
+      "provider_priority": 40,
+      "company": "Company",
+      "title": "Fliff - Senior Python Engineer, DataFeed Team",
+      "source_url": "https://jobs.lever.co/Fliff/761c99a6-1731-4d0d-b653-7c381f2360e6/apply",
+      "apply_url": "https://jobs.lever.co/Fliff",
+      "location": "Onsite / Hybrid",
+      "remote": false,
+      "normalized_metadata": {
+        "title": "",
+        "company": "",
+        "skills_count": 0,
+        "has_description": false,
+        "description_length": 0,
+        "technologies": [],
+        "domains": []
+      },
+      "lifecycle_stages": [
+        "DISCOVERED",
+        "RELEVANCE_RANKING"
+      ],
+      "stage_status": {
+        "RELEVANCE_RANKING": "PASSED"
+      },
+      "rejection_stage": null,
+      "rejection_category": null,
+      "rejection_details": null,
+      "relevance_score": 72.5,
+      "score_breakdown": {
+        "title_score": 60.0,
+        "skills_score": 12.5,
+        "description_score": 0.0,
+        "location_score": 0.0,
+        "penalties": 0.0,
+        "weighted_total": 72.5,
+        "confidence": 1.0,
+        "role_similarity": 1.0,
+        "matched_domains": [
+          "backend"
+        ],
+        "conflicting_domains": [
+          "frontend",
+          "data"
+        ],
+        "matched_technologies": [
+          "python"
+        ]
+      },
+      "final_rank": null,
+      "duplication_survived_by": null
+    }
+  ]
+}
