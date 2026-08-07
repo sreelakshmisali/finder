@@ -10,7 +10,61 @@ services:
       - "5433:5432"
     volumes:
       - finder_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U finder -d finder_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    image: finder-backend-dev:latest
+    container_name: finder-backend
+    environment:
+      DATABASE_URL: postgresql+asyncpg://finder:finder_secret@db:5432/finder_db
+      SECRET_KEY: dev-secret-key-change-in-production
+      OPENAI_API_KEY: ""
+      UPLOAD_DIR: ./uploads
+      CORS_ORIGINS: http://localhost:5173,http://localhost:8000,http://localhost
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../backend:/app
+      - /app/.venv
+      - finder_backend_uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/v1/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+      target: development
+    image: finder-frontend-dev:latest
+    container_name: finder-frontend
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000/api/v1
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+    depends_on:
+      backend:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:
   finder_postgres_data:
+  finder_backend_uploads:
