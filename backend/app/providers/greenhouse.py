@@ -111,6 +111,7 @@ class GreenhouseProvider(ATSProvider):
                         description=content or f"{title} position at {company_name}.",
                         url=job_url,
                         source=self.source_name,
+                        discovery_provider=self.source_name,
                         posted_date=datetime.utcnow()
                     )
                 )

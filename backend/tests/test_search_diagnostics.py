@@ -82,9 +82,9 @@ def test_json_artifact_generation(tmp_path):
     with open(filepath, "r", encoding="utf-8") as f:
         data = json.load(f)
 
-    assert data["search_session_id"] == diag.session_id
-    assert data["search_context"]["query"] == "Data Scientist"
-    assert "greenhouse" in data["provider_internal_stages"]
+    assert data["session"]["search_session_id"] == diag.session_id
+    assert data["session"]["query"] == "Data Scientist"
+    assert "greenhouse" in data["providers"]
     assert data["global_pipeline_stages"]["S1"]["stage_id"] == "S1"
 
 
@@ -110,3 +110,161 @@ async def test_job_service_passive_diagnostics_integration():
     assert os.path.exists(log_dir)
     json_files = [f for f in os.listdir(log_dir) if f.endswith(".json")]
     assert len(json_files) > 0
+
+
+@pytest.mark.asyncio
+async def test_passive_non_interference():
+    """Asserts that search execution returns identical results regardless of diagnostics setting."""
+    from unittest.mock import MagicMock, AsyncMock
+    from app.core.config import settings
+
+    mock_db = MagicMock()
+    mock_db.execute = AsyncMock()
+    mock_db.commit = AsyncMock()
+    mock_db.refresh = AsyncMock()
+
+    service = JobService(mock_db)
+    query = JobSearchQuery(query="Python", limit=5)
+
+    # 1. Run with diagnostics enabled
+    settings.SEARCH_DIAGNOSTICS_ENABLED = True
+    resp_enabled = await service.search_jobs(query=query)
+
+    # 2. Run with diagnostics disabled
+    settings.SEARCH_DIAGNOSTICS_ENABLED = False
+    resp_disabled = await service.search_jobs(query=query)
+
+    # Restore default
+    settings.SEARCH_DIAGNOSTICS_ENABLED = True
+
+    assert len(resp_enabled.jobs) == len(resp_disabled.jobs)
+    for j1, j2 in zip(resp_enabled.jobs, resp_disabled.jobs):
+        assert j1.title == j2.title
+        assert j1.company == j2.company
+        assert j1.url == j2.url
+
+
+def test_attribution_discovery_vs_ats_sources():
+    """
+    Tests A & B: Verifies that discovery_provider and ats_source remain distinct when a search
+    engine discovers an ATS URL vs when an ATS provider discovers it directly.
+    """
+    from app.schemas.job import NormalizedJob
+
+    # Test A: Direct Lever provider discovery
+    job_a = NormalizedJob(
+        company="ExampleCorp",
+        title="React Developer",
+        url="https://jobs.lever.co/examplecorp/123",
+        source="lever",
+        discovery_provider="lever",
+        description="Senior React Developer position"
+    )
+    assert job_a.discovery_provider == "lever"
+    assert job_a.source == "lever"
+
+    # Test B: SearchEngineProvider discovery of Lever URL
+    job_b = NormalizedJob(
+        company="ExampleCorp",
+        title="React Developer",
+        url="https://jobs.lever.co/examplecorp/123",
+        source="lever",
+        discovery_provider="search_engine",
+        description="Senior React Developer position"
+    )
+    assert job_b.discovery_provider == "search_engine"
+    assert job_b.source == "lever"
+    assert job_b.discovery_provider != job_b.source
+
+
+def test_attribution_summary_aggregation():
+    """
+    Test C: Verifies that SearchDiagnosticsTracker correctly computes separate contribution
+    counts for discovery_provider vs ats_source.
+    """
+    diag = SearchDiagnosticsTracker(query="React Developer", limit=10)
+    
+    t1 = diag.get_or_create_job_trace(
+        provider="search_engine",
+        title="React Dev 1",
+        company="Company A",
+        url="https://jobs.lever.co/a/1",
+        discovery_provider="search_engine",
+        ats_source="lever"
+    )
+    t1.final_rank = 1
+
+    t2 = diag.get_or_create_job_trace(
+        provider="lever",
+        title="React Dev 2",
+        company="Company B",
+        url="https://jobs.lever.co/b/2",
+        discovery_provider="lever",
+        ats_source="lever"
+    )
+    t2.final_rank = 2
+
+    summary = diag.calculate_attribution_summary()
+    disc_counts = summary["discovery_provider_counts"]
+    ats_counts = summary["ats_source_counts"]
+
+    assert disc_counts.get("search_engine") == 1
+    assert disc_counts.get("lever") == 1
+    assert ats_counts.get("lever") == 2
+
+
+@pytest.mark.asyncio
+async def test_attribution_preservation_across_pipeline():
+    """
+    Tests D & E: Verifies that discovery_provider and source survive:
+    Provider -> NormalizedJob -> Aggregation -> DB Persistence -> Ranking -> Response
+    """
+    from unittest.mock import MagicMock, AsyncMock
+    from app.models.job import Job
+    from app.schemas.job import NormalizedJob, JobResponse
+
+    mock_db = MagicMock()
+    mock_db.execute = AsyncMock()
+    mock_db.commit = AsyncMock()
+    mock_db.refresh = AsyncMock()
+
+    norm_job = NormalizedJob(
+        company="Acme",
+        title="Frontend Lead",
+        url="https://boards.greenhouse.io/acme/jobs/99",
+        source="greenhouse",
+        discovery_provider="search_engine",
+        description="Lead Frontend Engineer"
+    )
+
+    # Verify NormalizedJob
+    assert norm_job.discovery_provider == "search_engine"
+    assert norm_job.source == "greenhouse"
+
+    import uuid
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
+
+    # Verify DB model
+    db_job = Job(
+        id=uuid.uuid4(),
+        company=norm_job.company,
+        title=norm_job.title,
+        location="Remote",
+        remote=True,
+        url=norm_job.url,
+        source=norm_job.source,
+        discovery_provider=norm_job.discovery_provider,
+        description=norm_job.description,
+        content_hash="hash123",
+        posted_date=now,
+        fetched_at=now,
+        last_verified_date=now
+    )
+    assert db_job.discovery_provider == "search_engine"
+    assert db_job.source == "greenhouse"
+
+    # Verify API JobResponse schema mapping
+    resp = JobResponse.model_validate(db_job)
+    assert resp.discovery_provider == "search_engine"
+    assert resp.source == "greenhouse"

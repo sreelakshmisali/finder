@@ -57,11 +57,22 @@ class JobRepository:
         from app.utils.pipeline_tracker import current_tracker
         tracker = current_tracker.get()
 
+        from app.utils.search_diagnostics import current_diagnostics
+        diag = current_diagnostics.get()
+
         # 1. Exact URL match (fast path)
         existing_url = await self.get_by_url(norm_job.url)
         if existing_url:
             if tracker:
                 tracker.record_persistence(norm_job.url, status="merged", duplicate_of_url=existing_url.url, details="Exact URL match")
+            if diag:
+                diag.record_deduplication(
+                    losing_job_url=norm_job.url,
+                    surviving_job_url=existing_url.url,
+                    losing_provider=norm_job.source,
+                    surviving_provider=existing_url.source,
+                    rule_triggered="exact_url_match"
+                )
             return await self._merge_job(existing_url, norm_job)
 
         # 2. Exact content hash match (legacy fast path)
@@ -69,6 +80,14 @@ class JobRepository:
         if existing_hash:
             if tracker:
                 tracker.record_persistence(norm_job.url, status="merged", duplicate_of_url=existing_hash.url, details="Exact title/company/location content hash match")
+            if diag:
+                diag.record_deduplication(
+                    losing_job_url=norm_job.url,
+                    surviving_job_url=existing_hash.url,
+                    losing_provider=norm_job.source,
+                    surviving_provider=existing_hash.source,
+                    rule_triggered="exact_content_hash_match"
+                )
             return await self._merge_job(existing_hash, norm_job)
 
         # 3. Intelligent Duplicate Detection
@@ -89,6 +108,14 @@ class JobRepository:
             if existing_dup:
                 if tracker:
                     tracker.record_persistence(norm_job.url, status="merged", duplicate_of_url=existing_dup.url, details=f"Similarity duplicate match (score={dup_result.score:.2f})")
+                if diag:
+                    diag.record_deduplication(
+                        losing_job_url=norm_job.url,
+                        surviving_job_url=existing_dup.url,
+                        losing_provider=norm_job.source,
+                        surviving_provider=existing_dup.source,
+                        rule_triggered=f"intelligent_similarity_match(score={dup_result.score:.2f})"
+                    )
                 return await self._merge_job(existing_dup, norm_job)
 
         # 4. No duplicate found, create new record
@@ -102,6 +129,7 @@ class JobRepository:
             description=norm_job.description,
             url=norm_job.url,
             source=norm_job.source,
+            discovery_provider=norm_job.discovery_provider or norm_job.source,
             apply_url=norm_job.apply_url,
             can_apply=norm_job.can_apply,
             content_hash=content_hash,

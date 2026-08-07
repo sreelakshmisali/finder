@@ -56,9 +56,9 @@ async def run_protocol():
             
             try:
                 response = await service.search_jobs(query=search_query)
-                print(f"✓ Query '{query_str}' finished: returned {len(response.jobs)} jobs")
+                print(f"[OK] Query '{query_str}' finished: returned {len(response.jobs)} jobs")
             except Exception as exc:
-                print(f"✗ Query '{query_str}' failed with error: {exc}")
+                print(f"[FAIL] Query '{query_str}' failed with error: {exc}")
 
     print("\n" + "=" * 70)
     print("5-QUERY PROTOCOL COMPLETED SUCCESSFULLY")

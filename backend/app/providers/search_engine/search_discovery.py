@@ -214,6 +214,7 @@ class SearchDiscoveryProvider(SearchEngineProvider):
         normalized_jobs: List[NormalizedJob] = []
         for result in extracted:
             if isinstance(result, NormalizedJob):
+                result.discovery_provider = self.source_name
                 normalized_jobs.append(result)
             elif isinstance(result, Exception):
                 logger.warning(f"[SearchDiscovery] Job extraction failed: {result}")

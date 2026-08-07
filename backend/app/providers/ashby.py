@@ -110,6 +110,7 @@ class AshbyProvider(ATSProvider):
                         description=desc_info,
                         url=job_url,
                         source=self.source_name,
+                        discovery_provider=self.source_name,
                         posted_date=datetime.utcnow()
                     )
                 )

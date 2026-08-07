@@ -268,7 +268,7 @@ class RelevanceRankingService:
         job.relevance_score = score_obj.total
         job.match_reasons = reasons
 
-        return RelevanceResult(
+        res_obj = RelevanceResult(
             score=score_obj,
             accepted=accepted,
             explanation=explanation,
@@ -277,6 +277,13 @@ class RelevanceRankingService:
             penalties=penalties,
             reasons=reasons
         )
+
+        from app.utils.search_diagnostics import current_diagnostics
+        diag = current_diagnostics.get()
+        if diag:
+            diag.record_ranking_result(job, res_obj, context)
+
+        return res_obj
 
     def score(self, jobs: List[NormalizedJob], context: SearchContext) -> List[Tuple[NormalizedJob, RelevanceResult]]:
         """

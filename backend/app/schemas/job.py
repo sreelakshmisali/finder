@@ -47,6 +47,7 @@ class NormalizedJob(BaseModel):
     description: str = Field(..., description="Job description text")
     url: str = Field(..., description="Application URL")
     source: str = Field(..., description="Provider source identifier")
+    discovery_provider: Optional[str] = Field(None, description="Discovery pipeline provider (e.g. 'search_engine', 'lever', 'greenhouse', 'ashby')")
     posted_date: Optional[datetime] = Field(default_factory=datetime.utcnow, description="Original posting date")
     required_skills: List[str] = Field(default_factory=list, description="Extracted required technical skills")
     apply_url: Optional[str] = Field(None, description="Direct application form link")
@@ -69,6 +70,7 @@ class JobResponse(BaseModel):
     description: str
     url: str
     source: str
+    discovery_provider: Optional[str] = None
     apply_url: Optional[str] = None
     can_apply: bool = False
     posted_date: datetime
