@@ -7,6 +7,7 @@ Fetches public postings from Lever job boards and transforms them into `Normaliz
 
 import asyncio
 import logging
+import math
 from typing import List, Optional
 from datetime import datetime
 import httpx
@@ -72,6 +73,9 @@ class LeverProvider(ATSProvider):
 
         raw_fetched_count = 0
         limit_triggered = False
+        # Fair per-company cap: each company can contribute at most this many
+        # candidates, so no single company can starve the rest before ranking.
+        per_company_cap = max(5, math.ceil(query.limit / max(len(SAMPLE_LEVER_COMPANIES), 1)))
 
         for company, postings in company_results:
             if not postings or not isinstance(postings, list):
@@ -79,6 +83,7 @@ class LeverProvider(ATSProvider):
 
             raw_fetched_count += len(postings)
             company_name = company.capitalize()
+            company_accepted = 0
 
             for post in postings:
                 title = post.get("text", "")
@@ -117,13 +122,16 @@ class LeverProvider(ATSProvider):
                     )
                 )
 
-                if len(results) >= query.limit:
-                    limit_triggered = True
-                    break
+                company_accepted += 1
+                if company_accepted >= per_company_cap:
+                    break  # per-company cap reached; move to next company
 
-            if len(results) >= query.limit:
-                limit_triggered = True
-                break
+            # No outer break — every company is always visited.
+
+        # Trim to global limit after all companies have contributed.
+        pre_trim_count = len(results)
+        results = results[:query.limit]
+        limit_triggered = pre_trim_count > query.limit
 
         if diag:
             diag.record_provider_stage(
@@ -139,7 +147,7 @@ class LeverProvider(ATSProvider):
                     applied_limit=query.limit,
                     input_size=raw_fetched_count,
                     output_size=len(results),
-                    effect=f"Provider capped results at query.limit={query.limit}"
+                    effect=f"Provider capped results at query.limit={query.limit} (per_company_cap={per_company_cap})"
                 )
             diag.finish_provider(self.source_name, len(results))
 

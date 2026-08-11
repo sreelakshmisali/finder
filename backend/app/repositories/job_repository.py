@@ -159,9 +159,11 @@ class JobRepository:
             existing.remote = True
             changed = True
             
-        # Append source if new
+        # Append source if new — cap at column length (String 50) to prevent overflow.
+        # sources are short identifiers like "greenhouse", "lever", "search_engine".
         if norm_job.source not in existing.source:
-            existing.source = f"{existing.source},{norm_job.source}"
+            combined = f"{existing.source},{norm_job.source}"
+            existing.source = combined[:50]
             changed = True
             
         # Merge apply_url and can_apply if existing is missing it

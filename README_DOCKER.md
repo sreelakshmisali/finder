@@ -85,7 +85,41 @@ docker compose -f docker/docker-compose.prod.yml up -d --build
 In production:
 - Nginx listens on port `80` (or `443` with SSL).
 - Browser requests to `/api/v1/*` are transparently proxied to the backend container.
-- PostgreSQL port `5433` is not exposed to the public internet.
+- PostgreSQL is bound to loopback `127.0.0.1:5433` (not exposed publicly) and accessible via pgAdmin container on port `5050`.
+
+---
+
+## 🐘 Connecting pgAdmin to Production DB
+
+There are two ways to connect pgAdmin to the production database:
+
+### Option A: Built-in pgAdmin Web Interface (Port 5050)
+The production stack includes a pgAdmin service accessible on port `5050`.
+
+1. Open `http://<your-server-ip>:5050` in your web browser.
+2. Log in using the credentials defined in `.env` (defaults: `admin@finder.com` / `admin_secret`).
+3. Click **Add New Server**:
+   - **Host name/address**: `db` (or container IP)
+   - **Port**: `5432`
+   - **Maintenance database**: `finder_db` (or `$POSTGRES_DB`)
+   - **Username**: `finder` (or `$POSTGRES_USER`)
+   - **Password**: `<your-POSTGRES_PASSWORD>`
+
+### Option B: Desktop pgAdmin via SSH Tunnel
+If you prefer using pgAdmin on your local machine:
+
+1. Open local **pgAdmin** > **Add New Server**.
+2. **Connection Tab**:
+   - **Host**: `127.0.0.1`
+   - **Port**: `5433`
+   - **Database**: `finder_db` (or `$POSTGRES_DB`)
+   - **Username**: `finder` (or `$POSTGRES_USER`)
+   - **Password**: `<your-POSTGRES_PASSWORD>`
+3. **SSH Tunnel Tab**:
+   - **Use SSH tunneling**: `Yes`
+   - **Tunnel Host**: `<your-server-ip>`
+   - **Username**: `ubuntu` / `ec2-user`
+   - **Identity File**: Upload your server's `.pem` SSH key file.
 
 ---
 

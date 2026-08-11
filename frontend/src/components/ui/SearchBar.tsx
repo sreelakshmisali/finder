@@ -11,14 +11,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Search, MapPin, Sparkles, FileText, AlertCircle } from "lucide-react";
 import { Button, Input } from "./index";
-import type { SearchMode } from "../../types/job";
-
 interface SearchBarProps {
   onSearch: (params: {
     query: string;
     location: string;
     remoteOnly?: boolean;
-    searchMode?: SearchMode;
     forceRefresh?: boolean;
   }) => void;
   isLoading?: boolean;
@@ -72,7 +69,6 @@ function SearchBar({
     onSearch({
       query: trimmed,
       location: location.trim(),
-      searchMode: "NORMAL",
     });
   };
 
@@ -84,7 +80,6 @@ function SearchBar({
     onSearch({
       query: query.trim(),
       location: location.trim(),
-      searchMode: "SMART",
     });
   };
 
@@ -104,7 +99,6 @@ function SearchBar({
     onSearch({
       query: suggested,
       location: location.trim(),
-      searchMode: "SMART",
     });
   };
 

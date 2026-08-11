@@ -4,13 +4,19 @@ Job Discovery Service
 Orchestrates job searches across all enabled providers concurrently using `asyncio.gather()`.
 Deduplicates discovered jobs using `JobRepository`, filters and ranks results via
 centralized `RelevanceRankingService` Intent Matching Engine before returning normalized results.
+
+Cache behaviour
+---------------
+Results are stored in the shared SearchCache (in-memory, 20-min TTL).
+Pass force_refresh=True to bypass the cache and run a fresh discovery cycle.
+Resume changes automatically invalidate the user's cache entries (see resume.py).
 """
 
 import asyncio
 import logging
 import time
 import uuid
-from typing import List, Sequence, Optional
+from typing import Dict, List, Sequence, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.job import Job
@@ -20,7 +26,8 @@ from app.repositories.job_repository import JobRepository
 from app.repositories.resume_repository import ResumeRepository
 from app.services.search_query_generator import SearchQueryGenerator
 from app.services.search.relevance_ranking import RelevanceRankingService
-from app.schemas.job import JobSearchQuery, JobListResponse, JobResponse, NormalizedJob, SearchMode
+from app.services.cache_service import search_cache, make_cache_key
+from app.schemas.job import JobSearchQuery, JobListResponse, JobResponse, NormalizedJob
 
 logger = logging.getLogger(__name__)
 
@@ -51,10 +58,34 @@ class JobService:
         """
         Executes job search across all enabled discovery providers concurrently,
         then evaluates all candidates through the centralized Intent Matching Engine.
+
+        Results are cached per user/query for 20 minutes.  Pass force_refresh=True
+        to skip the cache and run a full discovery cycle.
         """
         start_time = time.time()
         applied_query = (query.query or "").strip()
         applied_location = (query.location or "").strip()
+
+        # ------------------------------------------------------------------ #
+        # Cache check — skip if force_refresh is requested                    #
+        # ------------------------------------------------------------------ #
+        cache_key = make_cache_key(
+            user_id=user_id,
+            query=applied_query,
+            location=applied_location,
+            remote_only=query.remote_only,
+            min_salary=query.min_salary,
+            limit=query.limit,
+        )
+
+        if not query.force_refresh:
+            cached_response = await search_cache.get(cache_key)
+            if cached_response is not None:
+                logger.info(
+                    f"[JobService] Cache HIT for key '{cache_key}' — "
+                    f"returning {cached_response.total} cached jobs."
+                )
+                return cached_response
 
         from app.utils.search_diagnostics import SearchDiagnosticsTracker, current_diagnostics
         diag = SearchDiagnosticsTracker(
@@ -158,14 +189,16 @@ class JobService:
             logger.info(f"[JobService] Search completed: 0 candidates found for '{applied_query}'")
             diag.finish_session({}, {})
             current_diagnostics.reset(diag_token)
-            return JobListResponse(
+            empty_response = JobListResponse(
                 total=0,
                 jobs=[],
                 suggested_queries=[],
-                search_mode=query.search_mode,
                 applied_query=applied_query,
                 applied_location=applied_location
             )
+            # Cache empty result too — prevents hammering providers on bad queries.
+            await search_cache.set(cache_key, empty_response)
+            return empty_response
 
         # S4: Cross-Provider Deduplication (in-memory pass before ranking)
         seen_urls = {}
@@ -239,7 +272,7 @@ class JobService:
 
         diag.record_limit_audit(
             provider="Global Aggregator",
-            location="job_service.py:L141",
+            location="job_service.py:S6",
             variable_name="query.limit",
             applied_limit=query.limit,
             input_size=len(saved_db_jobs),
@@ -261,7 +294,7 @@ class JobService:
             duration=s7_dur
         )
 
-        # Compute returned breakdown
+        # Compute returned breakdown for diagnostics
         returned_urls: Dict[str, List[str]] = {}
         returned_counts: Dict[str, int] = {}
         for j in final_sliced_jobs:
@@ -278,14 +311,21 @@ class JobService:
         total_elapsed = time.time() - start_time
         logger.info(f"Total relevant jobs returned: {len(job_responses)} in {total_elapsed:.2f}s")
 
-        return JobListResponse(
+        response = JobListResponse(
             total=len(job_responses),
             jobs=job_responses,
             suggested_queries=[],
-            search_mode=query.search_mode,
             applied_query=applied_query,
             applied_location=applied_location
         )
+
+        # ------------------------------------------------------------------ #
+        # Populate cache with the successful result                           #
+        # ------------------------------------------------------------------ #
+        await search_cache.set(cache_key, response)
+        logger.info(f"[JobService] Cached {len(job_responses)} jobs under key '{cache_key}'")
+
+        return response
 
     async def get_job_by_id(self, job_id) -> Optional[JobResponse]:
         """

@@ -8,13 +8,7 @@ and API response payloads.
 from datetime import datetime
 import uuid
 from typing import Optional, List
-from enum import Enum
-from pydantic import BaseModel, Field, HttpUrl
-
-class SearchMode(str, Enum):
-    NORMAL = "NORMAL"
-    SMART = "SMART"
-
+from pydantic import BaseModel, Field, HttpUrl, field_validator
 
 
 class JobSearchQuery(BaseModel):
@@ -27,7 +21,6 @@ class JobSearchQuery(BaseModel):
     location: Optional[str] = Field(None, description="Preferred location (e.g. 'San Francisco', 'Remote')")
     remote_only: bool = Field(False, description="Filter to remote positions only")
     limit: int = Field(50, ge=1, le=200, description="Maximum number of results to return")
-    search_mode: SearchMode = Field(default=SearchMode.NORMAL, description="The search mode to execute (NORMAL or SMART)")
     min_salary: Optional[int] = Field(None, description="Minimum salary filter")
     force_refresh: bool = Field(False, description="Bypass search cache and force fresh provider query")
 
@@ -80,6 +73,14 @@ class JobResponse(BaseModel):
     relevance_score: Optional[int] = None
     match_reasons: List[str] = []
 
+    # Coerce None → False for rows predating the NOT NULL constraint.
+    @field_validator("can_apply", mode="before")
+    @classmethod
+    def coerce_can_apply(cls, v):
+        if v is None:
+            return False
+        return v
+
     class Config:
         from_attributes = True
 
@@ -91,6 +92,5 @@ class JobListResponse(BaseModel):
     total: int = Field(..., description="Total number of unique jobs returned")
     jobs: List[JobResponse] = Field(..., description="List of normalized jobs")
     suggested_queries: List[str] = Field(default=[], description="Generated candidate-aware search suggestions")
-    search_mode: SearchMode = Field(default=SearchMode.NORMAL, description="The search mode that was executed")
     applied_query: Optional[str] = Field(None, description="The actual search query string executed")
     applied_location: Optional[str] = Field(None, description="The actual location parameter executed")

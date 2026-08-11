@@ -18,7 +18,7 @@ import {
   useDeleteResume,
   useParseResume,
 } from "../hooks/useResume";
-import type { Job, JobSearchQueryParams, SearchMode } from "../types/job";
+import type { Job, JobSearchQueryParams } from "../types/job";
 import type { MatchResult } from "../types/match";
 import type { ParsedResumeData } from "../types/resume";
 import {
@@ -98,7 +98,6 @@ function JobsPage() {
     query: string;
     location: string;
     remoteOnly?: boolean;
-    searchMode?: SearchMode;
     forceRefresh?: boolean;
   }) => {
     setHasSearched(true);
@@ -106,7 +105,6 @@ function JobsPage() {
       query: filters.query,
       location: filters.location,
       remote_only: Boolean(filters.remoteOnly),
-      search_mode: filters.searchMode || "NORMAL",
       force_refresh: filters.forceRefresh,
       limit: 50,
     });

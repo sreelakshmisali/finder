@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_db, get_current_user
 from app.models.user import User
-from app.schemas.job import JobSearchQuery, JobListResponse, JobResponse, SearchMode
+from app.schemas.job import JobSearchQuery, JobListResponse, JobResponse
 from app.schemas.match import MatchRequest, MatchResult, BatchMatchRequest, BatchMatchResult
 from app.services.job_service import JobService
 from app.services.matching_service import MatchingService
@@ -30,7 +30,6 @@ async def search_jobs(
     q: Optional[str] = Query(None, description="Keywords (e.g. 'Software Engineer', 'Python')"),
     location: Optional[str] = Query(None, description="Location (e.g. 'San Francisco', 'Remote')"),
     remote_only: bool = Query(False, description="Filter for remote roles only"),
-    search_mode: SearchMode = Query(SearchMode.NORMAL, description="Search mode to use (NORMAL or SMART)"),
     min_salary: Optional[int] = Query(None, description="Minimum salary threshold filter"),
     force_refresh: bool = Query(False, description="Bypass search cache and force fresh provider search"),
     limit: int = Query(50, ge=1, le=200, description="Max results to return"),
@@ -44,7 +43,6 @@ async def search_jobs(
         query=q,
         location=location,
         remote_only=remote_only,
-        search_mode=search_mode,
         min_salary=min_salary,
         force_refresh=force_refresh,
         limit=limit

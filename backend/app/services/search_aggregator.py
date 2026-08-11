@@ -157,7 +157,6 @@ class SearchAggregator:
             if isinstance(res_list, list):
                 for item in res_list:
                     norm_url = self.normalize_url(item.url)
-                    print("norm_url------------------------------", norm_url)
                     if not norm_url:
                         continue
 
@@ -168,6 +167,7 @@ class SearchAggregator:
                         item.metadata["discovered_by"] = [item.engine]
                         merged_map[norm_url] = item
                     else:
+                        # Duplicate — update discovered_by metadata below
                         # Append provider engine to discovered_by list if new
                         existing = merged_map[norm_url]
                         discovered_by = existing.metadata.get("discovered_by", [existing.engine])
