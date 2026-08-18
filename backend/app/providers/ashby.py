@@ -13,6 +13,7 @@ from datetime import datetime
 import httpx
 
 from app.providers.base_discovery import ATSProvider, DiscoveryContext
+from app.providers._ats_filter import extract_content_tokens, job_matches_query
 from app.schemas.job import JobSearchQuery, NormalizedJob
 
 logger = logging.getLogger(__name__)
@@ -48,6 +49,9 @@ class AshbyProvider(ATSProvider):
         results: List[NormalizedJob] = []
         search_kw = (query.query or "").lower()
         search_loc = (query.location or "").lower()
+        # Deterministic keyword filter: significant (non-generic) tokens from
+        # the search query.  Empty frozenset → no filtering (pure generic query).
+        content_tokens = extract_content_tokens(search_kw)
 
         from app.utils.search_diagnostics import current_diagnostics
         diag = current_diagnostics.get()
@@ -103,6 +107,16 @@ class AshbyProvider(ATSProvider):
                 if query.remote_only and not is_remote:
                     if diag:
                         diag.record_provider_stage(self.source_name, p3_rejected=1, rejection_reason="remote_only_filter")
+                    continue
+
+                # Query relevance filter: reject jobs whose title AND description
+                # share zero content tokens with the search query.  No-op when
+                # content_tokens is empty (generic or empty query).
+                # Note: Ashby's description is synthetic (title + company + loc),
+                # so for this provider the title check is the primary signal.
+                if not job_matches_query(title, desc_info, content_tokens):
+                    if diag:
+                        diag.record_provider_stage(self.source_name, p3_rejected=1, rejection_reason="query_relevance_filter")
                     continue
 
                 results.append(

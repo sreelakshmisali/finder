@@ -247,7 +247,7 @@ class RelevanceRankingService:
             breakdown=breakdown
         )
 
-        accepted = (raw_total > 0) and (penalty_pts >= 0 or title_pts > 40)
+        accepted = (raw_total >= 30) and (penalty_pts >= 0 or title_pts > 40)
 
         for q_tok in q_tokens:
             if q_tok not in matched_terms and len(q_tok) > 2:

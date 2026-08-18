@@ -35,7 +35,12 @@ app = FastAPI(
 )
 
 # CORS middleware setup using configured origins
-origins = settings.CORS_ORIGINS if isinstance(settings.CORS_ORIGINS, list) else [settings.CORS_ORIGINS]
+if isinstance(settings.CORS_ORIGINS, list):
+    origins = [str(origin).strip().rstrip("/") for origin in settings.CORS_ORIGINS if str(origin).strip()]
+elif isinstance(settings.CORS_ORIGINS, str):
+    origins = [str(origin).strip().rstrip("/") for origin in settings.CORS_ORIGINS.split(",") if str(origin).strip()]
+else:
+    origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,

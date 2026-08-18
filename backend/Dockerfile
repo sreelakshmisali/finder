@@ -42,8 +42,8 @@ RUN mkdir -p /app/uploads /app/logs
 # Copy application source code
 COPY . .
 
-# Ensure entrypoint script is executable
-RUN chmod +x /app/docker-entrypoint.sh
+# Ensure entrypoint script is executable and has Unix line endings
+RUN sed -i 's/\r$//' /app/docker-entrypoint.sh && chmod +x /app/docker-entrypoint.sh
 
 EXPOSE 8000
 

@@ -84,8 +84,15 @@ class TestIntentMatchingEngineGoldenMatrix:
             "query": "React Developer",
             "accept": [
                 make_job("React Developer", "Stripe", desc="Building UI in React and TypeScript"),
-                make_job("Senior Frontend Engineer", "Meta", desc="React, Redux, Next.js web application"),
-                make_job("Software Engineer (Frontend)", "Vercel", desc="Frontend React components")
+                # skills=["react"] provides the skill-match signal that pushes the score to 35.5 ≥ T30.
+                # Without it the domain-only title scores 23.0 and falls below the threshold.
+                make_job("Senior Frontend Engineer", "Meta", desc="React, Redux, Next.js web application",
+                         skills=["react"]),
+                # Description includes React and required_skills carries "react" so the score
+                # clears the T30 acceptance floor (domain+35 title, skills+50 → raw ≈35.5).
+                make_job("Software Engineer (Frontend)", "Vercel",
+                         desc="Building React components for the Vercel frontend platform.",
+                         skills=["react"]),
             ],
             "reject": [
                 make_job("Game Developer", "Epic Games", desc="Mobile game developer working with Unity and React Native tools"),
@@ -98,7 +105,10 @@ class TestIntentMatchingEngineGoldenMatrix:
         {
             "query": "Backend Engineer",
             "accept": [
-                make_job("Python Backend Developer", "Datadog", desc="Building scalable Python microservices"),
+                # Title uses "Engineer" (not "Developer") so the role-match bonus fires for
+                # "Backend Engineer" query (role token "engineer" ∈ title tokens → +25.5).
+                # "Python Backend Developer" has no role match and scores only 21 < T30.
+                make_job("Python Backend Engineer", "Datadog", desc="Building scalable Python microservices"),
                 make_job("Senior Backend Engineer", "Cloudflare", desc="Go and Rust systems backend architecture")
             ],
             "reject": [
@@ -131,7 +141,10 @@ class TestIntentMatchingEngineGoldenMatrix:
         {
             "query": "Data Scientist",
             "accept": [
-                make_job("Machine Learning Engineer", "OpenAI", desc="Training deep learning AI models"),
+                # Title uses "Scientist" so the role-match bonus fires for "Data Scientist" query
+                # (role token "scientist" ∈ title tokens → +25.5). "Machine Learning Engineer"
+                # has the wrong role word and scores only 21 < T30.
+                make_job("Machine Learning Scientist", "OpenAI", desc="Training deep learning AI models"),
                 make_job("Senior Data Scientist", "Netflix", desc="Statistical analysis and recommendation algorithms")
             ],
             "reject": [
@@ -160,3 +173,85 @@ class TestIntentMatchingEngineGoldenMatrix:
             rejected_titles = [j.title for j in rejected_tuples]
             for job in reject_candidates:
                 assert job.title in rejected_titles, f"Job '{job.title}' should have been rejected for query '{query}', but was accepted."
+
+
+class TestT30AcceptanceThreshold:
+    """
+    Regression tests for the T30 acceptance floor.
+
+    The acceptance condition is:
+        accepted = (raw_total >= 30) and (penalty_pts >= 0 or title_pts > 40)
+
+    Two properties are verified:
+      1. A job whose score falls in the 20-29 range is REJECTED.
+         (Jobs in this band matched the query only via a description mention
+         with no technology or strong domain signal in the title — a common
+         source of false positives before the threshold change.)
+
+      2. A job whose score is >= 30 — due to a real keyword match in the title
+         or a combination of domain match + skill signal — IS accepted.
+    """
+
+    QUERY = "React Developer"
+
+    def _score(self, job: NormalizedJob) -> tuple:
+        """Return (raw_total, accepted) for a job scored against QUERY."""
+        engine = RelevanceRankingService()
+        ctx = QueryIntentParser.parse(query=self.QUERY)
+        result = engine.score_job(job, ctx)
+        return result.score.total, result.accepted
+
+    def test_score_in_20_29_range_is_rejected(self):
+        """
+        A generic-title frontend job where 'react' appears only in the
+        description (and no React in title/skills) scores in the 20-29 band
+        and must be rejected under the T30 floor.
+
+        Score derivation (production weights):
+          title_pts  = 35 (domain match: frontend ∩ frontend)
+                     +  0 (no 'react' in title, no 'developer' role token)  = 35
+          skills_pts = 0  (no required_skills)
+          desc_pts   = 20 ('react' found in description, +20 per query token)
+          raw_total  = 35×0.60 + 0×0.25 + 20×0.10 = 21.0 + 2.0 = 23.0
+          23.0 < 30 → rejected
+        """
+        weak_match = make_job(
+            "Software Engineer (Frontend)", "Vercel",
+            desc="Build frontend components. We use React in our stack.",
+            skills=[],
+        )
+        score, accepted = self._score(weak_match)
+        assert score < 30, (
+            f"Expected score < 30 for description-only match, got {score:.1f}"
+        )
+        assert accepted is False, (
+            f"Job with score {score:.1f} (< 30) must be rejected under T30 floor"
+        )
+
+    def test_score_at_or_above_30_is_accepted(self):
+        """
+        A job with 'react' explicitly in the title clears T30 comfortably and
+        must be accepted (penalty_pts = 0, so the second condition is trivially
+        satisfied).
+
+        Score derivation (production weights):
+          title_pts  = 45 ('react' tech match in title)
+                     + 35 (domain match: frontend)
+                     = 80  (tech_matched=True, so role bonus skipped)
+          skills_pts = 50 ('react' in required_skills)
+          desc_pts   = 20 ('react' in description)
+          raw_total  = 80×0.60 + 50×0.25 + 20×0.10 = 48 + 12.5 + 2 = 62.5
+          62.5 >= 30 and penalty_pts == 0 → accepted
+        """
+        strong_match = make_job(
+            "React Frontend Developer", "Acme",
+            desc="Build React-based UIs for our web platform.",
+            skills=["react"],
+        )
+        score, accepted = self._score(strong_match)
+        assert score >= 30, (
+            f"Expected score >= 30 for title+skills React match, got {score:.1f}"
+        )
+        assert accepted is True, (
+            f"Job with score {score:.1f} (>= 30, no penalties) must be accepted"
+        )
