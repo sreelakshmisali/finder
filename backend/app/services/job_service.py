@@ -14,6 +14,7 @@ Resume changes automatically invalidate the user's cache entries (see resume.py)
 
 import asyncio
 import logging
+import traceback
 import time
 import uuid
 from typing import Dict, List, Sequence, Optional
@@ -248,13 +249,38 @@ class JobService:
         )
 
         # Save accepted jobs to DB
+        # DIAGNOSTIC: log every failure with full type + traceback so we can identify
+        # why 8 ranked-accepted jobs produce 0 final results.
         saved_db_jobs: List[Job] = []
+        _save_ok = 0
+        _save_fail = 0
         for norm_job in accepted_jobs:
             try:
                 db_job = await self.repo.save_normalized_job(norm_job)
                 saved_db_jobs.append(db_job)
+                _save_ok += 1
             except Exception as exc:
-                logger.warning(f"Error saving job '{norm_job.title}': {exc}")
+                _save_fail += 1
+                logger.error(
+                    f"[DIAG] DB save FAILED for job #{_save_fail} "
+                    f"title={norm_job.title!r} company={norm_job.company!r} "
+                    f"url_len={len(norm_job.url)} source={norm_job.source!r} "
+                    f"exc_type={type(exc).__name__!r} exc={exc!r}"
+                )
+                logger.error(f"[DIAG] Full traceback:\n{traceback.format_exc()}")
+                # Attempt session rollback so subsequent saves are not poisoned
+                # by a left-over invalid transaction.  This is diagnostic-only and
+                # does NOT constitute the fix — it just isolates which exception
+                # is the root cause versus which are cascade failures.
+                try:
+                    await self.db.rollback()
+                    logger.error("[DIAG] Session rollback succeeded after save failure.")
+                except Exception as rb_exc:
+                    logger.error(f"[DIAG] Session rollback also failed: {rb_exc!r}")
+        logger.error(
+            f"[DIAG] DB-save loop complete: {_save_ok} succeeded, "
+            f"{_save_fail} failed out of {len(accepted_jobs)} ranked-accepted jobs."
+        )
 
         # S6: Response Limit Application
         s6_start = time.time()
