@@ -154,7 +154,7 @@ async def test_greenhouse_all_companies_contribute(keyword):
                return_value=_FakeGHClient(10, keyword)):
         results = await provider.discover(ctx)
 
-    assert len(results) <= 50
+    assert len(results) <= 450
     companies = {r.company for r in results}
     expected = {b.capitalize() for b in GREENHOUSE_BOARDS}
     assert companies == expected, (
@@ -168,7 +168,7 @@ async def test_greenhouse_per_company_cap_enforced():
     provider = GreenhouseProvider()
     query = JobSearchQuery(query="React Developer", limit=50)
     ctx = DiscoveryContext(query=query)
-    cap = max(5, math.ceil(50 / len(GREENHOUSE_BOARDS)))
+    cap = max(5, math.ceil(150 / len(GREENHOUSE_BOARDS)))
 
     with patch("app.providers.greenhouse.httpx.AsyncClient",
                return_value=_FakeGHClient(100, "React Developer")):
@@ -194,7 +194,7 @@ async def test_greenhouse_starvation_regression():
         results = await provider.discover(ctx)
 
     first_count = sum(1 for r in results if r.company == first)
-    assert first_count < 50, (
+    assert first_count < 150, (
         f"Starvation detected: '{first}' holds {first_count}/50 slots — "
         "outer break not removed"
     )
@@ -228,7 +228,7 @@ async def test_greenhouse_global_limit_respected():
                return_value=_FakeGHClient(100, "Python Developer")):
         results = await provider.discover(ctx)
 
-    assert len(results) <= 30
+    assert len(results) <= 90
 
 
 # ─── Lever ────────────────────────────────────────────────────────────────────
@@ -245,7 +245,7 @@ async def test_lever_all_companies_contribute(keyword):
                return_value=_FakeLeverClient(10, keyword)):
         results = await provider.discover(ctx)
 
-    assert len(results) <= 50
+    assert len(results) <= 450
     companies = {r.company for r in results}
     expected = {c.capitalize() for c in SAMPLE_LEVER_COMPANIES}
     assert companies == expected, (
@@ -259,7 +259,7 @@ async def test_lever_per_company_cap_enforced():
     provider = LeverProvider()
     query = JobSearchQuery(query="Python Developer", limit=50)
     ctx = DiscoveryContext(query=query)
-    cap = max(5, math.ceil(50 / len(SAMPLE_LEVER_COMPANIES)))
+    cap = max(5, math.ceil(150 / len(SAMPLE_LEVER_COMPANIES)))
 
     with patch("app.providers.lever.httpx.AsyncClient",
                return_value=_FakeLeverClient(100, "Python Developer")):
@@ -285,7 +285,7 @@ async def test_lever_starvation_regression():
         results = await provider.discover(ctx)
 
     first_count = sum(1 for r in results if r.company == first)
-    assert first_count < 50, (
+    assert first_count < 150, (
         f"Starvation detected: '{first}' holds {first_count}/50 slots"
     )
 
@@ -300,7 +300,7 @@ async def test_lever_global_limit_respected():
                return_value=_FakeLeverClient(100, "Django Developer")):
         results = await provider.discover(ctx)
 
-    assert len(results) <= 20
+    assert len(results) <= 60
 
 
 # ─── Ashby ────────────────────────────────────────────────────────────────────
@@ -317,7 +317,7 @@ async def test_ashby_all_companies_contribute(keyword):
                return_value=_FakeAshbyClient(10, keyword)):
         results = await provider.discover(ctx)
 
-    assert len(results) <= 50
+    assert len(results) <= 450
     companies = {r.company for r in results}
     expected = {b.capitalize() for b in SAMPLE_ASHBY_COMPANIES}
     assert companies == expected, (
@@ -331,7 +331,7 @@ async def test_ashby_per_company_cap_enforced():
     provider = AshbyProvider()
     query = JobSearchQuery(query="Django Developer", limit=50)
     ctx = DiscoveryContext(query=query)
-    cap = max(5, math.ceil(50 / len(SAMPLE_ASHBY_COMPANIES)))
+    cap = max(5, math.ceil(150 / len(SAMPLE_ASHBY_COMPANIES)))
 
     with patch("app.providers.ashby.httpx.AsyncClient",
                return_value=_FakeAshbyClient(100, "Django Developer")):
@@ -357,7 +357,7 @@ async def test_ashby_starvation_regression():
         results = await provider.discover(ctx)
 
     first_count = sum(1 for r in results if r.company == first)
-    assert first_count < 50, (
+    assert first_count < 150, (
         f"Starvation detected: '{first}' holds {first_count}/50 slots"
     )
 
@@ -372,7 +372,7 @@ async def test_ashby_global_limit_respected():
                return_value=_FakeAshbyClient(100, "React Developer")):
         results = await provider.discover(ctx)
 
-    assert len(results) <= 15
+    assert len(results) <= 45
 
 
 # ─── Cross-provider: cap formula scales with limit ───────────────────────────
@@ -383,7 +383,7 @@ async def test_cap_scales_with_limit():
     provider = GreenhouseProvider()
     n = len(GREENHOUSE_BOARDS)  # 10
 
-    for limit, expected_cap in [(10, 5), (50, 5), (100, 10), (200, 20)]:
+    for limit, expected_cap, budget in [(10, 5, 30), (50, 15, 150), (100, 20, 200), (200, 20, 200)]:
         query = JobSearchQuery(query="React Developer", limit=limit)
         ctx = DiscoveryContext(query=query)
 
@@ -391,7 +391,7 @@ async def test_cap_scales_with_limit():
                    return_value=_FakeGHClient(100, "React Developer")):
             results = await provider.discover(ctx)
 
-        assert len(results) <= limit, f"limit={limit}: got {len(results)} > {limit}"
+        assert len(results) <= budget, f"limit={limit}: got {len(results)} > {budget}"
         counts = Counter(r.company for r in results)
         for company, count in counts.items():
             assert count <= expected_cap, (

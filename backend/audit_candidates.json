@@ -1,0 +1,1037 @@
+[
+  {
+    "provider": "search_engine",
+    "discovery_provider": "search_engine",
+    "title": "Jobgether - Full Stack Developer (React, Node.js, Python plus)",
+    "company": "Company",
+    "url": "https://jobs.lever.co/jobgether/bd04122b-e2c6-44b8-bab2-84a765e8cfd6/apply",
+    "description_len": 72,
+    "required_skills": [
+      "C",
+      "React",
+      "Node.js",
+      "JavaScript",
+      "Python",
+      "R",
+      "Ruby",
+      "Api"
+    ],
+    "total_score": 76.5,
+    "title_score": 60.0,
+    "skill_score": 12.5,
+    "desc_score": 4.0,
+    "loc_score": 0.0,
+    "penalty_pts": 0.0,
+    "accepted": true,
+    "matched_terms": [
+      "python",
+      "developer"
+    ],
+    "missing_terms": [],
+    "penalties": [],
+    "reasons": [
+      "+ Technology 'python' in title: +45",
+      "+ Matched domains ['backend'] in title: +35",
+      "+ Role matched in title (similarity 0.85): +25.5",
+      "+ Required skill match for 'python': +50"
+    ],
+    "matched_domains": [
+      "backend"
+    ],
+    "conflicting_domains": [
+      "data",
+      "frontend"
+    ],
+    "role_similarity": 0.85
+  },
+  {
+    "provider": "search_engine",
+    "discovery_provider": "search_engine",
+    "title": "Protolabs - Senior Python Developer (Backend)",
+    "company": "Company",
+    "url": "https://jobs.lever.co/protolabs/c0ed06dd-6b46-4f22-a648-f57fa6807b25/apply",
+    "description_len": 529,
+    "required_skills": [
+      "FastAPI",
+      "C",
+      "JavaScript",
+      "Python",
+      "Flask",
+      "R",
+      "Ruby",
+      "Redis",
+      "Api"
+    ],
+    "total_score": 76.5,
+    "title_score": 60.0,
+    "skill_score": 12.5,
+    "desc_score": 4.0,
+    "loc_score": 0.0,
+    "penalty_pts": 0.0,
+    "accepted": true,
+    "matched_terms": [
+      "python",
+      "python developer",
+      "developer"
+    ],
+    "missing_terms": [],
+    "penalties": [],
+    "reasons": [
+      "+ Exact title query match: +100",
+      "+ Required skill match for 'python': +50"
+    ],
+    "matched_domains": [
+      "backend"
+    ],
+    "conflicting_domains": [
+      "data",
+      "frontend"
+    ],
+    "role_similarity": 1.0
+  },
+  {
+    "provider": "search_engine",
+    "discovery_provider": "search_engine",
+    "title": "Zimperium - Senior AI Engineer/Python Developer (Bangalore, India Based)",
+    "company": "Company",
+    "url": "https://jobs.lever.co/zimperium/6e0239b1-9fa6-4967-89a3-f90889dde23b/apply",
+    "description_len": 991,
+    "required_skills": [
+      "C",
+      "JavaScript",
+      "Python",
+      "R",
+      "Ruby",
+      "Api"
+    ],
+    "total_score": 74.5,
+    "title_score": 60.0,
+    "skill_score": 12.5,
+    "desc_score": 2.0,
+    "loc_score": 0.0,
+    "penalty_pts": 0.0,
+    "accepted": true,
+    "matched_terms": [
+      "python",
+      "python developer"
+    ],
+    "missing_terms": [
+      "developer"
+    ],
+    "penalties": [],
+    "reasons": [
+      "+ Exact title query match: +100",
+      "+ Required skill match for 'python': +50"
+    ],
+    "matched_domains": [
+      "backend"
+    ],
+    "conflicting_domains": [
+      "data",
+      "frontend"
+    ],
+    "role_similarity": 1.0
+  },
+  {
+    "provider": "search_engine",
+    "discovery_provider": "search_engine",
+    "title": "Wintermute - Core Developer (Python)",
+    "company": "Company",
+    "url": "https://jobs.lever.co/wintermute-trading/d059ea72-e3d2-42ce-bbb3-d47531e0c933/apply",
+    "description_len": 997,
+    "required_skills": [
+      "C",
+      "Sql",
+      "Linux",
+      "JavaScript",
+      "Python",
+      "R",
+      "Ruby",
+      "Api"
+    ],
+    "total_score": 72.5,
+    "title_score": 60.0,
+    "skill_score": 12.5,
+    "desc_score": 0.0,
+    "loc_score": 0.0,
+    "penalty_pts": 0.0,
+    "accepted": true,
+    "matched_terms": [
+      "python",
+      "developer"
+    ],
+    "missing_terms": [],
+    "penalties": [],
+    "reasons": [
+      "+ Technology 'python' in title: +45",
+      "+ Matched domains ['backend'] in title: +35",
+      "+ Role matched in title (similarity 1.00): +30.0",
+      "+ Required skill match for 'python': +50"
+    ],
+    "matched_domains": [
+      "backend"
+    ],
+    "conflicting_domains": [
+      "data",
+      "frontend"
+    ],
+    "role_similarity": 1.0
+  },
+  {
+    "provider": "search_engine",
+    "discovery_provider": "search_engine",
+    "title": "Sr Lead Technical Artist",
+    "company": "Aristocrat",
+    "url": "https://www.simplyhired.co.in/job/zXVML46O8oOiNXqRfQJG8If1tEjdxEU-wlyzx29ArB94loIWmeSoPA",
+    "description_len": 5632,
+    "required_skills": [
+      "C",
+      ".Net",
+      "JavaScript",
+      "Python",
+      "Microservices",
+      "Kubernetes",
+      "R",
+      "Git",
+      "Docker",
+      "Go"
+    ],
+    "total_score": 35.5,
+    "title_score": 21.0,
+    "skill_score": 12.5,
+    "desc_score": 2.0,
+    "loc_score": 0.0,
+    "penalty_pts": 0.0,
+    "accepted": true,
+    "matched_terms": [
+      "python"
+    ],
+    "missing_terms": [
+      "developer"
+    ],
+    "penalties": [],
+    "reasons": [
+      "+ Matched domains ['backend'] in title: +35",
+      "+ Required skill match for 'python': +50"
+    ],
+    "matched_domains": [
+      "backend"
+    ],
+    "conflicting_domains": [
+      "data",
+      "frontend",
+      "devops"
+    ],
+    "role_similarity": 0.85
+  },
+  {
+    "provider": "greenhouse",
+    "discovery_provider": "greenhouse",
+    "title": "Detection & Mitigation Engineer",
+    "company": "Cloudflare",
+    "url": "https://boards.greenhouse.io/cloudflare/jobs/7489019?gh_jid=7489019",
+    "description_len": 13148,
+    "required_skills": [],
+    "total_score": 25.0,
+    "title_score": 21.0,
+    "skill_score": 0.0,
+    "desc_score": 4.0,
+    "loc_score": 0.0,
+    "penalty_pts": 0.0,
+    "accepted": false,
+    "matched_terms": [
+      "python",
+      "developer"
+    ],
+    "missing_terms": [],
+    "penalties": [],
+    "reasons": [
+      "+ Matched domains ['backend'] in title: +35"
+    ],
+    "matched_domains": [
+      "backend"
+    ],
+    "conflicting_domains": [
+      "game",
+      "data",
+      "mobile",
+      "devops"
+    ],
+    "role_similarity": 0.85
+  },
+  {
+    "provider": "greenhouse",
+    "discovery_provider": "greenhouse",
+    "title": "Digital Customer Engineer",
+    "company": "Cloudflare",
+    "url": "https://boards.greenhouse.io/cloudflare/jobs/8041034?gh_jid=8041034",
+    "description_len": 12188,
+    "required_skills": [],
+    "total_score": 25.0,
+    "title_score": 21.0,
+    "skill_score": 0.0,
+    "desc_score": 4.0,
+    "loc_score": 0.0,
+    "penalty_pts": 0.0,
+    "accepted": false,
+    "matched_terms": [
+      "python",
+      "developer"
+    ],
+    "missing_terms": [],
+    "penalties": [],
+    "reasons": [
+      "+ Matched domains ['backend'] in title: +35"
+    ],
+    "matched_domains": [
+      "backend"
+    ],
+    "conflicting_domains": [
+      "devops",
+      "game",
+      "frontend",
+      "mobile",
+      "data"
+    ],
+    "role_similarity": 0.85
+  },
+  {
+    "provider": "greenhouse",
+    "discovery_provider": "greenhouse",
+    "title": "Distributed Systems Engineer, Analytical Database Platform",
+    "company": "Cloudflare",
+    "url": "https://boards.greenhouse.io/cloudflare/jobs/7462799?gh_jid=7462799",
+    "description_len": 14573,
+    "required_skills": [],
+    "total_score": 25.0,
+    "title_score": 21.0,
+    "skill_score": 0.0,
+    "desc_score": 4.0,
+    "loc_score": 0.0,
+    "penalty_pts": 0.0,
+    "accepted": false,
+    "matched_terms": [
+      "python",
+      "developer"
+    ],
+    "missing_terms": [],
+    "penalties": [],
+    "reasons": [
+      "+ Matched domains ['backend'] in title: +35"
+    ],
+    "matched_domains": [
+      "backend"
+    ],
+    "conflicting_domains": [
+      "data",
+      "devops"
+    ],
+    "role_similarity": 0.85
+  },
+  {
+    "provider": "greenhouse",
+    "discovery_provider": "greenhouse",
+    "title": "Marketing Engineer",
+    "company": "Figma",
+    "url": "https://boards.greenhouse.io/figma/jobs/6013495004?gh_jid=6013495004",
+    "description_len": 10932,
+    "required_skills": [],
+    "total_score": 25.0,
+    "title_score": 21.0,
+    "skill_score": 0.0,
+    "desc_score": 4.0,
+    "loc_score": 0.0,
+    "penalty_pts": 0.0,
+    "accepted": false,
+    "matched_terms": [
+      "python",
+      "developer"
+    ],
+    "missing_terms": [],
+    "penalties": [],
+    "reasons": [
+      "+ Matched domains ['backend'] in title: +35"
+    ],
+    "matched_domains": [
+      "backend"
+    ],
+    "conflicting_domains": [
+      "game",
+      "data",
+      "frontend",
+      "devops"
+    ],
+    "role_similarity": 0.85
+  },
+  {
+    "provider": "greenhouse",
+    "discovery_provider": "greenhouse",
+    "title": "Analyst, Product Pricing",
+    "company": "Stripe",
+    "url": "https://stripe.com/jobs/search?gh_jid=7896404",
+    "description_len": 4507,
+    "required_skills": [],
+    "total_score": 23.0,
+    "title_score": 21.0,
+    "skill_score": 0.0,
+    "desc_score": 2.0,
+    "loc_score": 0.0,
+    "penalty_pts": 0.0,
+    "accepted": false,
+    "matched_terms": [
+      "python"
+    ],
+    "missing_terms": [
+      "developer"
+    ],
+    "penalties": [],
+    "reasons": [
+      "+ Matched domains ['backend'] in title: +35"
+    ],
+    "matched_domains": [
+      "backend"
+    ],
+    "conflicting_domains": [
+      "game",
+      "data"
+    ],
+    "role_similarity": 0.85
+  },
+  {
+    "provider": "greenhouse",
+    "discovery_provider": "greenhouse",
+    "title": "Data Scientist - Algorithms, Community Support",
+    "company": "Airbnb",
+    "url": "https://careers.airbnb.com/positions/8031901?gh_jid=8031901",
+    "description_len": 9276,
+    "required_skills": [],
+    "total_score": 23.0,
+    "title_score": 21.0,
+    "skill_score": 0.0,
+    "desc_score": 2.0,
+    "loc_score": 0.0,
+    "penalty_pts": 0.0,
+    "accepted": false,
+    "matched_terms": [
+      "python"
+    ],
+    "missing_terms": [
+      "developer"
+    ],
+    "penalties": [],
+    "reasons": [
+      "+ Matched domains ['backend'] in title: +35"
+    ],
+    "matched_domains": [
+      "backend"
+    ],
+    "conflicting_domains": [
+      "game",
+      "data"
+    ],
+    "role_similarity": 0.85
+  },
+  {
+    "provider": "lever",
+    "discovery_provider": "lever",
+    "title": "American Tech Fellowship",
+    "company": "Palantir",
+    "url": "https://jobs.lever.co/palantir/0ccbe620-a3ef-41d1-a5c4-68e56b3c91d0",
+    "description_len": 5055,
+    "required_skills": [],
+    "total_score": 23.0,
+    "title_score": 21.0,
+    "skill_score": 0.0,
+    "desc_score": 2.0,
+    "loc_score": 0.0,
+    "penalty_pts": 0.0,
+    "accepted": false,
+    "matched_terms": [
+      "python"
+    ],
+    "missing_terms": [
+      "developer"
+    ],
+    "penalties": [],
+    "reasons": [
+      "+ Matched domains ['backend'] in title: +35"
+    ],
+    "matched_domains": [
+      "backend"
+    ],
+    "conflicting_domains": [
+      "game",
+      "data",
+      "frontend",
+      "devops"
+    ],
+    "role_similarity": 0.85
+  },
+  {
+    "provider": "lever",
+    "discovery_provider": "lever",
+    "title": "Deployment Strategist, Internship",
+    "company": "Palantir",
+    "url": "https://jobs.lever.co/palantir/774cf5c9-bf6a-4d77-bf60-d50ef1beb1a0",
+    "description_len": 5621,
+    "required_skills": [],
+    "total_score": 23.0,
+    "title_score": 21.0,
+    "skill_score": 0.0,
+    "desc_score": 2.0,
+    "loc_score": 0.0,
+    "penalty_pts": 0.0,
+    "accepted": false,
+    "matched_terms": [
+      "python"
+    ],
+    "missing_terms": [
+      "developer"
+    ],
+    "penalties": [],
+    "reasons": [
+      "+ Matched domains ['backend'] in title: +35"
+    ],
+    "matched_domains": [
+      "backend"
+    ],
+    "conflicting_domains": [
+      "game",
+      "data",
+      "frontend"
+    ],
+    "role_similarity": 0.85
+  },
+  {
+    "provider": "lever",
+    "discovery_provider": "lever",
+    "title": "Forward Deployed Software Engineer, Internship",
+    "company": "Palantir",
+    "url": "https://jobs.lever.co/palantir/1b6f1d82-d459-4dea-8bc2-8d2ffe6f881a",
+    "description_len": 7311,
+    "required_skills": [],
+    "total_score": 23.0,
+    "title_score": 21.0,
+    "skill_score": 0.0,
+    "desc_score": 2.0,
+    "loc_score": 0.0,
+    "penalty_pts": 0.0,
+    "accepted": false,
+    "matched_terms": [
+      "python"
+    ],
+    "missing_terms": [
+      "developer"
+    ],
+    "penalties": [],
+    "reasons": [
+      "+ Matched domains ['backend'] in title: +35"
+    ],
+    "matched_domains": [
+      "backend"
+    ],
+    "conflicting_domains": [
+      "game",
+      "data",
+      "frontend"
+    ],
+    "role_similarity": 0.85
+  },
+  {
+    "provider": "greenhouse",
+    "discovery_provider": "greenhouse",
+    "title": "AI Engineer",
+    "company": "Stripe",
+    "url": "https://stripe.com/jobs/search?gh_jid=8044460",
+    "description_len": 8238,
+    "required_skills": [],
+    "total_score": -66.0,
+    "title_score": 0.0,
+    "skill_score": 0.0,
+    "desc_score": 4.0,
+    "loc_score": 0.0,
+    "penalty_pts": -70.0,
+    "accepted": false,
+    "matched_terms": [
+      "python",
+      "developer"
+    ],
+    "missing_terms": [],
+    "penalties": [
+      "- Specialization conflict: Domain '['data']' conflicts with query domain '{'backend'}'"
+    ],
+    "reasons": [
+      "- Specialization conflict: Domain '['data']' conflicts with query domain '{'backend'}'"
+    ],
+    "matched_domains": [],
+    "conflicting_domains": [
+      "data"
+    ],
+    "role_similarity": 0.5
+  },
+  {
+    "provider": "greenhouse",
+    "discovery_provider": "greenhouse",
+    "title": "Android Engineer, Terminal",
+    "company": "Stripe",
+    "url": "https://stripe.com/jobs/search?gh_jid=7543559",
+    "description_len": 3610,
+    "required_skills": [],
+    "total_score": -66.0,
+    "title_score": 0.0,
+    "skill_score": 0.0,
+    "desc_score": 4.0,
+    "loc_score": 0.0,
+    "penalty_pts": -70.0,
+    "accepted": false,
+    "matched_terms": [
+      "python",
+      "developer"
+    ],
+    "missing_terms": [],
+    "penalties": [
+      "- Specialization conflict: Domain '['mobile']' conflicts with query domain '{'backend'}'"
+    ],
+    "reasons": [
+      "- Specialization conflict: Domain '['mobile']' conflicts with query domain '{'backend'}'"
+    ],
+    "matched_domains": [],
+    "conflicting_domains": [
+      "mobile"
+    ],
+    "role_similarity": 0.5
+  },
+  {
+    "provider": "greenhouse",
+    "discovery_provider": "greenhouse",
+    "title": "Customer Engineer, India (Based in Mumbai)",
+    "company": "Cloudflare",
+    "url": "https://boards.greenhouse.io/cloudflare/jobs/7955378?gh_jid=7955378",
+    "description_len": 11864,
+    "required_skills": [],
+    "total_score": -66.0,
+    "title_score": 0.0,
+    "skill_score": 0.0,
+    "desc_score": 4.0,
+    "loc_score": 0.0,
+    "penalty_pts": -70.0,
+    "accepted": false,
+    "matched_terms": [
+      "python",
+      "developer"
+    ],
+    "missing_terms": [],
+    "penalties": [
+      "- Specialization conflict: Domain '['data']' conflicts with query domain '{'backend'}'"
+    ],
+    "reasons": [
+      "- Specialization conflict: Domain '['data']' conflicts with query domain '{'backend'}'"
+    ],
+    "matched_domains": [],
+    "conflicting_domains": [
+      "data"
+    ],
+    "role_similarity": 0.5
+  },
+  {
+    "provider": "greenhouse",
+    "discovery_provider": "greenhouse",
+    "title": "Accounting AI Solutions Lead",
+    "company": "Stripe",
+    "url": "https://stripe.com/jobs/search?gh_jid=8103750",
+    "description_len": 5689,
+    "required_skills": [],
+    "total_score": -68.0,
+    "title_score": 0.0,
+    "skill_score": 0.0,
+    "desc_score": 2.0,
+    "loc_score": 0.0,
+    "penalty_pts": -70.0,
+    "accepted": false,
+    "matched_terms": [
+      "python"
+    ],
+    "missing_terms": [
+      "developer"
+    ],
+    "penalties": [
+      "- Specialization conflict: Domain '['data']' conflicts with query domain '{'backend'}'"
+    ],
+    "reasons": [
+      "- Specialization conflict: Domain '['data']' conflicts with query domain '{'backend'}'"
+    ],
+    "matched_domains": [],
+    "conflicting_domains": [
+      "data"
+    ],
+    "role_similarity": 0.5
+  },
+  {
+    "provider": "greenhouse",
+    "discovery_provider": "greenhouse",
+    "title": "AI Specialist, Treasury Finance Operations",
+    "company": "Stripe",
+    "url": "https://stripe.com/jobs/search?gh_jid=7947074",
+    "description_len": 5336,
+    "required_skills": [],
+    "total_score": -68.0,
+    "title_score": 0.0,
+    "skill_score": 0.0,
+    "desc_score": 2.0,
+    "loc_score": 0.0,
+    "penalty_pts": -70.0,
+    "accepted": false,
+    "matched_terms": [
+      "python"
+    ],
+    "missing_terms": [
+      "developer"
+    ],
+    "penalties": [
+      "- Specialization conflict: Domain '['data']' conflicts with query domain '{'backend'}'"
+    ],
+    "reasons": [
+      "- Specialization conflict: Domain '['data']' conflicts with query domain '{'backend'}'"
+    ],
+    "matched_domains": [],
+    "conflicting_domains": [
+      "data"
+    ],
+    "role_similarity": 0.5
+  },
+  {
+    "provider": "greenhouse",
+    "discovery_provider": "greenhouse",
+    "title": "AI Applied Scientist",
+    "company": "Figma",
+    "url": "https://boards.greenhouse.io/figma/jobs/5707966004?gh_jid=5707966004",
+    "description_len": 8703,
+    "required_skills": [],
+    "total_score": -68.0,
+    "title_score": 0.0,
+    "skill_score": 0.0,
+    "desc_score": 2.0,
+    "loc_score": 0.0,
+    "penalty_pts": -70.0,
+    "accepted": false,
+    "matched_terms": [
+      "python"
+    ],
+    "missing_terms": [
+      "developer"
+    ],
+    "penalties": [
+      "- Specialization conflict: Domain '['data']' conflicts with query domain '{'backend'}'"
+    ],
+    "reasons": [
+      "- Specialization conflict: Domain '['data']' conflicts with query domain '{'backend'}'"
+    ],
+    "matched_domains": [],
+    "conflicting_domains": [
+      "data"
+    ],
+    "role_similarity": 0.5
+  },
+  {
+    "provider": "greenhouse",
+    "discovery_provider": "greenhouse",
+    "title": "Data Engineer",
+    "company": "Figma",
+    "url": "https://boards.greenhouse.io/figma/jobs/5220003004?gh_jid=5220003004",
+    "description_len": 17496,
+    "required_skills": [],
+    "total_score": -68.0,
+    "title_score": 0.0,
+    "skill_score": 0.0,
+    "desc_score": 2.0,
+    "loc_score": 0.0,
+    "penalty_pts": -70.0,
+    "accepted": false,
+    "matched_terms": [
+      "python"
+    ],
+    "missing_terms": [
+      "developer"
+    ],
+    "penalties": [
+      "- Specialization conflict: Domain '['data']' conflicts with query domain '{'backend'}'"
+    ],
+    "reasons": [
+      "- Specialization conflict: Domain '['data']' conflicts with query domain '{'backend'}'"
+    ],
+    "matched_domains": [],
+    "conflicting_domains": [
+      "data"
+    ],
+    "role_similarity": 0.5
+  },
+  {
+    "provider": "greenhouse",
+    "discovery_provider": "greenhouse",
+    "title": "Data Scientist, Core Data -  PhD (2026)",
+    "company": "Figma",
+    "url": "https://boards.greenhouse.io/figma/jobs/5976930004?gh_jid=5976930004",
+    "description_len": 9165,
+    "required_skills": [],
+    "total_score": -68.0,
+    "title_score": 0.0,
+    "skill_score": 0.0,
+    "desc_score": 2.0,
+    "loc_score": 0.0,
+    "penalty_pts": -70.0,
+    "accepted": false,
+    "matched_terms": [
+      "python"
+    ],
+    "missing_terms": [
+      "developer"
+    ],
+    "penalties": [
+      "- Specialization conflict: Domain '['data']' conflicts with query domain '{'backend'}'"
+    ],
+    "reasons": [
+      "- Specialization conflict: Domain '['data']' conflicts with query domain '{'backend'}'"
+    ],
+    "matched_domains": [],
+    "conflicting_domains": [
+      "data"
+    ],
+    "role_similarity": 0.5
+  },
+  {
+    "provider": "greenhouse",
+    "discovery_provider": "greenhouse",
+    "title": "Data Scientist, Finance",
+    "company": "Figma",
+    "url": "https://boards.greenhouse.io/figma/jobs/6013304004?gh_jid=6013304004",
+    "description_len": 12358,
+    "required_skills": [],
+    "total_score": -68.0,
+    "title_score": 0.0,
+    "skill_score": 0.0,
+    "desc_score": 2.0,
+    "loc_score": 0.0,
+    "penalty_pts": -70.0,
+    "accepted": false,
+    "matched_terms": [
+      "python"
+    ],
+    "missing_terms": [
+      "developer"
+    ],
+    "penalties": [
+      "- Specialization conflict: Domain '['data']' conflicts with query domain '{'backend'}'"
+    ],
+    "reasons": [
+      "- Specialization conflict: Domain '['data']' conflicts with query domain '{'backend'}'"
+    ],
+    "matched_domains": [],
+    "conflicting_domains": [
+      "data"
+    ],
+    "role_similarity": 0.5
+  },
+  {
+    "provider": "greenhouse",
+    "discovery_provider": "greenhouse",
+    "title": "Community Support Forecasting and Demand Planning Analyst",
+    "company": "Airbnb",
+    "url": "https://careers.airbnb.com/positions/7839229?gh_jid=7839229",
+    "description_len": 10201,
+    "required_skills": [],
+    "total_score": -68.0,
+    "title_score": 0.0,
+    "skill_score": 0.0,
+    "desc_score": 2.0,
+    "loc_score": 0.0,
+    "penalty_pts": -70.0,
+    "accepted": false,
+    "matched_terms": [
+      "python"
+    ],
+    "missing_terms": [
+      "developer"
+    ],
+    "penalties": [
+      "- Specialization conflict: Domain '['game']' conflicts with query domain '{'backend'}'"
+    ],
+    "reasons": [
+      "- Specialization conflict: Domain '['game']' conflicts with query domain '{'backend'}'"
+    ],
+    "matched_domains": [],
+    "conflicting_domains": [
+      "game"
+    ],
+    "role_similarity": 0.15
+  },
+  {
+    "provider": "greenhouse",
+    "discovery_provider": "greenhouse",
+    "title": "(Contract) Senior Data Scientist, Platform Inference - MarTech DS Measurement",
+    "company": "Airbnb",
+    "url": "https://careers.airbnb.com/positions/7732569?gh_jid=7732569",
+    "description_len": 8836,
+    "required_skills": [],
+    "total_score": -68.0,
+    "title_score": 0.0,
+    "skill_score": 0.0,
+    "desc_score": 2.0,
+    "loc_score": 0.0,
+    "penalty_pts": -70.0,
+    "accepted": false,
+    "matched_terms": [
+      "python"
+    ],
+    "missing_terms": [
+      "developer"
+    ],
+    "penalties": [
+      "- Specialization conflict: Domain '['data', 'devops']' conflicts with query domain '{'backend'}'"
+    ],
+    "reasons": [
+      "- Specialization conflict: Domain '['data', 'devops']' conflicts with query domain '{'backend'}'"
+    ],
+    "matched_domains": [],
+    "conflicting_domains": [
+      "data",
+      "devops"
+    ],
+    "role_similarity": 0.5
+  },
+  {
+    "provider": "greenhouse",
+    "discovery_provider": "greenhouse",
+    "title": "Data Scientist - Inference, Community Support",
+    "company": "Airbnb",
+    "url": "https://careers.airbnb.com/positions/8031907?gh_jid=8031907",
+    "description_len": 9447,
+    "required_skills": [],
+    "total_score": -68.0,
+    "title_score": 0.0,
+    "skill_score": 0.0,
+    "desc_score": 2.0,
+    "loc_score": 0.0,
+    "penalty_pts": -70.0,
+    "accepted": false,
+    "matched_terms": [
+      "python"
+    ],
+    "missing_terms": [
+      "developer"
+    ],
+    "penalties": [
+      "- Specialization conflict: Domain '['game', 'data']' conflicts with query domain '{'backend'}'"
+    ],
+    "reasons": [
+      "- Specialization conflict: Domain '['game', 'data']' conflicts with query domain '{'backend'}'"
+    ],
+    "matched_domains": [],
+    "conflicting_domains": [
+      "game",
+      "data"
+    ],
+    "role_similarity": 0.15
+  },
+  {
+    "provider": "lever",
+    "discovery_provider": "lever",
+    "title": "Platform Intelligence Engineer",
+    "company": "Palantir",
+    "url": "https://jobs.lever.co/palantir/a753a9e7-a361-426b-9c25-3cf2488c1730",
+    "description_len": 2831,
+    "required_skills": [],
+    "total_score": -68.0,
+    "title_score": 0.0,
+    "skill_score": 0.0,
+    "desc_score": 2.0,
+    "loc_score": 0.0,
+    "penalty_pts": -70.0,
+    "accepted": false,
+    "matched_terms": [
+      "python"
+    ],
+    "missing_terms": [
+      "developer"
+    ],
+    "penalties": [
+      "- Specialization conflict: Domain '['devops']' conflicts with query domain '{'backend'}'"
+    ],
+    "reasons": [
+      "- Specialization conflict: Domain '['devops']' conflicts with query domain '{'backend'}'"
+    ],
+    "matched_domains": [],
+    "conflicting_domains": [
+      "devops"
+    ],
+    "role_similarity": 0.5
+  },
+  {
+    "provider": "greenhouse",
+    "discovery_provider": "greenhouse",
+    "title": "Customer Engineer (Pre-Sales), Korea (Based in Seoul)",
+    "company": "Cloudflare",
+    "url": "https://boards.greenhouse.io/cloudflare/jobs/8027774?gh_jid=8027774",
+    "description_len": 11750,
+    "required_skills": [],
+    "total_score": -146.0,
+    "title_score": 0.0,
+    "skill_score": 0.0,
+    "desc_score": 4.0,
+    "loc_score": 0.0,
+    "penalty_pts": -150.0,
+    "accepted": false,
+    "matched_terms": [
+      "python",
+      "developer"
+    ],
+    "missing_terms": [],
+    "penalties": [
+      "- Domain mismatch: Non-tech job domain '{'sales'}' for tech query",
+      "- Specialization conflict: Domain '['sales']' conflicts with query domain '{'backend'}'"
+    ],
+    "reasons": [
+      "- Domain mismatch: Non-tech job domain '{'sales'}' for tech query",
+      "- Specialization conflict: Domain '['sales']' conflicts with query domain '{'backend'}'"
+    ],
+    "matched_domains": [],
+    "conflicting_domains": [
+      "sales"
+    ],
+    "role_similarity": 0.15
+  },
+  {
+    "provider": "greenhouse",
+    "discovery_provider": "greenhouse",
+    "title": "Compensation Partner",
+    "company": "Airbnb",
+    "url": "https://careers.airbnb.com/positions/8104102?gh_jid=8104102",
+    "description_len": 14213,
+    "required_skills": [],
+    "total_score": -148.0,
+    "title_score": 0.0,
+    "skill_score": 0.0,
+    "desc_score": 2.0,
+    "loc_score": 0.0,
+    "penalty_pts": -150.0,
+    "accepted": false,
+    "matched_terms": [
+      "python"
+    ],
+    "missing_terms": [
+      "developer"
+    ],
+    "penalties": [
+      "- Domain mismatch: Non-tech job domain '{'admin'}' for tech query",
+      "- Specialization conflict: Domain '['admin']' conflicts with query domain '{'backend'}'"
+    ],
+    "reasons": [
+      "- Domain mismatch: Non-tech job domain '{'admin'}' for tech query",
+      "- Specialization conflict: Domain '['admin']' conflicts with query domain '{'backend'}'"
+    ],
+    "matched_domains": [],
+    "conflicting_domains": [
+      "admin"
+    ],
+    "role_similarity": 0.15
+  }
+]

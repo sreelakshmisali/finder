@@ -15,6 +15,7 @@ import httpx
 from app.providers.base_discovery import ATSProvider, DiscoveryContext
 from app.providers._ats_filter import extract_content_tokens, job_matches_query
 from app.schemas.job import JobSearchQuery, NormalizedJob
+from app.services.extraction.skill_apply_extractor import SkillAndApplyExtractor
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +80,8 @@ class GreenhouseProvider(ATSProvider):
         limit_triggered = False
         # Fair per-company cap: each company can contribute at most this many
         # candidates, so no single company can starve the rest before ranking.
-        per_company_cap = max(5, math.ceil(query.limit / max(len(SAMPLE_BOARDS), 1)))
+        retrieval_budget = min(query.limit * 3, 200)
+        per_company_cap = max(5, math.ceil(retrieval_budget / max(len(SAMPLE_BOARDS), 1)))
 
         for board, data in board_results:
             if not data:
@@ -119,6 +121,14 @@ class GreenhouseProvider(ATSProvider):
                         diag.record_provider_stage(self.source_name, p3_rejected=1, rejection_reason="query_relevance_filter")
                     continue
 
+                # Extract technical skills from the Greenhouse HTML content
+                # (content is fetched via ?content=true and is raw HTML).
+                # html slot is correct here — the extractor searches both HTML
+                # and plain text so tags don't interfere with word matching.
+                job_skills = SkillAndApplyExtractor.extract_skills(
+                    html=content, description=""
+                )
+
                 results.append(
                     NormalizedJob(
                         company=company_name,
@@ -130,7 +140,8 @@ class GreenhouseProvider(ATSProvider):
                         url=job_url,
                         source=self.source_name,
                         discovery_provider=self.source_name,
-                        posted_date=datetime.utcnow()
+                        posted_date=datetime.utcnow(),
+                        required_skills=job_skills,
                     )
                 )
 
@@ -142,8 +153,8 @@ class GreenhouseProvider(ATSProvider):
 
         # Trim to global limit after all companies have contributed.
         pre_trim_count = len(results)
-        results = results[:query.limit]
-        limit_triggered = pre_trim_count > query.limit
+        results = results[:retrieval_budget]
+        limit_triggered = pre_trim_count > retrieval_budget
 
         if diag:
             diag.record_provider_stage(

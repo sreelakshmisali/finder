@@ -15,6 +15,7 @@ import httpx
 from app.providers.base_discovery import ATSProvider, DiscoveryContext
 from app.providers._ats_filter import extract_content_tokens, job_matches_query
 from app.schemas.job import JobSearchQuery, NormalizedJob
+from app.services.extraction.skill_apply_extractor import SkillAndApplyExtractor
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +79,8 @@ class AshbyProvider(ATSProvider):
         limit_triggered = False
         # Fair per-company cap: each company can contribute at most this many
         # candidates, so no single company can starve the rest before ranking.
-        per_company_cap = max(5, math.ceil(query.limit / max(len(SAMPLE_ASHBY_COMPANIES), 1)))
+        retrieval_budget = min(query.limit * 3, 200)
+        per_company_cap = max(5, math.ceil(retrieval_budget / max(len(SAMPLE_ASHBY_COMPANIES), 1)))
 
         for board, data in board_results:
             if not data or not isinstance(data, dict):
@@ -93,7 +95,18 @@ class AshbyProvider(ATSProvider):
                 title = item.get("title", "")
                 loc = item.get("locationName", "Remote")
                 job_url = item.get("jobUrl", "")
-                desc_info = f"{title} position at {company_name} in {loc}."
+
+                # Use the real description returned by the Ashby API.
+                # descriptionPlain is preferred (plain text); descriptionHtml is
+                # the fallback (the extractor handles HTML tags fine).  If neither
+                # is present (e.g. a future API change) we fall back to the
+                # synthetic string so existing behaviour is preserved.
+                real_desc = (
+                    item.get("descriptionPlain", "")
+                    or item.get("descriptionHtml", "")
+                    or item.get("description", "")
+                )
+                desc_info = real_desc or f"{title} position at {company_name} in {loc}."
 
                 # Filter location
                 if search_loc:
@@ -109,15 +122,18 @@ class AshbyProvider(ATSProvider):
                         diag.record_provider_stage(self.source_name, p3_rejected=1, rejection_reason="remote_only_filter")
                     continue
 
-                # Query relevance filter: reject jobs whose title AND description
-                # share zero content tokens with the search query.  No-op when
-                # content_tokens is empty (generic or empty query).
-                # Note: Ashby's description is synthetic (title + company + loc),
-                # so for this provider the title check is the primary signal.
+                # Query relevance filter: now uses real description text, so
+                # description-level keyword matches work correctly.
                 if not job_matches_query(title, desc_info, content_tokens):
                     if diag:
                         diag.record_provider_stage(self.source_name, p3_rejected=1, rejection_reason="query_relevance_filter")
                     continue
+
+                # Extract technical skills from the real description text.
+                job_skills = SkillAndApplyExtractor.extract_skills(
+                    html=item.get("descriptionHtml", ""),
+                    description=item.get("descriptionPlain", "") or item.get("description", ""),
+                )
 
                 results.append(
                     NormalizedJob(
@@ -130,7 +146,8 @@ class AshbyProvider(ATSProvider):
                         url=job_url,
                         source=self.source_name,
                         discovery_provider=self.source_name,
-                        posted_date=datetime.utcnow()
+                        posted_date=datetime.utcnow(),
+                        required_skills=job_skills,
                     )
                 )
 
@@ -142,8 +159,8 @@ class AshbyProvider(ATSProvider):
 
         # Trim to global limit after all companies have contributed.
         pre_trim_count = len(results)
-        results = results[:query.limit]
-        limit_triggered = pre_trim_count > query.limit
+        results = results[:retrieval_budget]
+        limit_triggered = pre_trim_count > retrieval_budget
 
         if diag:
             diag.record_provider_stage(

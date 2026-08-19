@@ -565,3 +565,259 @@ async def test_ashby_fairness_preserved_with_filter(keyword):
     assert companies == expected, (
         f"[{keyword}] Missing Ashby companies after filter: {expected - companies}"
     )
+
+
+# ─── Batch 1 regression: skill extraction + Ashby real description ────────────
+
+class TestBatch1SkillExtractionAndAshbyDescription:
+    """
+    Regression tests for the two Batch 1 fixes:
+
+    A) Greenhouse and Lever now extract required_skills from the job description
+       using the existing SkillAndApplyExtractor.  A job that mentions Python in
+       its description should surface a "Python" skill signal even if "Python" is
+       absent from the title.
+
+    B) Ashby now uses the real descriptionPlain/descriptionHtml from the API
+       instead of the synthetic "title position at company in loc." string.  A
+       job whose title doesn't contain the query keyword but whose real
+       description does must no longer be incorrectly rejected by the filter.
+    """
+
+    # ── Fix A: Greenhouse skill extraction ────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_greenhouse_python_in_description_yields_skill(self):
+        """
+        Greenhouse job: title has no Python, but HTML content does.
+        Expected: job passes filter AND required_skills contains 'Python'.
+        """
+        provider = GreenhouseProvider()
+        query = JobSearchQuery(query="Python Developer", limit=100)
+        ctx = DiscoveryContext(query=query)
+
+        class _PythonDescClient:
+            async def __aenter__(self):
+                return self
+            async def __aexit__(self, *args):
+                pass
+            async def get(self, url, **kwargs):
+                m = re.search(r"/boards/(\w+)/jobs", url)
+                board = m.group(1) if m else "x"
+                return _FakeResponse({"jobs": [{
+                    "title": "Backend Engineer",          # no 'python' in title
+                    "location": {"name": "Remote"},
+                    "absolute_url": f"https://boards.greenhouse.io/{board}/jobs/1",
+                    "content": (
+                        "<p>We build scalable microservices in "
+                        "<strong>Python</strong> using FastAPI and PostgreSQL.</p>"
+                    ),
+                }]})
+
+        with patch("app.providers.greenhouse.httpx.AsyncClient",
+                   return_value=_PythonDescClient()):
+            results = await provider.discover(ctx)
+
+        # One result per board — all passed the description-level filter
+        assert len(results) == len(GREENHOUSE_BOARDS), (
+            f"Expected {len(GREENHOUSE_BOARDS)} results (python in content), "
+            f"got {len(results)}"
+        )
+        for r in results:
+            assert "Python" in r.required_skills, (
+                f"Expected 'Python' in required_skills for {r.title!r}, "
+                f"got {r.required_skills}"
+            )
+
+    @pytest.mark.asyncio
+    async def test_greenhouse_empty_description_gives_no_skills(self):
+        """Jobs with empty content produce required_skills=[] without error."""
+        provider = GreenhouseProvider()
+        query = JobSearchQuery(query="Python Developer", limit=100)
+        ctx = DiscoveryContext(query=query)
+
+        class _EmptyDescClient:
+            async def __aenter__(self):
+                return self
+            async def __aexit__(self, *args):
+                pass
+            async def get(self, url, **kwargs):
+                m = re.search(r"/boards/(\w+)/jobs", url)
+                board = m.group(1) if m else "x"
+                return _FakeResponse({"jobs": [{
+                    "title": "Python Developer",
+                    "location": {"name": "Remote"},
+                    "absolute_url": f"https://boards.greenhouse.io/{board}/jobs/1",
+                    "content": "",        # no description
+                }]})
+
+        with patch("app.providers.greenhouse.httpx.AsyncClient",
+                   return_value=_EmptyDescClient()):
+            results = await provider.discover(ctx)
+
+        assert len(results) == len(GREENHOUSE_BOARDS)
+        # Python is in the title, filter passes. No description → empty skills.
+        for r in results:
+            assert isinstance(r.required_skills, list)
+
+    # ── Fix A: Lever skill extraction ─────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_lever_python_in_description_yields_skill(self):
+        """
+        Lever job: title has no Python, but descriptionPlain does.
+        Expected: job passes filter AND required_skills contains 'Python'.
+        """
+        provider = LeverProvider()
+        query = JobSearchQuery(query="Python Developer", limit=100)
+        ctx = DiscoveryContext(query=query)
+
+        class _PythonDescClient:
+            async def __aenter__(self):
+                return self
+            async def __aexit__(self, *args):
+                pass
+            async def get(self, url, **kwargs):
+                m = re.search(r"/postings/(\w+)", url)
+                company = m.group(1) if m else "x"
+                return _FakeResponse([{
+                    "text": "Backend Engineer",           # no 'python' in title
+                    "categories": {"location": "Remote"},
+                    "hostedUrl": f"https://jobs.lever.co/{company}/1",
+                    "descriptionPlain": (
+                        "Python is our primary language. We use Django and PostgreSQL "
+                        "for our backend systems."
+                    ),
+                    "workplaceType": "remote",
+                }])
+
+        with patch("app.providers.lever.httpx.AsyncClient",
+                   return_value=_PythonDescClient()):
+            results = await provider.discover(ctx)
+
+        assert len(results) == len(SAMPLE_LEVER_COMPANIES), (
+            f"Expected {len(SAMPLE_LEVER_COMPANIES)} results, got {len(results)}"
+        )
+        for r in results:
+            assert "Python" in r.required_skills, (
+                f"Expected 'Python' in required_skills for {r.title!r}, "
+                f"got {r.required_skills}"
+            )
+
+    @pytest.mark.asyncio
+    async def test_lever_empty_description_gives_no_skills(self):
+        """Lever jobs with empty descriptionPlain produce required_skills=[] without error."""
+        provider = LeverProvider()
+        query = JobSearchQuery(query="Python Developer", limit=100)
+        ctx = DiscoveryContext(query=query)
+
+        class _EmptyDescClient:
+            async def __aenter__(self):
+                return self
+            async def __aexit__(self, *args):
+                pass
+            async def get(self, url, **kwargs):
+                m = re.search(r"/postings/(\w+)", url)
+                company = m.group(1) if m else "x"
+                return _FakeResponse([{
+                    "text": "Python Engineer",
+                    "categories": {"location": "Remote"},
+                    "hostedUrl": f"https://jobs.lever.co/{company}/1",
+                    "descriptionPlain": "",
+                    "workplaceType": "remote",
+                }])
+
+        with patch("app.providers.lever.httpx.AsyncClient",
+                   return_value=_EmptyDescClient()):
+            results = await provider.discover(ctx)
+
+        assert len(results) == len(SAMPLE_LEVER_COMPANIES)
+        for r in results:
+            assert isinstance(r.required_skills, list)
+
+    # ── Fix B: Ashby real description ─────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_ashby_real_description_enables_keyword_filter(self):
+        """
+        Ashby job: title has no Python, but descriptionPlain does.
+        Before fix: synthetic desc had no Python → REJECTED.
+        After fix:  real desc has Python → ACCEPTED.
+        """
+        provider = AshbyProvider()
+        query = JobSearchQuery(query="Python Developer", limit=100)
+        ctx = DiscoveryContext(query=query)
+
+        class _RealDescClient:
+            async def __aenter__(self):
+                return self
+            async def __aexit__(self, *args):
+                pass
+            async def get(self, url, **kwargs):
+                m = re.search(r"/job-board/(\w+)", url)
+                board = m.group(1) if m else "x"
+                return _FakeResponse({"jobs": [{
+                    "title": "Backend Engineer",          # no 'python' in title
+                    "locationName": "Remote",
+                    "jobUrl": f"https://jobs.ashbyhq.com/{board}/1",
+                    "isRemote": True,
+                    "descriptionPlain": (
+                        "We build APIs in Python using FastAPI and PostgreSQL."
+                    ),
+                }]})
+
+        with patch("app.providers.ashby.httpx.AsyncClient",
+                   return_value=_RealDescClient()):
+            results = await provider.discover(ctx)
+
+        assert len(results) == len(SAMPLE_ASHBY_COMPANIES), (
+            "Jobs with Python in real description must pass the Ashby filter. "
+            f"Expected {len(SAMPLE_ASHBY_COMPANIES)}, got {len(results)}"
+        )
+        for r in results:
+            assert "Python" in r.required_skills, (
+                f"Expected 'Python' in required_skills for {r.title!r}, "
+                f"got {r.required_skills}"
+            )
+            # Description must be the real text, not the synthetic fallback
+            assert "Python" in r.description or "python" in r.description.lower(), (
+                f"NormalizedJob.description must reflect real API description, "
+                f"got: {r.description!r}"
+            )
+
+    @pytest.mark.asyncio
+    async def test_ashby_no_real_description_falls_back_to_synthetic(self):
+        """
+        When Ashby API returns no description fields, the synthetic fallback
+        is used unchanged — backwards-compatible behaviour.
+        """
+        provider = AshbyProvider()
+        query = JobSearchQuery(query="Python Developer", limit=100)
+        ctx = DiscoveryContext(query=query)
+
+        class _NoDescClient:
+            async def __aenter__(self):
+                return self
+            async def __aexit__(self, *args):
+                pass
+            async def get(self, url, **kwargs):
+                m = re.search(r"/job-board/(\w+)", url)
+                board = m.group(1) if m else "x"
+                return _FakeResponse({"jobs": [{
+                    "title": "Python Developer",          # keyword in title → passes
+                    "locationName": "Remote",
+                    "jobUrl": f"https://jobs.ashbyhq.com/{board}/1",
+                    "isRemote": True,
+                    # No descriptionPlain / descriptionHtml → fallback
+                }]})
+
+        with patch("app.providers.ashby.httpx.AsyncClient",
+                   return_value=_NoDescClient()):
+            results = await provider.discover(ctx)
+
+        assert len(results) == len(SAMPLE_ASHBY_COMPANIES)
+        for r in results:
+            # Fallback synthetic string: "Python Developer position at <Board> in Remote."
+            assert "Python Developer" in r.description, (
+                f"Expected synthetic fallback description, got: {r.description!r}"
+            )
