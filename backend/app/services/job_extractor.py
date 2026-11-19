@@ -171,6 +171,9 @@ class JobExtractor:
         }
         is_direct_ats = provider_tag in DIRECT_ATS_PROVIDERS
 
+        if is_direct_ats:
+            base_job.source = provider_tag
+
         # --- Validation Logic for apply_url ---
         # 1. Reject if apply_url is None and it is NOT a direct/trusted ATS provider
         if not base_job.apply_url:

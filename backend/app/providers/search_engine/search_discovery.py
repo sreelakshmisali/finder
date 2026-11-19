@@ -177,8 +177,18 @@ class SearchDiscoveryProvider(SearchEngineProvider):
                     effect=f"Fallback candidate slicing capped at limit={limit}"
                 )
             url_to_result = {r.url: r for r in candidate_results}
+            semaphore = asyncio.Semaphore(self.scheduler.config.max_concurrent_fetches)
+
+            async def _bounded_extract(url, search_result, skip_classification):
+                async with semaphore:
+                    return await self.job_extractor.extract_from_url(
+                        url=url,
+                        search_result=search_result,
+                        skip_classification=skip_classification,
+                    )
+
             extraction_tasks = [
-                self.job_extractor.extract_from_url(
+                _bounded_extract(
                     url=url,
                     search_result=url_to_result.get(url),
                     skip_classification=False,
@@ -198,8 +208,19 @@ class SearchDiscoveryProvider(SearchEngineProvider):
                     output_size=len(target_tagged),
                     effect=f"Job posting URLs sliced at limit={limit}"
                 )
+            
+            semaphore = asyncio.Semaphore(self.scheduler.config.max_concurrent_fetches)
+
+            async def _bounded_extract(url, search_result, skip_classification):
+                async with semaphore:
+                    return await self.job_extractor.extract_from_url(
+                        url=url,
+                        search_result=search_result,
+                        skip_classification=skip_classification,
+                    )
+
             extraction_tasks = [
-                self.job_extractor.extract_from_url(
+                _bounded_extract(
                     url=tagged.url if hasattr(tagged, "url") else str(tagged),
                     search_result=url_to_result.get(tagged.url if hasattr(tagged, "url") else str(tagged)),
                     skip_classification=False,

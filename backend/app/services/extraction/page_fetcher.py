@@ -111,6 +111,36 @@ class SmartPageFetcher:
 
         return html
 
+    # Generic SPA root ids that many frameworks use. These are ambiguous on
+    # their own — plenty of fully server-rendered pages also mount their app
+    # at #root/#app while shipping complete content — so they only count as
+    # a JS-shell signal when the page's visible text is also very short.
+    _AMBIGUOUS_SPA_MOUNTS = [
+        '<div id="root"></div>',
+        '<div id="app"></div>',
+        '<div id="mount"></div>',
+        '<div id="__next"></div>',
+        '<div class="loading"></div>',
+    ]
+
+    # Mount signatures distinctive enough to be a definitive JS-shell signal
+    # by themselves, regardless of how much surrounding text the page has.
+    #
+    # Greenhouse's public job-board template (id="react-portal-mount-point")
+    # renders an individual job posting URL
+    # (boards.greenhouse.io/{company}/jobs/{id}) as the company's job INDEX
+    # page in static HTML — real company description, "Current openings at
+    # X" heading — with the specific job's content injected client-side into
+    # this portal mount point. Because that index-page boilerplate is
+    # substantial (often 2-3k+ characters), the ambiguous-mount text-length
+    # check above never fires for these pages, so this id is checked
+    # unconditionally. The id is specific to Greenhouse's embed architecture
+    # and not a generic/common mount name, so it will not misfire on
+    # unrelated fully-rendered pages.
+    _DEFINITIVE_SPA_MOUNTS = [
+        'id="react-portal-mount-point"',
+    ]
+
     @staticmethod
     def _is_js_spa_shell(html: Optional[str]) -> bool:
         if not html:
@@ -118,16 +148,16 @@ class SmartPageFetcher:
 
         clean_html = html.strip().lower()
 
-        # Check for explicit SPA container mounts with minimal inner text
-        spa_mounts = [
-            '<div id="root"></div>',
-            '<div id="app"></div>',
-            '<div id="mount"></div>',
-            '<div id="__next"></div>',
-            '<div class="loading"></div>'
-        ]
+        # Definitive markers: presence alone means the real content is
+        # client-side rendered, regardless of surrounding boilerplate length.
+        for marker in SmartPageFetcher._DEFINITIVE_SPA_MOUNTS:
+            if marker in clean_html:
+                return True
 
-        for mount in spa_mounts:
+        # Ambiguous markers: only treat as a shell if there's very little
+        # surrounding text, since these ids are also used by fully
+        # server-rendered pages.
+        for mount in SmartPageFetcher._AMBIGUOUS_SPA_MOUNTS:
             if mount in clean_html:
                 text_content = re.sub(r'<[^>]+>', '', clean_html).strip()
                 if len(text_content) < 100:

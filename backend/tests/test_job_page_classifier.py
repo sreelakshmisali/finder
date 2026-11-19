@@ -130,3 +130,44 @@ if __name__ == "__main__":
     test_job_page_classifier_irrelevant()
     test_job_page_classifier_empty_html()
 
+
+
+def test_job_title_signal_missing_empty_nested_title():
+    signal = JobTitleSignal()
+
+    # 1. No title tag
+    html_no_title = "<html><body><h1>Software Engineer</h1></body></html>"
+    soup = BeautifulSoup(html_no_title, "html.parser")
+    assert signal.evaluate("http://example.com/job/1", html_no_title, soup) == True
+
+    # 2. Empty title tag
+    html_empty_title = "<html><title></title><body><h1>Software Engineer</h1></body></html>"
+    soup = BeautifulSoup(html_empty_title, "html.parser")
+    assert signal.evaluate("http://example.com/job/1", html_empty_title, soup) == True
+
+    # 3. Nested title tag (e.g. span inside title)
+    html_nested_title = "<html><title><span>Software Engineer</span></title><body><h1>Welcome</h1></body></html>"
+    soup = BeautifulSoup(html_nested_title, "html.parser")
+    assert signal.evaluate("http://example.com/job/1", html_nested_title, soup) == True
+
+    # 4. Negative test (empty title, no H1)
+    html_empty_negative = "<html><title></title><body><h2>Welcome</h2></body></html>"
+    soup = BeautifulSoup(html_empty_negative, "html.parser")
+    assert signal.evaluate("http://example.com/job/1", html_empty_negative, soup) == False
+
+def test_negative_keywords_signal_missing_empty_nested_title():
+    signal = NegativeKeywordsSignal()
+
+    # 1. Empty title tag
+    html_empty_title = "<html><title></title><body><h1>Blog Post</h1></body></html>"
+    soup = BeautifulSoup(html_empty_title, "html.parser")
+    assert signal.evaluate("http://example.com/blog", html_empty_title, soup) == True
+
+    # 2. Nested title tag
+    html_nested_title = "<html><title><span>Privacy Policy</span></title><body><h1>Welcome</h1></body></html>"
+    soup = BeautifulSoup(html_nested_title, "html.parser")
+    assert signal.evaluate("http://example.com/privacy", html_nested_title, soup) == True
+
+if __name__ == "__main__":
+    test_job_title_signal_missing_empty_nested_title()
+    test_negative_keywords_signal_missing_empty_nested_title()

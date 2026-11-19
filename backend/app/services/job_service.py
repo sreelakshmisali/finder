@@ -248,9 +248,14 @@ class JobService:
             f"{len(accepted_jobs)} accepted, {len(rejected_jobs)} rejected."
         )
 
-        # Save accepted jobs to DB
-        # DIAGNOSTIC: log every failure with full type + traceback so we can identify
-        # why 8 ranked-accepted jobs produce 0 final results.
+        # Persist accepted jobs one at a time.
+        #
+        # Each save is isolated: save_normalized_job() wraps its INSERT in a
+        # savepoint, so a constraint violation (duplicate URL race, etc.) rolls
+        # back only that one record and leaves the session clean for the next
+        # job.  A rollback is still attempted here as a safety net for failures
+        # that occur before the savepoint is entered (e.g. a SELECT in the dedup
+        # steps encounters a network error and leaves the session dirty).
         saved_db_jobs: List[Job] = []
         _save_ok = 0
         _save_fail = 0
@@ -261,26 +266,43 @@ class JobService:
                 _save_ok += 1
             except Exception as exc:
                 _save_fail += 1
-                logger.error(
-                    f"[DIAG] DB save FAILED for job #{_save_fail} "
-                    f"title={norm_job.title!r} company={norm_job.company!r} "
-                    f"url_len={len(norm_job.url)} source={norm_job.source!r} "
-                    f"exc_type={type(exc).__name__!r} exc={exc!r}"
+                logger.warning(
+                    "[JobService] Persistence failed for job %r @ %r "
+                    "(source=%r url_len=%d): %s: %s",
+                    norm_job.title,
+                    norm_job.company,
+                    norm_job.source,
+                    len(norm_job.url),
+                    type(exc).__name__,
+                    exc,
                 )
-                logger.error(f"[DIAG] Full traceback:\n{traceback.format_exc()}")
-                # Attempt session rollback so subsequent saves are not poisoned
-                # by a left-over invalid transaction.  This is diagnostic-only and
-                # does NOT constitute the fix — it just isolates which exception
-                # is the root cause versus which are cascade failures.
+                logger.debug(
+                    "[JobService] Full traceback for persistence failure:\n%s",
+                    traceback.format_exc(),
+                )
+                # Safety-net rollback: if the failure occurred outside the
+                # savepoint (e.g. during a SELECT), clear the dirty session
+                # state so subsequent jobs are not affected.
                 try:
                     await self.db.rollback()
-                    logger.error("[DIAG] Session rollback succeeded after save failure.")
                 except Exception as rb_exc:
-                    logger.error(f"[DIAG] Session rollback also failed: {rb_exc!r}")
-        logger.error(
-            f"[DIAG] DB-save loop complete: {_save_ok} succeeded, "
-            f"{_save_fail} failed out of {len(accepted_jobs)} ranked-accepted jobs."
-        )
+                    logger.error(
+                        "[JobService] Session rollback failed after persistence error: %s",
+                        rb_exc,
+                    )
+
+        if _save_fail:
+            logger.warning(
+                "[JobService] Persistence loop: %d/%d succeeded, %d failed.",
+                _save_ok,
+                len(accepted_jobs),
+                _save_fail,
+            )
+        else:
+            logger.info(
+                "[JobService] Persistence loop: all %d jobs saved successfully.",
+                _save_ok,
+            )
 
         # S6: Response Limit Application
         s6_start = time.time()

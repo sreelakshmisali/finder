@@ -132,3 +132,66 @@ def test_search_discovery_pipeline_integration():
 
 if __name__ == "__main__":
     test_search_discovery_pipeline_integration()
+
+
+import asyncio
+from app.providers.search_engine.base_search import SearchResult
+from app.providers.search_engine.search_discovery import SearchDiscoveryProvider
+from app.services.search_aggregator import SearchAggregator
+from app.services.job_extractor import JobExtractor
+from app.services.crawl.crawl_scheduler import CrawlScheduler
+from app.providers.base_discovery import DiscoveryContext
+from app.schemas.job import JobSearchQuery
+
+
+class ConcurrencyMockFetcher:
+    def __init__(self):
+        self.active_fetches = 0
+        self.max_active_fetches = 0
+        self.total_fetches = 0
+
+    async def fetch(self, url: str) -> str:
+        self.active_fetches += 1
+        self.total_fetches += 1
+        if self.active_fetches > self.max_active_fetches:
+            self.max_active_fetches = self.active_fetches
+            
+        await asyncio.sleep(0.05) # simulate network latency
+        
+        self.active_fetches -= 1
+        return ""
+
+def test_search_discovery_concurrency_bounded():
+    """Test that SearchDiscoveryProvider bounds extraction concurrency."""
+    fetcher = ConcurrencyMockFetcher()
+    job_extractor = JobExtractor(fetcher=fetcher)
+    scheduler = CrawlScheduler()
+    # Explicitly set limit to something very small to test bounding
+    scheduler.config.max_concurrent_fetches = 5
+    
+    # Mock scheduler so it just passes through 50 URLs directly
+    async def mock_schedule(*args, **kwargs):
+        class DummyTaggedUrl:
+            def __init__(self, url):
+                self.url = url
+        return [DummyTaggedUrl(f"http://example.com/job/{i}") for i in range(50)]
+        
+    scheduler.schedule = mock_schedule
+    
+    provider = SearchDiscoveryProvider(
+        job_extractor=job_extractor,
+        scheduler=scheduler
+    )
+    
+    # Skip search engine stage
+    class MockAggregator:
+        async def aggregate_multi_query(*args, **kwargs):
+            return [SearchResult(title="x", url="y", snippet="z", engine="a")]
+    provider.aggregator = MockAggregator()
+    
+    ctx = DiscoveryContext(query=JobSearchQuery(query="dev", location=None, limit=50))
+    asyncio.run(provider.discover(ctx))
+    
+    assert fetcher.total_fetches == 50
+    assert fetcher.max_active_fetches <= 5
+

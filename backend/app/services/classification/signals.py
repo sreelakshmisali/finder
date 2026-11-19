@@ -68,7 +68,8 @@ class JobTitleSignal(ClassificationSignal):
         # Check title tag or H1 for common job title keywords
         keywords = ["engineer", "developer", "manager", "designer", "director", "specialist", "associate"]
         
-        title = soup.title.string if soup.title else ""
+        title_tag = soup.title
+        title = title_tag.get_text(separator=" ", strip=True) if title_tag else ""
         h1s = [h1.get_text(strip=True) for h1 in soup.find_all('h1')]
         
         text_to_check = (title + " " + " ".join(h1s)).lower()
@@ -149,7 +150,8 @@ class NegativeKeywordsSignal(ClassificationSignal):
     weight = -40.0
 
     def evaluate(self, url: str, html: str, soup: BeautifulSoup) -> bool:
-        title = (soup.title.string if soup.title else "").lower()
+        title_tag = soup.title
+        title = title_tag.get_text(separator=" ", strip=True).lower() if title_tag else ""
         h1s = " ".join([h1.get_text(strip=True) for h1 in soup.find_all('h1')]).lower()
         
         header_text = title + " " + h1s

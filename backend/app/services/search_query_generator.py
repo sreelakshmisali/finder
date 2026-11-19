@@ -173,18 +173,36 @@ class SearchQueryGenerator:
                 normalized.append(w_clean)
         return normalized
 
+    # Regional job portals that the crawler already knows how to route and schedule.
+    # Adding a targeted site: query for each makes them discoverable via DuckDuckGo.
+    # Keep this list small and stable — only add portals that have a matching entry
+    # in ProviderClassifier.DOMAIN_PATTERNS and SchedulerConfig.provider_priorities.
+    REGIONAL_JOB_PORTALS: List[str] = [
+        "infopark.in",
+        "technopark.in",
+    ]
+
     @staticmethod
     def generate_search_engine_queries(
-        raw_query: str, 
-        location: Optional[str] = None, 
+        raw_query: str,
+        location: Optional[str] = None,
         max_queries: int = 15
     ) -> List[str]:
         """
         Expands a raw user query into multiple targeted job-search engine queries.
         Uses RoleSynonymRegistry for synonym expansion and injects location constraints.
+
+        Query budget allocation (ordered by insertion, sliced to max_queries):
+          1. First-class ATS site queries  (5 fixed slots)
+          2. Regional portal site queries  (len(REGIONAL_JOB_PORTALS) slots — currently 2)
+          3. Exact-phrase quoted queries   (2 slots)
+          4. Broad synonym recall queries  (fills remaining budget)
+
+        With the production max_queries=10 this yields:
+          5 ATS + 2 regional + 2 quoted + 1 broad = 10 queries.
         """
         from app.services.search.synonyms import RoleSynonymRegistry
-        
+
         q = raw_query.strip()
         if not q:
             return ["software developer jobs", "software engineer jobs"]
@@ -192,8 +210,8 @@ class SearchQueryGenerator:
         # Expand synonyms
         synonyms = RoleSynonymRegistry.expand_role(q)
         primary_role = synonyms[0]
-        
-        queries = []
+
+        queries: List[str] = []
         loc_str = f" {location.strip()}" if location and location.strip() and location.lower() != "remote" else ""
         remote_kw = "remote " if location and location.lower() == "remote" else ""
 
@@ -206,11 +224,17 @@ class SearchQueryGenerator:
             f'site:jobs.smartrecruiters.com {remote_kw}{primary_role}{loc_str}',
         ])
 
-        # 2. Exact-phrase quoted role queries
+        # 2. Regional job portal site queries
+        # These portals are already registered in ProviderClassifier and SchedulerConfig,
+        # but were never reachable because no search query targeted their domains.
+        for portal in SearchQueryGenerator.REGIONAL_JOB_PORTALS:
+            queries.append(f'site:{portal} {remote_kw}{primary_role}{loc_str}')
+
+        # 3. Exact-phrase quoted role queries
         queries.append(f'"{q}" jobs{loc_str}')
         queries.append(f'"{q}" hiring{loc_str}')
 
-        # 3. Broad queries with synonyms for recall
+        # 4. Broad queries with synonyms for recall
         for syn in synonyms:
             queries.append(f'{syn} jobs{loc_str}')
             queries.append(f'{syn} hiring{loc_str}')

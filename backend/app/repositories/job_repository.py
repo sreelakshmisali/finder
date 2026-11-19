@@ -118,8 +118,16 @@ class JobRepository:
                     )
                 return await self._merge_job(existing_dup, norm_job)
 
-        # 4. No duplicate found, create new record
-
+        # 4. No duplicate found — insert as new record.
+        #
+        # Use a savepoint (begin_nested) so that a constraint violation
+        # (e.g. URL uniqueness race between the SELECT in step 1 and this
+        # INSERT, or a content_hash collision) rolls back only this
+        # individual save and leaves the outer session in a clean state.
+        # Without a savepoint a failed commit puts AsyncSession into
+        # PendingRollbackError, causing every subsequent execute() call in
+        # the same loop iteration to fail — silently dropping all
+        # remaining accepted jobs.
         db_job = Job(
             company=norm_job.company,
             title=norm_job.title,
@@ -136,7 +144,32 @@ class JobRepository:
             posted_date=norm_job.posted_date,
         )
 
-        self.db.add(db_job)
+        try:
+            async with self.db.begin_nested():
+                self.db.add(db_job)
+                # flush() issues the INSERT inside the savepoint so that any
+                # constraint violation is raised here (and caught below) rather
+                # than deferred to commit() where it would poison the session.
+                await self.db.flush()
+        except Exception as exc:
+            # Savepoint was automatically rolled back by the context manager;
+            # the outer session is still valid.  Log with enough context to
+            # diagnose the failure without exposing sensitive description text.
+            logger.warning(
+                "[Persistence] INSERT failed for job: "
+                "url=%r company=%r title=%r source=%r url_len=%d "
+                "exc_type=%s: %s",
+                norm_job.url,
+                norm_job.company,
+                norm_job.title,
+                norm_job.source,
+                len(norm_job.url),
+                type(exc).__name__,
+                exc,
+            )
+            raise
+
+        # Savepoint was released successfully — commit the outer transaction.
         await self.db.commit()
         await self.db.refresh(db_job)
         if tracker:

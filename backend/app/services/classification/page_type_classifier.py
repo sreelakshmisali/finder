@@ -186,7 +186,8 @@ class PageTypeClassifier:
         # ---------------------------------------------------------------
         # 4. Discard signals in title/H1
         # ---------------------------------------------------------------
-        page_title = (soup.title.string or "").lower() if soup.title else ""
+        title_tag = soup.title
+        page_title = title_tag.get_text(separator=" ", strip=True).lower() if title_tag else ""
         h1_text = " ".join(h.get_text(strip=True) for h in soup.find_all("h1")).lower()
         header_text = page_title + " " + h1_text
 
